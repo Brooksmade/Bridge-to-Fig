@@ -9,6 +9,7 @@ const MAX_LOG_DISPLAY = 50;
 // State
 let lastHealthData = null;
 let lastLogTimestamp = 0;
+let claudeSetupChecked = false;
 
 // DOM elements
 const serverDot = document.getElementById('server-dot');
@@ -23,6 +24,10 @@ const btnClearLog = document.getElementById('btn-clear-log');
 const btnCheckUpdate = document.getElementById('btn-check-update');
 const btnDocs = document.getElementById('btn-docs');
 const updateStatus = document.getElementById('update-status');
+const claudeDot = document.getElementById('claude-dot');
+const claudeText = document.getElementById('claude-text');
+const claudeDetail = document.getElementById('claude-detail');
+const btnInstallClaude = document.getElementById('btn-install-claude');
 
 // Update server status indicators
 function setServerStatus(status) {
@@ -207,7 +212,80 @@ btnCheckUpdate.addEventListener('click', async () => {
   }
 });
 
+// ── Claude Code Setup ──
+
+async function checkClaudeSetup() {
+  if (!window.__TAURI__) return;
+  try {
+    const status = await window.__TAURI__.core.invoke('check_claude_setup');
+    if (status.installed) {
+      claudeDot.className = 'status-dot connected';
+      claudeText.textContent = 'Installed';
+      claudeDetail.textContent = `${status.agentsCount} agents, ${status.commandsCount} commands`;
+      btnInstallClaude.textContent = 'Reinstall';
+    } else {
+      claudeDot.className = 'status-dot waiting';
+      claudeText.textContent = 'Not Installed';
+      claudeDetail.textContent = 'Agents, commands, and prompts for Claude Code';
+      btnInstallClaude.textContent = 'Install';
+    }
+    claudeSetupChecked = true;
+  } catch (err) {
+    claudeDot.className = 'status-dot';
+    claudeText.textContent = 'Error';
+    claudeDetail.textContent = String(err);
+  }
+}
+
+async function installClaudeFiles() {
+  if (!window.__TAURI__) return;
+
+  btnInstallClaude.disabled = true;
+  btnInstallClaude.textContent = 'Installing...';
+
+  try {
+    // Check if CLAUDE.md exists and ask user
+    const status = await window.__TAURI__.core.invoke('check_claude_setup');
+    let appendClaudeMd = true;
+    if (status.claudeMdExists) {
+      appendClaudeMd = confirm(
+        'Found existing ~/.claude/CLAUDE.md.\n\nAppend Bridge to Fig instructions to it?'
+      );
+    }
+
+    const result = await window.__TAURI__.core.invoke('install_claude_files', {
+      appendClaudeMd,
+    });
+
+    if (result.success) {
+      claudeDot.className = 'status-dot connected';
+      claudeText.textContent = 'Installed';
+      claudeDetail.textContent = `${result.agentsInstalled} agents, ${result.commandsInstalled} commands`;
+      btnInstallClaude.textContent = 'Done';
+      btnInstallClaude.classList.add('success');
+      setTimeout(() => {
+        btnInstallClaude.textContent = 'Reinstall';
+        btnInstallClaude.classList.remove('success');
+        btnInstallClaude.disabled = false;
+      }, 2000);
+    }
+  } catch (err) {
+    claudeDetail.textContent = 'Install failed: ' + String(err);
+    btnInstallClaude.textContent = 'Retry';
+    btnInstallClaude.disabled = false;
+  }
+}
+
+btnInstallClaude.addEventListener('click', installClaudeFiles);
+
+// Called from tray menu "Setup Claude Code"
+function scrollToClaudeSetup() {
+  const section = document.getElementById('claude-setup-section');
+  if (section) section.scrollIntoView({ behavior: 'smooth' });
+}
+
 // Start polling
+checkClaudeSetup();
 pollHealth();
 pollLogs();
 setInterval(pollHealth, POLL_INTERVAL);

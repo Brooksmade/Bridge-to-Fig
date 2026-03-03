@@ -215,6 +215,29 @@ header {
   50% { opacity: 0.5; }
 }
 
+/* ── Claude setup section ── */
+.claude-detail {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.btn-install {
+  font-size: 11px;
+  padding: 0 10px;
+  height: 26px;
+  min-width: 68px;
+}
+
+.btn-install.success {
+  color: var(--accent-green);
+  border-color: var(--accent-green);
+}
+
+.btn-install:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ── Activity Log section ── */
 .log-section {
   flex: 1;
