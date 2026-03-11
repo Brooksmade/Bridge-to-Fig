@@ -323,7 +323,7 @@ fn check_claude_setup() -> Result<serde_json::Value, String> {
         "hasLegacyClaudeMd": has_legacy,
         "agentsCount": agents_count,
         "commandsCount": commands_count,
-        "promptsDir": btf_dir.join("prompts").to_string_lossy(),
+        "promptsDir": claude_dir.join("prompts").join("bridge-to-fig").to_string_lossy(),
         "claudeDir": claude_dir.to_string_lossy(),
         "version": version,
         "scope": scope,
@@ -359,8 +359,7 @@ fn install_claude_files(
             )
         } else {
             let claude = home.join(".claude");
-            let btf = home.join(".bridge-to-fig");
-            let prompts = btf.join("prompts");
+            let prompts = claude.join("prompts").join("bridge-to-fig");
             let prompts_abs = prompts.to_string_lossy().to_string();
             let agents_abs = claude.join("agents").to_string_lossy().to_string();
             let commands_abs = claude.join("commands").to_string_lossy().to_string();
@@ -381,52 +380,6 @@ fn install_claude_files(
     extract_dir_to(&ROOT_PROMPTS, &prompts_install_dir)?;
     extract_dir_to(&CLAUDE_PROMPTS, &prompts_install_dir)?;
     let prompts_installed = count_embedded_files(&ROOT_PROMPTS) + count_embedded_files(&CLAUDE_PROMPTS);
-
-    // For global scope, also create symlink: ~/.claude/prompts/bridge-to-fig → ~/.bridge-to-fig/prompts/
-    let mut symlink_created = false;
-    if !is_project {
-        std::fs::create_dir_all(claude_dir.join("prompts"))
-            .map_err(|e| format!("Create claude prompts dir: {}", e))?;
-        let symlink_path = claude_dir.join("prompts").join("bridge-to-fig");
-
-        // Remove existing symlink/dir if present
-        if symlink_path.symlink_metadata().is_ok() {
-            let _ = std::fs::remove_file(&symlink_path);
-            let _ = std::fs::remove_dir_all(&symlink_path);
-        }
-
-        #[cfg(unix)]
-        {
-            match std::os::unix::fs::symlink(&prompts_install_dir, &symlink_path) {
-                Ok(_) => symlink_created = true,
-                Err(e) => {
-                    eprintln!("[Setup] Symlink failed, copying instead: {}", e);
-                    extract_dir_to(&ROOT_PROMPTS, &symlink_path)
-                        .and_then(|_| extract_dir_to(&CLAUDE_PROMPTS, &symlink_path))?;
-                }
-            }
-        }
-        #[cfg(windows)]
-        {
-            match std::os::windows::fs::symlink_dir(&prompts_install_dir, &symlink_path) {
-                Ok(_) => symlink_created = true,
-                Err(_) => {
-                    // Windows symlinks require dev mode or admin — fall back to copy
-                    std::fs::create_dir_all(&symlink_path)
-                        .map_err(|e| format!("Create fallback dir: {}", e))?;
-                    extract_dir_to(&ROOT_PROMPTS, &symlink_path)
-                        .and_then(|_| extract_dir_to(&CLAUDE_PROMPTS, &symlink_path))?;
-                }
-            }
-        }
-        #[cfg(not(any(unix, windows)))]
-        {
-            std::fs::create_dir_all(&symlink_path)
-                .map_err(|e| format!("Create fallback dir: {}", e))?;
-            extract_dir_to(&ROOT_PROMPTS, &symlink_path)
-                .and_then(|_| extract_dir_to(&CLAUDE_PROMPTS, &symlink_path))?;
-        }
-    }
 
     // ── Install agents with path rewriting ──
 
@@ -541,7 +494,6 @@ fn install_claude_files(
         "promptsInstalled": prompts_installed,
         "promptsDir": prompts_rewrite_path,
         "claudeMd": claude_md_action,
-        "symlink": symlink_created,
         "scope": scope,
     }))
 }
