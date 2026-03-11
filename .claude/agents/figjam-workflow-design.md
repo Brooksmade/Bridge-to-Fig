@@ -113,26 +113,29 @@ For each measured text:
 
 ### Step 4: Calculate Positions
 
-Layout rules:
-- **Vertical spacing** between boxes: 100px (ensures room for connectors and sticky notes)
-- **Horizontal spacing** between boxes in same row: 80px
-- **Horizontal spacing** between sections: 250px
-- **Section padding**: 60px on all sides
-- **Row-to-row spacing** (for multi-row layouts): 150px (fits sticky notes between rows)
+**Use spacing constants from `_base.md`.** These are intentionally large (3x standard) for diagrams with connectors. Do not reduce them.
+
+| Constant | Value | Usage |
+|----------|-------|-------|
+| GAP_VERTICAL | 180px | Space between elements in same column |
+| GAP_HORIZONTAL | 240px | Space between elements in same row (connected diagrams) |
+| GAP_ROW_TO_ROW | 270px | Space between rows (multi-row layouts) |
+| SECTION_PADDING | 60px | Padding inside section containers |
+| SECTION_GAP | 350px | Space between sections |
 
 Calculate Y positions by stacking:
 ```
 y_header = section_y + 30
-y_box1 = y_header + header_height + 100
-y_box2 = y_box1 + box1_height + 100
+y_box1 = y_header + header_height + 180
+y_box2 = y_box1 + box1_height + 180
 ...
 ```
 
 Calculate X positions for horizontal layouts:
 ```
 x_box1 = start_x
-x_box2 = x_box1 + box1_width + 80
-x_box3 = x_box2 + box2_width + 80
+x_box2 = x_box1 + box1_width + 240
+x_box3 = x_box2 + box2_width + 240
 ...
 ```
 
