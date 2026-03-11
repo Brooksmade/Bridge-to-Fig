@@ -1,4 +1,4 @@
-// Bridge to Fig Desktop — Status UI
+// Bridge to Fig Desktop — Status UI + Setup Wizard
 
 const HEALTH_URL = 'http://localhost:4001/health';
 const LOGS_URL = 'http://localhost:4001/logs';
@@ -9,9 +9,207 @@ const MAX_LOG_DISPLAY = 50;
 // State
 let lastHealthData = null;
 let lastLogTimestamp = 0;
-let claudeSetupChecked = false;
 
-// DOM elements
+// ── Setup Wizard ──────────────────────────────────────────────────────────
+
+const wizard = {
+  scope: 'global',
+  projectPath: null,
+  isReinstall: false,
+};
+
+function showWizard() {
+  document.getElementById('setup-wizard').style.display = '';
+  document.getElementById('dashboard').style.display = 'none';
+  goToScreen(wizard.isReinstall ? 'wizard-scope' : 'wizard-welcome');
+}
+
+function showDashboard() {
+  document.getElementById('setup-wizard').style.display = 'none';
+  document.getElementById('dashboard').style.display = '';
+  refreshClaudeStatus();
+}
+
+function goToScreen(id) {
+  document.querySelectorAll('.wizard-screen').forEach(el => {
+    el.style.display = 'none';
+  });
+  const screen = document.getElementById(id);
+  if (screen) {
+    screen.style.display = '';
+    screen.classList.remove('fade-in');
+    // Trigger reflow for animation
+    void screen.offsetWidth;
+    screen.classList.add('fade-in');
+  }
+}
+
+// Scope card selection
+function selectScope(scope) {
+  wizard.scope = scope;
+  const globalCard = document.getElementById('scope-global');
+  const projectCard = document.getElementById('scope-project');
+
+  if (scope === 'global') {
+    globalCard.classList.add('selected');
+    globalCard.setAttribute('aria-checked', 'true');
+    projectCard.classList.remove('selected');
+    projectCard.setAttribute('aria-checked', 'false');
+  } else {
+    projectCard.classList.add('selected');
+    projectCard.setAttribute('aria-checked', 'true');
+    globalCard.classList.remove('selected');
+    globalCard.setAttribute('aria-checked', 'false');
+  }
+}
+
+// Folder picker
+async function pickFolder() {
+  if (!window.__TAURI__) return;
+  try {
+    const folder = await window.__TAURI__.core.invoke('pick_folder');
+    if (folder) {
+      wizard.projectPath = folder;
+      document.getElementById('folder-path').value = folder;
+      document.getElementById('btn-folder-next').disabled = false;
+
+      // Show install path hint
+      const name = folder.split(/[/\\]/).pop();
+      document.getElementById('folder-hint').innerHTML =
+        `Agents, commands, and prompts will be installed to:<br><code>${name}/.claude/</code>`;
+    }
+  } catch (err) {
+    console.error('Folder picker error:', err);
+  }
+}
+
+// Install flow with animated checklist
+async function runInstall() {
+  goToScreen('wizard-installing');
+
+  const items = ['install-agents', 'install-commands', 'install-prompts', 'install-claudemd'];
+
+  // Reset all items to pending
+  items.forEach(id => {
+    const icon = document.querySelector(`#${id} .install-icon`);
+    const label = document.querySelector(`#${id} .install-label`);
+    icon.className = 'install-icon pending';
+    label.textContent = label.textContent.replace(/\s*\(.*\)$/, '');
+  });
+
+  try {
+    const result = await window.__TAURI__.core.invoke('install_claude_files', {
+      scope: wizard.scope,
+      projectPath: wizard.projectPath,
+    });
+
+    if (result.success) {
+      // Animate checklist items with stagger
+      const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+      // Agents
+      setInstallItem('install-agents', 'done', `${result.agentsInstalled} agents`);
+      await delay(200);
+
+      // Commands
+      setInstallItem('install-commands', 'done', `${result.commandsInstalled} commands`);
+      await delay(200);
+
+      // Prompts
+      setInstallItem('install-prompts', 'done', `${result.promptsInstalled} prompt files`);
+      await delay(200);
+
+      // CLAUDE.md
+      const mdLabel = result.claudeMd === 'migrated'
+        ? 'CLAUDE.md reference (migrated from legacy)'
+        : 'CLAUDE.md reference';
+      setInstallItem('install-claudemd', 'done', mdLabel);
+      await delay(400);
+
+      // Transition to success
+      showSuccess(result);
+    }
+  } catch (err) {
+    // Show error on the last pending item
+    const pendingItem = items.find(id => {
+      return document.querySelector(`#${id} .install-icon`).classList.contains('pending');
+    }) || items[items.length - 1];
+
+    setInstallItem(pendingItem, 'error', 'Install failed: ' + String(err));
+  }
+}
+
+function setInstallItem(id, state, label) {
+  const icon = document.querySelector(`#${id} .install-icon`);
+  const labelEl = document.querySelector(`#${id} .install-label`);
+  icon.className = 'install-icon ' + state;
+  labelEl.textContent = label;
+}
+
+function showSuccess(result) {
+  const summary = `${result.agentsInstalled} agents, ${result.commandsInstalled} commands installed`;
+  const location = wizard.scope === 'global'
+    ? 'Installed to: ~/.claude/ (global)'
+    : `Installed to: ${wizard.projectPath} (project)`;
+
+  document.getElementById('success-summary').textContent = summary;
+  document.getElementById('success-location').textContent = location;
+  goToScreen('wizard-success');
+}
+
+// ── Wire up wizard buttons ──
+
+document.getElementById('btn-wizard-start').addEventListener('click', () => {
+  goToScreen('wizard-scope');
+});
+
+document.getElementById('scope-global').addEventListener('click', () => selectScope('global'));
+document.getElementById('scope-project').addEventListener('click', () => selectScope('project'));
+
+// Keyboard support for scope cards
+document.getElementById('scope-global').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectScope('global'); }
+});
+document.getElementById('scope-project').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectScope('project'); }
+});
+
+document.getElementById('btn-scope-back').addEventListener('click', () => {
+  if (wizard.isReinstall) {
+    showDashboard();
+  } else {
+    goToScreen('wizard-welcome');
+  }
+});
+
+document.getElementById('btn-scope-next').addEventListener('click', () => {
+  if (wizard.scope === 'project') {
+    goToScreen('wizard-folder');
+  } else {
+    wizard.projectPath = null;
+    runInstall();
+  }
+});
+
+document.getElementById('btn-folder-back').addEventListener('click', () => {
+  goToScreen('wizard-scope');
+});
+
+document.getElementById('btn-browse').addEventListener('click', pickFolder);
+
+document.getElementById('btn-folder-next').addEventListener('click', () => {
+  if (wizard.projectPath) {
+    runInstall();
+  }
+});
+
+document.getElementById('btn-open-dashboard').addEventListener('click', () => {
+  showDashboard();
+});
+
+// ── Dashboard ─────────────────────────────────────────────────────────────
+
+// DOM elements (dashboard)
 const serverDot = document.getElementById('server-dot');
 const serverText = document.getElementById('server-text');
 const pluginDot = document.getElementById('plugin-dot');
@@ -27,7 +225,7 @@ const updateStatus = document.getElementById('update-status');
 const claudeDot = document.getElementById('claude-dot');
 const claudeText = document.getElementById('claude-text');
 const claudeDetail = document.getElementById('claude-detail');
-const btnInstallClaude = document.getElementById('btn-install-claude');
+const btnReinstall = document.getElementById('btn-reinstall-claude');
 
 // Update server status indicators
 function setServerStatus(status) {
@@ -67,7 +265,6 @@ function renderLog(logs) {
     return;
   }
 
-  // Show oldest first, newest at bottom (matches plugin scroll direction)
   const display = logs.slice(-MAX_LOG_DISPLAY);
 
   logEntriesEl.innerHTML = display
@@ -80,7 +277,6 @@ function renderLog(logs) {
     })
     .join('');
 
-  // Auto-scroll to bottom (newest entries) — matches plugin behavior
   logEntriesEl.scrollTop = logEntriesEl.scrollHeight;
 }
 
@@ -100,22 +296,18 @@ async function pollHealth() {
     const data = await response.json();
     lastHealthData = data;
 
-    // Update server status
     setServerStatus('running');
 
-    // Update plugin status
     if (data.pluginConnected) {
       setPluginStatus('connected');
     } else {
       setPluginStatus('waiting');
     }
 
-    // Update info
     serverVersion.textContent = data.serverVersion || '--';
     protocolVersion.textContent = data.protocolVersion != null ? `v${data.protocolVersion}` : '--';
     portValue.textContent = '4001';
 
-    // Check for update info from server
     if (data.latestRelease) {
       updateStatus.textContent = `Update available: v${data.latestRelease.version}`;
       updateStatus.className = 'update-text available';
@@ -126,12 +318,11 @@ async function pollHealth() {
     setPluginStatus('');
     serverVersion.textContent = '--';
     protocolVersion.textContent = '--';
-
     lastHealthData = null;
   }
 }
 
-// Poll logs endpoint (mirrors plugin activity)
+// Poll logs endpoint
 async function pollLogs() {
   try {
     const controller = new AbortController();
@@ -145,20 +336,18 @@ async function pollLogs() {
     const data = await response.json();
     if (data.logs && data.logs.length > 0) {
       const newestTimestamp = data.logs[data.logs.length - 1].timestamp;
-      // Only re-render if new entries arrived
       if (newestTimestamp !== lastLogTimestamp) {
         lastLogTimestamp = newestTimestamp;
         renderLog(data.logs);
       }
     }
   } catch (err) {
-    // Server not reachable — health poll handles status display
+    // Server not reachable
   }
 }
 
 // Clear log button
 btnClearLog.addEventListener('click', async () => {
-  // Clear server-side logs and reset local state
   try {
     await fetch(LOGS_URL, { method: 'DELETE' });
   } catch (err) {
@@ -178,7 +367,7 @@ btnDocs.addEventListener('click', () => {
   }
 });
 
-// Check for updates / update button
+// Update button
 btnCheckUpdate.addEventListener('click', async () => {
   updateStatus.textContent = 'Checking...';
   updateStatus.className = 'update-text';
@@ -212,9 +401,20 @@ btnCheckUpdate.addEventListener('click', async () => {
   }
 });
 
-// ── Claude Code Setup ──
+// Reinstall button — opens wizard at scope selection
+btnReinstall.addEventListener('click', () => {
+  wizard.isReinstall = true;
+  wizard.scope = 'global';
+  wizard.projectPath = null;
+  selectScope('global');
+  document.getElementById('folder-path').value = '';
+  document.getElementById('btn-folder-next').disabled = true;
+  showWizard();
+});
 
-async function checkClaudeSetup() {
+// ── Claude Code Status (dashboard card) ──
+
+async function refreshClaudeStatus() {
   if (!window.__TAURI__) return;
   try {
     const status = await window.__TAURI__.core.invoke('check_claude_setup');
@@ -222,14 +422,13 @@ async function checkClaudeSetup() {
       claudeDot.className = 'status-dot connected';
       claudeText.textContent = 'Installed';
       claudeDetail.textContent = `${status.agentsCount} agents, ${status.commandsCount} commands`;
-      btnInstallClaude.textContent = 'Reinstall';
+      btnReinstall.textContent = 'Reinstall';
     } else {
       claudeDot.className = 'status-dot waiting';
       claudeText.textContent = 'Not Installed';
       claudeDetail.textContent = 'Agents, commands, and prompts for Claude Code';
-      btnInstallClaude.textContent = 'Install';
+      btnReinstall.textContent = 'Install';
     }
-    claudeSetupChecked = true;
   } catch (err) {
     claudeDot.className = 'status-dot';
     claudeText.textContent = 'Error';
@@ -237,56 +436,52 @@ async function checkClaudeSetup() {
   }
 }
 
-async function installClaudeFiles() {
-  if (!window.__TAURI__) return;
+// ── Global function for tray menu ──
 
-  btnInstallClaude.disabled = true;
-  btnInstallClaude.textContent = 'Installing...';
-
-  try {
-    // Check if CLAUDE.md exists and ask user
-    const status = await window.__TAURI__.core.invoke('check_claude_setup');
-    let appendClaudeMd = true;
-    if (status.claudeMdExists) {
-      appendClaudeMd = confirm(
-        'Found existing ~/.claude/CLAUDE.md.\n\nAppend Bridge to Fig instructions to it?'
-      );
-    }
-
-    const result = await window.__TAURI__.core.invoke('install_claude_files', {
-      appendClaudeMd,
-    });
-
-    if (result.success) {
-      claudeDot.className = 'status-dot connected';
-      claudeText.textContent = 'Installed';
-      claudeDetail.textContent = `${result.agentsInstalled} agents, ${result.commandsInstalled} commands`;
-      btnInstallClaude.textContent = 'Done';
-      btnInstallClaude.classList.add('success');
-      setTimeout(() => {
-        btnInstallClaude.textContent = 'Reinstall';
-        btnInstallClaude.classList.remove('success');
-        btnInstallClaude.disabled = false;
-      }, 2000);
-    }
-  } catch (err) {
-    claudeDetail.textContent = 'Install failed: ' + String(err);
-    btnInstallClaude.textContent = 'Retry';
-    btnInstallClaude.disabled = false;
-  }
+function showSetupWizard() {
+  wizard.isReinstall = true;
+  wizard.scope = 'global';
+  wizard.projectPath = null;
+  selectScope('global');
+  document.getElementById('folder-path').value = '';
+  document.getElementById('btn-folder-next').disabled = true;
+  showWizard();
 }
-
-btnInstallClaude.addEventListener('click', installClaudeFiles);
 
 // Called from tray menu "Setup Claude Code"
 function scrollToClaudeSetup() {
-  const section = document.getElementById('claude-setup-section');
-  if (section) section.scrollIntoView({ behavior: 'smooth' });
+  // Legacy compat — redirect to wizard
+  showSetupWizard();
 }
 
-// Start polling
-checkClaudeSetup();
-pollHealth();
-pollLogs();
-setInterval(pollHealth, POLL_INTERVAL);
-setInterval(pollLogs, LOG_POLL_INTERVAL);
+// ── App Init ──────────────────────────────────────────────────────────────
+
+async function initApp() {
+  // Start polling immediately
+  pollHealth();
+  pollLogs();
+  setInterval(pollHealth, POLL_INTERVAL);
+  setInterval(pollLogs, LOG_POLL_INTERVAL);
+
+  if (!window.__TAURI__) {
+    showDashboard();
+    return;
+  }
+
+  try {
+    const status = await window.__TAURI__.core.invoke('check_claude_setup');
+    if (status.installed) {
+      // Already set up — go straight to dashboard
+      showDashboard();
+    } else {
+      // First launch — show wizard
+      wizard.isReinstall = false;
+      showWizard();
+    }
+  } catch (err) {
+    console.error('Setup check failed:', err);
+    showDashboard();
+  }
+}
+
+initApp();

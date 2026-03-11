@@ -26,7 +26,29 @@ static AGENTS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../.claude/ag
 static COMMANDS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../.claude/commands");
 static CLAUDE_PROMPTS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../.claude/prompts");
 static ROOT_PROMPTS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../prompts");
-static CLAUDE_MD: &str = include_str!("../../../CLAUDE.md");
+
+// ── Short CLAUDE.md template (replaces full 357-line embed) ───────────────
+
+const CLAUDE_MD_SHORT_TEMPLATE: &str = r#"# Bridge to Fig
+
+AI-to-Figma bridge for design systems, variable binding, website extraction, and component libraries.
+
+**Server**: http://localhost:4001 | **API Reference**: `{PROMPTS_DIR}/figma-bridge.md`
+
+## Quick Reference
+- Send commands: `POST http://localhost:4001/commands` → poll `GET /results/{id}?wait=true`
+- {AGENTS_COUNT} agents at `{AGENTS_DIR}/` | {COMMANDS_COUNT} commands at `{COMMANDS_DIR}/`
+- Full workflow docs: `{PROMPTS_DIR}/workflows.md`
+- Layout guide: `{PROMPTS_DIR}/figma-layout.md`
+
+## Rules
+- Always query first → modify by node ID
+- Use `describe` over `children` for large nodes
+- 3-step layout: create → setAutoLayout → modify
+- Temp files in `.tmp/` only — never project root
+- Long commands: timeout=300000
+- FigJam: always use bridge server commands, never MCP generate_diagram
+"#;
 
 // ── Health check types ────────────────────────────────────────────────────
 
@@ -116,9 +138,18 @@ fn extract_dir_to(dir: &Dir, base: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Count files recursively in an embedded directory
+fn count_embedded_files(dir: &Dir) -> u32 {
+    let mut count = dir.files().count() as u32;
+    for subdir in dir.dirs() {
+        count += count_embedded_files(subdir);
+    }
+    count
+}
+
 /// Rewrite prompt paths in agent/command files to use the installed location.
 /// Converts relative paths like `prompts/figma-bridge.md` and
-/// `.claude/prompts/charts/flowchart.md` to absolute installed paths.
+/// `.claude/prompts/charts/flowchart.md` to the installed prompts path.
 fn rewrite_prompt_paths(content: &str, prompts_dir: &str) -> String {
     const PLACEHOLDER: &str = "\x00BTF_PROMPTS\x00";
     // Replace .claude/prompts/ first (more specific pattern)
@@ -129,7 +160,74 @@ fn rewrite_prompt_paths(content: &str, prompts_dir: &str) -> String {
     result.replace(PLACEHOLDER, &format!("{}/", prompts_dir))
 }
 
-// ── Tauri commands for Claude Code setup ──────────────────────────────────
+/// Render the short CLAUDE.md reference with resolved placeholders
+fn render_claude_md_short(
+    prompts_dir: &str,
+    agents_dir: &str,
+    commands_dir: &str,
+    agents_count: u32,
+    commands_count: u32,
+) -> String {
+    CLAUDE_MD_SHORT_TEMPLATE
+        .replace("{PROMPTS_DIR}", prompts_dir)
+        .replace("{AGENTS_DIR}", agents_dir)
+        .replace("{COMMANDS_DIR}", commands_dir)
+        .replace("{AGENTS_COUNT}", &agents_count.to_string())
+        .replace("{COMMANDS_COUNT}", &commands_count.to_string())
+}
+
+/// Detect legacy full CLAUDE.md block (357 lines) vs short reference
+fn has_legacy_claude_md(content: &str) -> bool {
+    content.contains("## Common Workflows")
+        && content.contains("### Create Design System from Figma Frame")
+}
+
+/// Write or update the Bridge to Fig section in a CLAUDE.md file.
+/// Returns action taken: "created", "appended", "updated", "migrated".
+fn write_claude_md_section(claude_md_path: &Path, short_ref: &str) -> Result<&'static str, String> {
+    if claude_md_path.exists() {
+        let existing = std::fs::read_to_string(claude_md_path)
+            .map_err(|e| format!("Read CLAUDE.md: {}", e))?;
+
+        if existing.contains("# Bridge to Fig") {
+            let is_legacy = has_legacy_claude_md(&existing);
+
+            // Find the section separator and replace everything after it
+            if let Some(idx) = existing.find("\n---\n\n# Bridge to Fig") {
+                let trimmed = &existing[..idx];
+                let combined = format!("{}\n\n---\n\n{}", trimmed.trim_end(), short_ref);
+                std::fs::write(claude_md_path, combined)
+                    .map_err(|e| format!("Write CLAUDE.md: {}", e))?;
+                return Ok(if is_legacy { "migrated" } else { "updated" });
+            }
+
+            // Bridge to Fig at start of file (no separator before it)
+            if existing.starts_with("# Bridge to Fig") {
+                std::fs::write(claude_md_path, short_ref)
+                    .map_err(|e| format!("Write CLAUDE.md: {}", e))?;
+                return Ok(if is_legacy { "migrated" } else { "updated" });
+            }
+
+            // Has Bridge to Fig but can't find section boundary — append fresh
+            let combined = format!("{}\n\n---\n\n{}", existing.trim_end(), short_ref);
+            std::fs::write(claude_md_path, combined)
+                .map_err(|e| format!("Write CLAUDE.md: {}", e))?;
+            return Ok(if is_legacy { "migrated" } else { "updated" });
+        }
+
+        // No Bridge to Fig content — append
+        let combined = format!("{}\n\n---\n\n{}", existing.trim_end(), short_ref);
+        std::fs::write(claude_md_path, combined)
+            .map_err(|e| format!("Write CLAUDE.md: {}", e))?;
+        Ok("appended")
+    } else {
+        std::fs::write(claude_md_path, short_ref)
+            .map_err(|e| format!("Write CLAUDE.md: {}", e))?;
+        Ok("created")
+    }
+}
+
+// ── Tauri commands ────────────────────────────────────────────────────────
 
 #[tauri::command]
 fn check_claude_setup() -> Result<serde_json::Value, String> {
@@ -137,8 +235,37 @@ fn check_claude_setup() -> Result<serde_json::Value, String> {
     let btf_dir = home.join(".bridge-to-fig");
     let claude_dir = home.join(".claude");
 
-    let installed = btf_dir.join(".installed").exists();
-    let claude_md_exists = claude_dir.join("CLAUDE.md").exists();
+    // Read marker file (now JSON)
+    let marker_path = btf_dir.join(".installed");
+    let marker_data: Option<serde_json::Value> = if marker_path.exists() {
+        std::fs::read_to_string(&marker_path)
+            .ok()
+            .and_then(|s| {
+                // Try JSON first, fall back to legacy plain timestamp
+                serde_json::from_str(&s).ok().or_else(|| {
+                    Some(serde_json::json!({
+                        "timestamp": s.trim(),
+                        "scope": "global",
+                        "version": ""
+                    }))
+                })
+            })
+    } else {
+        None
+    };
+
+    let installed = marker_data.is_some();
+    let claude_md_path = claude_dir.join("CLAUDE.md");
+    let claude_md_exists = claude_md_path.exists();
+
+    // Detect legacy full CLAUDE.md block
+    let has_legacy = if claude_md_exists {
+        std::fs::read_to_string(&claude_md_path)
+            .map(|content| has_legacy_claude_md(&content))
+            .unwrap_or(false)
+    } else {
+        false
+    };
 
     // Count installed agents
     let agents_count = claude_dir
@@ -176,43 +303,137 @@ fn check_claude_setup() -> Result<serde_json::Value, String> {
         })
         .unwrap_or(0);
 
+    // Extract version and scope from marker
+    let version = marker_data
+        .as_ref()
+        .and_then(|m| m.get("version"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let scope = marker_data
+        .as_ref()
+        .and_then(|m| m.get("scope"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
     Ok(serde_json::json!({
         "installed": installed,
         "claudeMdExists": claude_md_exists,
+        "hasLegacyClaudeMd": has_legacy,
         "agentsCount": agents_count,
         "commandsCount": commands_count,
         "promptsDir": btf_dir.join("prompts").to_string_lossy(),
         "claudeDir": claude_dir.to_string_lossy(),
+        "version": version,
+        "scope": scope,
     }))
 }
 
 #[tauri::command]
-fn install_claude_files(append_claude_md: bool) -> Result<serde_json::Value, String> {
+fn install_claude_files(
+    app: tauri::AppHandle,
+    scope: String,
+    project_path: Option<String>,
+) -> Result<serde_json::Value, String> {
     let home = get_home_dir()?;
-    let btf_dir = home.join(".bridge-to-fig");
-    let claude_dir = home.join(".claude");
-    let prompts_dir = btf_dir.join("prompts");
-    let prompts_path = prompts_dir.to_string_lossy().to_string();
+    let is_project = scope == "project";
+    let app_version = app.config().version.clone().unwrap_or_default();
 
-    // Create directories
-    std::fs::create_dir_all(&prompts_dir)
+    // ── Determine directories based on scope ──
+
+    let (claude_dir, prompts_install_dir, prompts_rewrite_path, agents_display, commands_display) =
+        if is_project {
+            let project = project_path
+                .as_ref()
+                .ok_or_else(|| "Project path required for project scope".to_string())?;
+            let project_root = PathBuf::from(project);
+            let claude = project_root.join(".claude");
+            let prompts = claude.join("prompts").join("bridge-to-fig");
+            (
+                claude,
+                prompts,
+                ".claude/prompts/bridge-to-fig".to_string(),
+                ".claude/agents".to_string(),
+                ".claude/commands".to_string(),
+            )
+        } else {
+            let claude = home.join(".claude");
+            let btf = home.join(".bridge-to-fig");
+            let prompts = btf.join("prompts");
+            let prompts_abs = prompts.to_string_lossy().to_string();
+            let agents_abs = claude.join("agents").to_string_lossy().to_string();
+            let commands_abs = claude.join("commands").to_string_lossy().to_string();
+            (claude, prompts, prompts_abs, agents_abs, commands_abs)
+        };
+
+    // ── Create directories ──
+
+    std::fs::create_dir_all(&prompts_install_dir)
         .map_err(|e| format!("Create prompts dir: {}", e))?;
     std::fs::create_dir_all(claude_dir.join("agents"))
         .map_err(|e| format!("Create agents dir: {}", e))?;
     std::fs::create_dir_all(claude_dir.join("commands"))
         .map_err(|e| format!("Create commands dir: {}", e))?;
-    std::fs::create_dir_all(claude_dir.join("prompts"))
-        .map_err(|e| format!("Create claude prompts dir: {}", e))?;
 
-    // ── Install prompts to ~/.bridge-to-fig/prompts/ ──
-    extract_dir_to(&ROOT_PROMPTS, &prompts_dir)?;
-    extract_dir_to(&CLAUDE_PROMPTS, &prompts_dir)?;
+    // ── Install prompts ──
+
+    extract_dir_to(&ROOT_PROMPTS, &prompts_install_dir)?;
+    extract_dir_to(&CLAUDE_PROMPTS, &prompts_install_dir)?;
+    let prompts_installed = count_embedded_files(&ROOT_PROMPTS) + count_embedded_files(&CLAUDE_PROMPTS);
+
+    // For global scope, also create symlink: ~/.claude/prompts/bridge-to-fig → ~/.bridge-to-fig/prompts/
+    let mut symlink_created = false;
+    if !is_project {
+        std::fs::create_dir_all(claude_dir.join("prompts"))
+            .map_err(|e| format!("Create claude prompts dir: {}", e))?;
+        let symlink_path = claude_dir.join("prompts").join("bridge-to-fig");
+
+        // Remove existing symlink/dir if present
+        if symlink_path.symlink_metadata().is_ok() {
+            let _ = std::fs::remove_file(&symlink_path);
+            let _ = std::fs::remove_dir_all(&symlink_path);
+        }
+
+        #[cfg(unix)]
+        {
+            match std::os::unix::fs::symlink(&prompts_install_dir, &symlink_path) {
+                Ok(_) => symlink_created = true,
+                Err(e) => {
+                    eprintln!("[Setup] Symlink failed, copying instead: {}", e);
+                    extract_dir_to(&ROOT_PROMPTS, &symlink_path)
+                        .and_then(|_| extract_dir_to(&CLAUDE_PROMPTS, &symlink_path))?;
+                }
+            }
+        }
+        #[cfg(windows)]
+        {
+            match std::os::windows::fs::symlink_dir(&prompts_install_dir, &symlink_path) {
+                Ok(_) => symlink_created = true,
+                Err(_) => {
+                    // Windows symlinks require dev mode or admin — fall back to copy
+                    std::fs::create_dir_all(&symlink_path)
+                        .map_err(|e| format!("Create fallback dir: {}", e))?;
+                    extract_dir_to(&ROOT_PROMPTS, &symlink_path)
+                        .and_then(|_| extract_dir_to(&CLAUDE_PROMPTS, &symlink_path))?;
+                }
+            }
+        }
+        #[cfg(not(any(unix, windows)))]
+        {
+            std::fs::create_dir_all(&symlink_path)
+                .map_err(|e| format!("Create fallback dir: {}", e))?;
+            extract_dir_to(&ROOT_PROMPTS, &symlink_path)
+                .and_then(|_| extract_dir_to(&CLAUDE_PROMPTS, &symlink_path))?;
+        }
+    }
 
     // ── Install agents with path rewriting ──
+
     let mut agents_installed = 0u32;
     for file in AGENTS.files() {
         if let Ok(content) = std::str::from_utf8(file.contents()) {
-            let rewritten = rewrite_prompt_paths(content, &prompts_path);
+            let rewritten = rewrite_prompt_paths(content, &prompts_rewrite_path);
             let target = claude_dir.join("agents").join(
                 file.path()
                     .file_name()
@@ -225,10 +446,11 @@ fn install_claude_files(append_claude_md: bool) -> Result<serde_json::Value, Str
     }
 
     // ── Install commands with path rewriting ──
+
     let mut commands_installed = 0u32;
     for file in COMMANDS.files() {
         if let Ok(content) = std::str::from_utf8(file.contents()) {
-            let rewritten = rewrite_prompt_paths(content, &prompts_path);
+            let rewritten = rewrite_prompt_paths(content, &prompts_rewrite_path);
             let target = claude_dir.join("commands").join(
                 file.path()
                     .file_name()
@@ -240,104 +462,96 @@ fn install_claude_files(append_claude_md: bool) -> Result<serde_json::Value, Str
         }
     }
 
-    // ── Create symlink: ~/.claude/prompts/bridge-to-fig → ~/.bridge-to-fig/prompts/ ──
-    let symlink_path = claude_dir.join("prompts").join("bridge-to-fig");
-    // Remove existing symlink/dir if present
-    if symlink_path.symlink_metadata().is_ok() {
-        let _ = std::fs::remove_file(&symlink_path);
-        let _ = std::fs::remove_dir_all(&symlink_path);
-    }
+    // ── Handle CLAUDE.md with short reference ──
 
-    let symlink_created;
-    #[cfg(unix)]
-    {
-        match std::os::unix::fs::symlink(&prompts_dir, &symlink_path) {
-            Ok(_) => symlink_created = true,
-            Err(e) => {
-                eprintln!("[Setup] Symlink failed, copying instead: {}", e);
-                extract_dir_to(&ROOT_PROMPTS, &symlink_path)
-                    .and_then(|_| extract_dir_to(&CLAUDE_PROMPTS, &symlink_path))?;
-                symlink_created = false;
-            }
-        }
-    }
-    #[cfg(windows)]
-    {
-        match std::os::windows::fs::symlink_dir(&prompts_dir, &symlink_path) {
-            Ok(_) => symlink_created = true,
-            Err(_) => {
-                // Windows symlinks require dev mode or admin — fall back to copy
-                std::fs::create_dir_all(&symlink_path)
-                    .map_err(|e| format!("Create fallback dir: {}", e))?;
-                extract_dir_to(&ROOT_PROMPTS, &symlink_path)
-                    .and_then(|_| extract_dir_to(&CLAUDE_PROMPTS, &symlink_path))?;
-                symlink_created = false;
-            }
-        }
-    }
-    #[cfg(not(any(unix, windows)))]
-    {
-        std::fs::create_dir_all(&symlink_path)
-            .map_err(|e| format!("Create fallback dir: {}", e))?;
-        extract_dir_to(&ROOT_PROMPTS, &symlink_path)
-            .and_then(|_| extract_dir_to(&CLAUDE_PROMPTS, &symlink_path))?;
-        symlink_created = false;
-    }
+    let short_ref = render_claude_md_short(
+        &prompts_rewrite_path,
+        &agents_display,
+        &commands_display,
+        agents_installed,
+        commands_installed,
+    );
 
-    // ── Handle CLAUDE.md ──
-    let claude_md_path = claude_dir.join("CLAUDE.md");
-    let claude_md_action;
-    if claude_md_path.exists() {
-        if append_claude_md {
-            let existing = std::fs::read_to_string(&claude_md_path)
-                .map_err(|e| format!("Read CLAUDE.md: {}", e))?;
-            if existing.contains("# Bridge to Fig") {
-                // Already has Bridge to Fig content — replace it
-                if let Some(idx) = existing.find("\n---\n\n# Bridge to Fig") {
-                    let trimmed = &existing[..idx];
-                    let combined = format!("{}\n\n---\n\n{}", trimmed.trim_end(), CLAUDE_MD);
-                    std::fs::write(&claude_md_path, combined)
-                        .map_err(|e| format!("Write CLAUDE.md: {}", e))?;
-                    claude_md_action = "updated";
-                } else {
-                    claude_md_action = "already_present";
-                }
-            } else {
-                let combined = format!("{}\n\n---\n\n{}", existing.trim_end(), CLAUDE_MD);
-                std::fs::write(&claude_md_path, combined)
-                    .map_err(|e| format!("Write CLAUDE.md: {}", e))?;
-                claude_md_action = "appended";
-            }
-        } else {
-            claude_md_action = "skipped";
-        }
+    // CLAUDE.md location: project root for project scope, ~/.claude/ for global
+    let claude_md_path = if is_project {
+        let project = project_path.as_ref().unwrap();
+        PathBuf::from(project).join("CLAUDE.md")
     } else {
-        std::fs::write(&claude_md_path, CLAUDE_MD)
-            .map_err(|e| format!("Write CLAUDE.md: {}", e))?;
-        claude_md_action = "created";
-    }
+        claude_dir.join("CLAUDE.md")
+    };
 
-    // ── Write marker file ──
+    let claude_md_action = write_claude_md_section(&claude_md_path, &short_ref)?;
+
+    // ── Write marker file (JSON format) ──
+
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs().to_string())
-        .unwrap_or_default();
-    std::fs::write(btf_dir.join(".installed"), &timestamp)
-        .map_err(|e| format!("Write marker: {}", e))?;
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let marker = serde_json::json!({
+        "timestamp": timestamp,
+        "scope": scope,
+        "version": app_version,
+        "agentsCount": agents_installed,
+        "commandsCount": commands_installed,
+        "promptsCount": prompts_installed,
+    });
+
+    // Always write global marker so the app knows an install happened
+    let global_btf_dir = home.join(".bridge-to-fig");
+    std::fs::create_dir_all(&global_btf_dir)
+        .map_err(|e| format!("Create .bridge-to-fig dir: {}", e))?;
+
+    let mut global_marker = marker.clone();
+    if is_project {
+        global_marker
+            .as_object_mut()
+            .unwrap()
+            .insert("projectPath".to_string(), serde_json::json!(project_path));
+    }
+    std::fs::write(
+        global_btf_dir.join(".installed"),
+        serde_json::to_string_pretty(&global_marker).unwrap(),
+    )
+    .map_err(|e| format!("Write global marker: {}", e))?;
+
+    // For project scope, also write a project-local marker
+    if is_project {
+        let project = project_path.as_ref().unwrap();
+        let project_btf_dir = PathBuf::from(project).join(".bridge-to-fig");
+        std::fs::create_dir_all(&project_btf_dir)
+            .map_err(|e| format!("Create project marker dir: {}", e))?;
+        std::fs::write(
+            project_btf_dir.join(".installed"),
+            serde_json::to_string_pretty(&marker).unwrap(),
+        )
+        .map_err(|e| format!("Write project marker: {}", e))?;
+    }
 
     println!(
-        "[Setup] Installed {} agents, {} commands, CLAUDE.md: {}",
-        agents_installed, commands_installed, claude_md_action
+        "[Setup] Installed {} agents, {} commands, {} prompts (scope: {}, CLAUDE.md: {})",
+        agents_installed, commands_installed, prompts_installed, scope, claude_md_action
     );
 
     Ok(serde_json::json!({
         "success": true,
         "agentsInstalled": agents_installed,
         "commandsInstalled": commands_installed,
-        "promptsDir": prompts_path,
+        "promptsInstalled": prompts_installed,
+        "promptsDir": prompts_rewrite_path,
         "claudeMd": claude_md_action,
         "symlink": symlink_created,
+        "scope": scope,
     }))
+}
+
+#[tauri::command]
+fn pick_folder() -> Option<String> {
+    rfd::FileDialog::new()
+        .set_title("Choose project folder")
+        .pick_folder()
+        .map(|p| p.to_string_lossy().into_owned())
 }
 
 // ── Main application ──────────────────────────────────────────────────────
@@ -360,6 +574,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             check_claude_setup,
             install_claude_files,
+            pick_folder,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -415,7 +630,7 @@ pub fn run() {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
-                            let _ = window.eval("scrollToClaudeSetup()");
+                            let _ = window.eval("showSetupWizard()");
                         }
                     }
                     "launch_at_login" => {

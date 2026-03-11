@@ -26,3 +26,4 @@ sysinfo = "0.32"
 ureq = { version = "2", features = ["json"] }
 include_dir = "0.7"
 dirs = "5"
+rfd = "0.14"

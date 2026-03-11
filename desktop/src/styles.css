@@ -145,7 +145,7 @@ header {
   box-shadow: var(--shadow-inset);
 }
 
-/* ── Cards inside recessed sections (no fill, content sits on recessed bg) ── */
+/* ── Cards inside recessed sections ── */
 .card {
   padding: 4px 2px;
 }
@@ -346,4 +346,367 @@ footer {
 
 .update-text.available {
   color: var(--accent-blue);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Setup Wizard
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.wizard-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg);
+}
+
+.wizard-screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 24px 20px;
+}
+
+.wizard-screen.fade-in {
+  animation: wizardFadeIn 0.25s ease-out;
+}
+
+@keyframes wizardFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.wizard-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 16px;
+}
+
+.wizard-centered {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* ── Wizard typography ── */
+
+.wizard-icon {
+  margin-bottom: 4px;
+}
+
+.wizard-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.wizard-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 300px;
+}
+
+.wizard-heading {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.wizard-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.wizard-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.wizard-hint code {
+  background: var(--bg-recessed);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+}
+
+/* ── Wizard buttons ── */
+
+.wizard-btn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.wizard-btn:active {
+  transform: scale(0.98);
+}
+
+.wizard-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.wizard-btn:disabled:active {
+  transform: none;
+}
+
+.wizard-btn.primary {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.wizard-btn.primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.wizard-btn.secondary {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.wizard-btn.secondary:hover {
+  background: var(--bg-recessed);
+}
+
+/* ── Wizard navigation ── */
+
+.wizard-nav {
+  display: flex;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.wizard-nav-spacer {
+  flex: 1;
+}
+
+/* ── Scope cards ── */
+
+.scope-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  outline: none;
+}
+
+.scope-card:hover {
+  background: var(--bg-recessed);
+}
+
+.scope-card:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-blue);
+}
+
+.scope-card.selected {
+  border-color: var(--accent-blue);
+  background: rgba(56, 107, 216, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  .scope-card.selected {
+    background: rgba(91, 140, 255, 0.08);
+  }
+}
+
+.scope-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: border-color 0.15s;
+}
+
+.scope-card.selected .scope-radio {
+  border-color: var(--accent-blue);
+}
+
+.scope-radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.scope-card.selected .scope-radio-dot {
+  background: var(--accent-blue);
+}
+
+.scope-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.scope-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.scope-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ── Folder picker ── */
+
+.folder-picker {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.folder-input {
+  flex: 1;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  outline: none;
+  cursor: default;
+}
+
+.folder-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.folder-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── Install checklist ── */
+
+.install-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.install-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.install-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.install-icon.pending {
+  border: 2px solid var(--border);
+  background: transparent;
+}
+
+.install-icon.pending::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-blue);
+  border-top-color: transparent;
+  animation: installSpin 0.6s linear infinite;
+}
+
+@keyframes installSpin {
+  to { transform: rotate(360deg); }
+}
+
+.install-icon.done {
+  background: var(--accent-green);
+  border: none;
+  animation: installPop 0.3s ease-out;
+}
+
+.install-icon.done::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 3px;
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg);
+  animation: none;
+}
+
+.install-icon.error {
+  background: var(--accent-red);
+  border: none;
+}
+
+.install-icon.error::after {
+  content: '!';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  animation: none;
+}
+
+@keyframes installPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.install-label {
+  color: var(--text-secondary);
+}
+
+/* ── Success icon ── */
+
+.success-icon {
+  margin-bottom: 4px;
+  animation: successPop 0.4s ease-out;
+}
+
+@keyframes successPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
 }

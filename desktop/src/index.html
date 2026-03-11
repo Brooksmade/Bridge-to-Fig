@@ -7,7 +7,120 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="container">
+
+  <!-- ── Setup Wizard (shown on first launch) ── -->
+  <div id="setup-wizard" class="wizard-container" style="display:none">
+
+    <!-- Screen 1: Welcome -->
+    <div class="wizard-screen" id="wizard-welcome">
+      <div class="wizard-content wizard-centered">
+        <div class="wizard-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <rect width="48" height="48" rx="12" fill="var(--accent-blue)" opacity="0.12"/>
+            <path d="M14 34V14h6l4 12 4-12h6v20h-5V22l-3.5 12h-3L19 22v12h-5z" fill="var(--accent-blue)"/>
+          </svg>
+        </div>
+        <h1 class="wizard-title">Welcome to Bridge to Fig</h1>
+        <p class="wizard-subtitle">AI agents need to know where to find Bridge to Fig's commands &amp; workflows.</p>
+        <button class="wizard-btn primary" id="btn-wizard-start">Get Started</button>
+      </div>
+    </div>
+
+    <!-- Screen 2: Scope Selection -->
+    <div class="wizard-screen" id="wizard-scope" style="display:none">
+      <div class="wizard-content">
+        <h2 class="wizard-heading">Where should we install?</h2>
+
+        <div class="scope-card selected" id="scope-global" tabindex="0" role="radio" aria-checked="true">
+          <div class="scope-radio"><div class="scope-radio-dot"></div></div>
+          <div class="scope-info">
+            <span class="scope-label">All Projects</span>
+            <span class="scope-desc">Available in every project. Installs to ~/.claude/</span>
+          </div>
+        </div>
+
+        <div class="scope-card" id="scope-project" tabindex="0" role="radio" aria-checked="false">
+          <div class="scope-radio"><div class="scope-radio-dot"></div></div>
+          <div class="scope-info">
+            <span class="scope-label">One Project</span>
+            <span class="scope-desc">Try it in a specific project first. You can go global later.</span>
+          </div>
+        </div>
+
+        <div class="wizard-nav">
+          <button class="wizard-btn secondary" id="btn-scope-back">Back</button>
+          <div class="wizard-nav-spacer"></div>
+          <button class="wizard-btn primary" id="btn-scope-next">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 2b: Folder Picker -->
+    <div class="wizard-screen" id="wizard-folder" style="display:none">
+      <div class="wizard-content">
+        <h2 class="wizard-heading">Choose your project folder</h2>
+
+        <div class="folder-picker">
+          <input type="text" class="folder-input" id="folder-path" readonly placeholder="No folder selected" />
+          <button class="wizard-btn secondary" id="btn-browse">Browse</button>
+        </div>
+
+        <p class="wizard-hint" id="folder-hint">Agents, commands, and prompts will be installed to this project's <code>.claude/</code> directory.</p>
+
+        <div class="wizard-nav">
+          <button class="wizard-btn secondary" id="btn-folder-back">Back</button>
+          <div class="wizard-nav-spacer"></div>
+          <button class="wizard-btn primary" id="btn-folder-next" disabled>Next</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 3: Installing -->
+    <div class="wizard-screen" id="wizard-installing" style="display:none">
+      <div class="wizard-content">
+        <h2 class="wizard-heading">Installing...</h2>
+
+        <div class="install-checklist" id="install-checklist">
+          <div class="install-item" id="install-agents">
+            <span class="install-icon pending"></span>
+            <span class="install-label">Agents</span>
+          </div>
+          <div class="install-item" id="install-commands">
+            <span class="install-icon pending"></span>
+            <span class="install-label">Commands</span>
+          </div>
+          <div class="install-item" id="install-prompts">
+            <span class="install-icon pending"></span>
+            <span class="install-label">Prompt files</span>
+          </div>
+          <div class="install-item" id="install-claudemd">
+            <span class="install-icon pending"></span>
+            <span class="install-label">CLAUDE.md reference</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 4: Success -->
+    <div class="wizard-screen" id="wizard-success" style="display:none">
+      <div class="wizard-content wizard-centered">
+        <div class="success-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="24" r="22" stroke="var(--accent-green)" stroke-width="3" fill="var(--accent-green)" fill-opacity="0.1"/>
+            <path d="M15 24l6 6 12-12" stroke="var(--accent-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </div>
+        <h1 class="wizard-title">All set!</h1>
+        <p class="wizard-subtitle" id="success-summary"></p>
+        <p class="wizard-detail" id="success-location"></p>
+        <p class="wizard-hint">You can reinstall or change scope anytime from the dashboard.</p>
+        <button class="wizard-btn primary" id="btn-open-dashboard">Open Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Dashboard (normal view) ── -->
+  <div id="dashboard" class="container" style="display:none">
     <header>
       <span class="header-title">Coding Agent Bridge to Figma</span>
       <div class="header-spacer"></div>
@@ -64,10 +177,10 @@
             <span id="claude-text">Checking...</span>
           </span>
         </div>
-        <div class="divider" id="claude-action-divider"></div>
-        <div class="card-row" id="claude-action-row">
+        <div class="divider"></div>
+        <div class="card-row">
           <span class="label claude-detail" id="claude-detail">Agents, commands, and prompts</span>
-          <button class="btn-outline btn-install" id="btn-install-claude">Install</button>
+          <button class="btn-outline btn-install" id="btn-reinstall-claude">Reinstall</button>
         </div>
       </div>
     </section>
