@@ -30,10 +30,6 @@ jobs:
             target-triple: aarch64-apple-darwin
             pkg-target: node18-macos-arm64
             ext: ''
-          - os: macos-14
-            target-triple: x86_64-apple-darwin
-            pkg-target: node18-macos-x64
-            ext: ''
 
     runs-on: ${{ matrix.os }}
 
@@ -96,10 +92,6 @@ jobs:
           - os: macos-latest
             target-triple: aarch64-apple-darwin
             rust-target: aarch64-apple-darwin
-            ext: ''
-          - os: macos-14
-            target-triple: x86_64-apple-darwin
-            rust-target: x86_64-apple-darwin
             ext: ''
 
     runs-on: ${{ matrix.os }}
@@ -244,10 +236,8 @@ jobs:
           declare -A RENAME_MAP=(
             ["_x64-setup.exe"]="Bridge-to-Fig-Windows.exe"
             ["_x64-setup.exe.sig"]="Bridge-to-Fig-Windows.exe.sig"
-            ["_aarch64.dmg"]="Bridge-to-Fig-macOS-ARM64.dmg"
-            ["_aarch64.dmg.sig"]="Bridge-to-Fig-macOS-ARM64.dmg.sig"
-            ["_x64.dmg"]="Bridge-to-Fig-macOS-Intel.dmg"
-            ["_x64.dmg.sig"]="Bridge-to-Fig-macOS-Intel.dmg.sig"
+            ["_aarch64.dmg"]="Bridge-to-Fig-macOS.dmg"
+            ["_aarch64.dmg.sig"]="Bridge-to-Fig-macOS.dmg.sig"
             ["_amd64.deb"]="Bridge-to-Fig-Linux.deb"
             ["_amd64.deb.sig"]="Bridge-to-Fig-Linux.deb.sig"
             ["_amd64.AppImage"]="Bridge-to-Fig-Linux.AppImage"
