@@ -46,3 +46,11 @@ temp_files/
 *_payload.json
 *_var_map.json
 variables_data.json
+
+# Certificates and keys (Apple Developer signing)
+*.key
+*.csr
+*.p12
+*.pem
+*.cer
+*.b64

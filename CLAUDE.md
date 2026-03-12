@@ -352,6 +352,30 @@ Rules:
 - If you create scripts, payloads, or state files during a session, put them in `.tmp/`
 - Delete temp files as soon as they're no longer needed, don't wait for session end
 
+## macOS Distribution — BLOCKER
+
+The macOS DMG is **not code-signed or notarized**. Non-technical users CANNOT install it — Gatekeeper blocks unsigned apps with no user-friendly bypass. The `xattr -cr` Terminal workaround is not acceptable for end users.
+
+**To fix this:** An Apple Developer account ($99/year) is required. Once obtained, add these GitHub repo secrets and the Tauri build action will handle signing + notarization automatically:
+- `APPLE_CERTIFICATE` — base64-encoded .p12 Developer ID Application certificate
+- `APPLE_CERTIFICATE_PASSWORD` — .p12 password
+- `APPLE_SIGNING_IDENTITY` — e.g., `Developer ID Application: Name (TEAMID)`
+- `APPLE_ID` — Apple ID email
+- `APPLE_PASSWORD` — app-specific password from appleid.apple.com
+- `APPLE_TEAM_ID` — 10-character team ID
+
+Then add these env vars to the `Build Tauri app` step in `.github/workflows/release.yml` (macOS jobs only):
+```yaml
+APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+APPLE_ID: ${{ secrets.APPLE_ID }}
+APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+```
+
+**Until this is resolved, macOS builds are not distributable to non-technical users.**
+
 ## Memory Integration
 
 Vector memory server at `http://localhost:8080` for tracking progress and solutions across sessions. Search before solving errors, save after fixing them. See `prompts/memory-server.md` for full API reference.
