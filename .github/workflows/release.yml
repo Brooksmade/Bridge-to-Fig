@@ -174,7 +174,7 @@ jobs:
         with:
           projectPath: desktop
           tauriScript: pnpm tauri
-          args: --target ${{ matrix.rust-target }} ${{ runner.os == 'macOS' && '--skip-stapling' || '' }}
+          args: --target ${{ matrix.rust-target }}
           tagName: ${{ github.ref_name }}
           releaseName: 'Bridge to Fig ${{ github.ref_name }}'
           releaseBody: |
