@@ -620,6 +620,6 @@ This agent outputs to:
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For workshop setup: `.claude/agents/figjam-workshop-facilitator.md`
 For research synthesis: `.claude/agents/research-synthesizer.md`

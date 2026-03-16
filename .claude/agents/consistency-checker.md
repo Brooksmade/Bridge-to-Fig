@@ -465,6 +465,6 @@ This agent is called by:
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For binding: `.claude/agents/figma-binding.md`
 For naming: `.claude/agents/nomenclature-enforcer.md`

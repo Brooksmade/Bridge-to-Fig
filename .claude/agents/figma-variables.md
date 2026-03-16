@@ -408,7 +408,7 @@ curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/jso
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For binding details: `prompts/bind-variables.md`
 For variable workflow: `prompts/figma-variables.md`
 For performance optimization: `prompts/performance-analysis.md`

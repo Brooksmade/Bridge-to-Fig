@@ -121,4 +121,5 @@ For each component, provide:
 ## Reference Files
 
 - `.claude/agents/engineering-handoff.md` - Full agent instructions
-- `prompts/figma-bridge.md` - API documentation
+- `prompts/quick-ref.md` - Compact API reference (~200 lines)
+- `prompts/figma-bridge.md` - Full API reference (detailed examples)

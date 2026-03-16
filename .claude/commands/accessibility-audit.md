@@ -116,4 +116,5 @@ For each failing element, provide:
 ## Reference Files
 
 - `.claude/agents/accessibility-auditor.md` - Full agent instructions
-- `prompts/figma-bridge.md` - API documentation
+- `prompts/quick-ref.md` - Compact API reference (~200 lines)
+- `prompts/figma-bridge.md` - Full API reference (detailed examples)

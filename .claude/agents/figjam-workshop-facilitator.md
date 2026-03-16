@@ -755,5 +755,5 @@ This agent coordinates with:
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For workshop synthesis: `.claude/agents/figjam-synthesizer.md`

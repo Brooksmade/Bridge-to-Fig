@@ -157,4 +157,5 @@ List colors, font sizes, and corner radii that had no matching variable, with no
 
 - `.claude/agents/figma-binding.md` - Full agent instructions
 - `prompts/bind-variables.md` - Quick reference
-- `prompts/figma-bridge.md` - API documentation
+- `prompts/quick-ref.md` - Compact API reference (~200 lines)
+- `prompts/figma-bridge.md` - Full API reference (detailed examples)

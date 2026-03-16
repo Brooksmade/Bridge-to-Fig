@@ -416,6 +416,6 @@ This agent is called by:
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For color analysis: `.claude/agents/figma-variables.md`
 For handoff: `.claude/agents/engineering-handoff.md`

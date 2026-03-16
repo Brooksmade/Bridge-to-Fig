@@ -418,6 +418,6 @@ Layout/[Name]               → Layout/Desktop, Layout/Mobile
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For variable system: `.claude/agents/figma-variables.md`
 For design system: `.claude/agents/design-system-orchestrator.md`

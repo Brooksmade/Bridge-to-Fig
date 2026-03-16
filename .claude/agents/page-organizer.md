@@ -318,6 +318,6 @@ curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/jso
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For file handoff: `.claude/agents/engineering-handoff.md`
 For documentation: `.claude/agents/figma-documentation.md`

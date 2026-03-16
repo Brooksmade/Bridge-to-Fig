@@ -139,4 +139,5 @@ curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/jso
 ## Reference Files
 
 - `.claude/agents/typography-specialist.md` - Full agent instructions
-- `prompts/figma-bridge.md` - API documentation
+- `prompts/quick-ref.md` - Compact API reference (~200 lines)
+- `prompts/figma-bridge.md` - Full API reference (detailed examples)

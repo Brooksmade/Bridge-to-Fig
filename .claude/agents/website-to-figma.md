@@ -268,7 +268,8 @@ Kill the background bridge server process.
 
 ## Reference Files
 
-- `prompts/figma-bridge.md` — Main API reference
+- `prompts/quick-ref.md` — Compact API reference (~200 lines, all commands)
+- `prompts/figma-bridge.md` — Full API reference (detailed examples, return schemas)
 - `bridge-server/src/services/websiteExtractor.ts` — CSS token extraction logic
 - `.claude/agents/website-design-system-extractor.md` — CSS extraction agent
 - `.claude/agents/figma-variables.md` — Variable creation agent

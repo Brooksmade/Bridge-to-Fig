@@ -465,7 +465,7 @@ Use this before:
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For consistency: `.claude/agents/consistency-checker.md`
 For accessibility: `.claude/agents/accessibility-auditor.md`
 For naming: `.claude/agents/nomenclature-enforcer.md`

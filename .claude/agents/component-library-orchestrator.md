@@ -396,7 +396,7 @@ Called by:
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For component creation: `.claude/agents/component-creator.md`
 For layout: `.claude/agents/layout-master.md`
 For naming: `.claude/agents/nomenclature-enforcer.md`

@@ -21,7 +21,7 @@ If a value doesn't have an exact variable match, **do not bind it**. Report it s
 
 Before executing, read: `prompts/bind-variables.md`
 
-For general bridge API reference, see: `prompts/figma-bridge.md`
+For general bridge API reference, see: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 
 ---
 

@@ -499,6 +499,6 @@ This agent is called by:
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For component creation: `.claude/agents/component-creator.md`
 For token binding: `.claude/agents/figma-binding.md`

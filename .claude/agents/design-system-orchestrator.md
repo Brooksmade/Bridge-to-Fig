@@ -393,7 +393,7 @@ Called by:
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For variable creation: `.claude/agents/figma-variables.md`
 For binding: `.claude/agents/figma-binding.md`
 For documentation: `.claude/agents/figma-documentation.md`

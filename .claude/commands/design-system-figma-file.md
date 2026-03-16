@@ -356,4 +356,5 @@ Full report should include:
 
 - `.claude/agents/figma-variables.md` - Full agent instructions
 - `prompts/figma-variables.md` - Quick reference
-- `prompts/figma-bridge.md` - API documentation
+- `prompts/quick-ref.md` - Compact API reference (~200 lines)
+- `prompts/figma-bridge.md` - Full API reference (detailed examples)

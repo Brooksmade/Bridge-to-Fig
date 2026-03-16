@@ -462,7 +462,7 @@ This is the top-level orchestrator for production handoff.
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For design system: `.claude/agents/design-system-orchestrator.md`
 For components: `.claude/agents/component-library-orchestrator.md`
 For accessibility: `.claude/agents/accessibility-auditor.md`

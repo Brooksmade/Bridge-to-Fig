@@ -362,6 +362,6 @@ This agent works closely with `engineering-handoff`:
 
 ## Knowledge Base
 
-For API details: `prompts/figma-bridge.md`
+For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
 For handoff workflow: `.claude/agents/engineering-handoff.md`
 For design system assets: `.claude/agents/figma-documentation.md`

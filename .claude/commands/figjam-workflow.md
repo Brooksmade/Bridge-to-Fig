@@ -150,4 +150,5 @@ Show what was created:
 - `.claude/agents/figjam-workflow-design.md` - Full agent instructions
 - `.claude/prompts/charts/_base.md` - Colors and spacing
 - `.claude/prompts/charts/*.md` - Chart-specific prompts
-- `prompts/figma-bridge.md` - API documentation
+- `prompts/quick-ref.md` - Compact API reference (~200 lines)
+- `prompts/figma-bridge.md` - Full API reference (detailed examples)

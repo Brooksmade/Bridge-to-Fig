@@ -155,4 +155,5 @@ Generate: Spec sheets, CSS snippets, Tailwind utilities, token mapping.
 - `.claude/agents/nomenclature-enforcer.md` - Naming conventions
 - `.claude/agents/component-qa.md` - Quality checks
 - `.claude/agents/engineering-handoff.md` - Dev handoff
-- `prompts/figma-bridge.md` - API documentation
+- `prompts/quick-ref.md` - Compact API reference (~200 lines)
+- `prompts/figma-bridge.md` - Full API reference (detailed examples)

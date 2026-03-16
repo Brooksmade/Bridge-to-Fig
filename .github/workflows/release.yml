@@ -22,10 +22,6 @@ jobs:
             target-triple: x86_64-pc-windows-msvc
             pkg-target: node18-win-x64
             ext: .exe
-          - os: ubuntu-22.04
-            target-triple: x86_64-unknown-linux-gnu
-            pkg-target: node18-linux-x64
-            ext: ''
           - os: macos-latest
             target-triple: aarch64-apple-darwin
             pkg-target: node18-macos-arm64
@@ -85,10 +81,6 @@ jobs:
             target-triple: x86_64-pc-windows-msvc
             rust-target: x86_64-pc-windows-msvc
             ext: .exe
-          - os: ubuntu-22.04
-            target-triple: x86_64-unknown-linux-gnu
-            rust-target: x86_64-unknown-linux-gnu
-            ext: ''
           - os: macos-latest
             target-triple: aarch64-apple-darwin
             rust-target: aarch64-apple-darwin
@@ -119,16 +111,6 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: desktop/src-tauri
-
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -238,14 +220,6 @@ jobs:
             ["_x64-setup.exe.sig"]="Bridge-to-Fig-Windows.exe.sig"
             ["_aarch64.dmg"]="Bridge-to-Fig-macOS.dmg"
             ["_aarch64.dmg.sig"]="Bridge-to-Fig-macOS.dmg.sig"
-            ["_amd64.deb"]="Bridge-to-Fig-Linux.deb"
-            ["_amd64.deb.sig"]="Bridge-to-Fig-Linux.deb.sig"
-            ["_amd64.AppImage"]="Bridge-to-Fig-Linux.AppImage"
-            ["_amd64.AppImage.sig"]="Bridge-to-Fig-Linux.AppImage.sig"
-            ["-1.x86_64.rpm"]="Bridge-to-Fig-Linux.rpm"
-            ["-1.x86_64.rpm.sig"]="Bridge-to-Fig-Linux.rpm.sig"
-            ["_amd64.AppImage.tar.gz"]="Bridge-to-Fig-Linux.AppImage.tar.gz"
-            ["_amd64.AppImage.tar.gz.sig"]="Bridge-to-Fig-Linux.AppImage.tar.gz.sig"
           )
 
           # Get all assets and rename

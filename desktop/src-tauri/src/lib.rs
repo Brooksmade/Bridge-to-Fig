@@ -33,7 +33,9 @@ const CLAUDE_MD_SHORT_TEMPLATE: &str = r#"# Bridge to Fig
 
 AI-to-Figma bridge for design systems, variable binding, website extraction, and component libraries.
 
-**Server**: http://localhost:4001 | **API Reference**: `{PROMPTS_DIR}/figma-bridge.md`
+**Server**: http://localhost:4001 | **Quick Ref**: `{PROMPTS_DIR}/quick-ref.md` | **Full API**: `{PROMPTS_DIR}/figma-bridge.md`
+
+**When using Bridge to Fig, read `quick-ref.md` FIRST** (~200 lines, all commands). Only read `figma-bridge.md` (2870 lines) for detailed examples or edge cases.
 
 ## Quick Reference
 - Send commands: `POST http://localhost:4001/commands` → poll `GET /results/{id}?wait=true`
@@ -625,6 +627,20 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+
+            // === Auto-show window on first install ===
+            // Window starts hidden (tray app), but if Claude files aren't
+            // installed yet we need to show the setup wizard immediately.
+            if let Ok(status) = check_claude_setup() {
+                let installed = status.get("installed").and_then(|v| v.as_bool()).unwrap_or(false);
+                if !installed {
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                        println!("[Tauri] First install detected — showing setup wizard");
+                    }
+                }
+            }
 
             // === Spawn sidecar ===
             let sidecar_for_spawn = sidecar_child_clone.clone();
