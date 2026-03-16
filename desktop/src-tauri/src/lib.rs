@@ -256,19 +256,6 @@ fn check_claude_setup() -> Result<serde_json::Value, String> {
         None
     };
 
-    let installed = marker_data.is_some();
-    let claude_md_path = claude_dir.join("CLAUDE.md");
-    let claude_md_exists = claude_md_path.exists();
-
-    // Detect legacy full CLAUDE.md block
-    let has_legacy = if claude_md_exists {
-        std::fs::read_to_string(&claude_md_path)
-            .map(|content| has_legacy_claude_md(&content))
-            .unwrap_or(false)
-    } else {
-        false
-    };
-
     // Count installed agents
     let agents_count = claude_dir
         .join("agents")
@@ -304,6 +291,20 @@ fn check_claude_setup() -> Result<serde_json::Value, String> {
                 .count()
         })
         .unwrap_or(0);
+
+    // Only consider "installed" if marker exists AND files are actually present
+    let installed = marker_data.is_some() && (agents_count > 0 || commands_count > 0);
+    let claude_md_path = claude_dir.join("CLAUDE.md");
+    let claude_md_exists = claude_md_path.exists();
+
+    // Detect legacy full CLAUDE.md block
+    let has_legacy = if claude_md_exists {
+        std::fs::read_to_string(&claude_md_path)
+            .map(|content| has_legacy_claude_md(&content))
+            .unwrap_or(false)
+    } else {
+        false
+    };
 
     // Extract version and scope from marker
     let version = marker_data
