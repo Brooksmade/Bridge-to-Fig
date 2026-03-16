@@ -59,6 +59,19 @@ The server will start at `http://localhost:4001`.
 
 The plugin UI will show a green "Connected" status when successfully connected to the bridge server.
 
+### 5. Figma REST API Token (Recommended)
+
+Adding a Figma API token enables additional design system workflows — fetching published component library metadata, reading file structure without the plugin open, and richer component use cases.
+
+1. Generate a personal access token at [figma.com/developers/api#access-tokens](https://www.figma.com/developers/api#access-tokens)
+2. Create or edit `~/.claude/.env`:
+   ```
+   FIGMA_API_TOKEN=figd_your_token_here
+   ```
+3. Restart Claude Code to pick up the new environment variable
+
+This makes `FIGMA_API_TOKEN` available to all Claude Code sessions across every project.
+
 ## Bridge to Fig vs MCP Tools
 
 | Capability | Bridge to Fig | MCP Tools |
