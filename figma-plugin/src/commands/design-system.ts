@@ -50,6 +50,18 @@ import {
   type GridStyleDefinition,
   type GridDefinition,
 } from '../data/boilerplate-tokens';
+import {
+  spectrumTypographyTokens,
+  spectrumSpacingTokens,
+  spectrumBorderTokens,
+  spectrumShadowTokens,
+  spectrumOpacityTokens,
+  spectrumZIndexTokens,
+  spectrumTransitionTokens,
+  spectrumComponentHeightTokens,
+  spectrumEffectStyleDefinitions,
+  spectrumGridStyleDefinitions,
+} from '../data/boilerplate-spectrum';
 
 // === Shadow Processing Helpers ===
 
@@ -492,6 +504,14 @@ const SHADOW_STRUCTURE = [
   { name: 'Shadow/block', role: 'component', minBlur: 0, maxBlur: 32, isInner: false },
 ];
 
+// Spectrum shadow structure — 4 elevation levels matching Spectrum's tooltip/dropdown/dialog/overlay model
+const SPECTRUM_SHADOW_STRUCTURE = [
+  { name: 'Shadow/100', role: 'elevation', minBlur: 0, maxBlur: 4, isInner: false },
+  { name: 'Shadow/200', role: 'elevation', minBlur: 4, maxBlur: 16, isInner: false },
+  { name: 'Shadow/300', role: 'elevation', minBlur: 16, maxBlur: 32, isInner: false },
+  { name: 'Shadow/400', role: 'elevation', minBlur: 32, maxBlur: 100, isInner: false },
+];
+
 interface MappedEffectStyle {
   name: string;
   effects: Array<{
@@ -512,7 +532,8 @@ interface MappedEffectStyle {
  * Uses extracted shadow values where possible, fills gaps with boilerplate.
  */
 function mapExtractedShadowsToStructure(
-  groupedShadows: GroupedShadow[]
+  groupedShadows: GroupedShadow[],
+  shadowStructure: typeof SHADOW_STRUCTURE = SHADOW_STRUCTURE
 ): MappedEffectStyle[] {
   const result: MappedEffectStyle[] = [];
   const usedShadowKeys = new Set<string>();
@@ -549,7 +570,7 @@ function mapExtractedShadowsToStructure(
   }
 
   // Map elevation shadows (drop shadows)
-  const elevationSlots = SHADOW_STRUCTURE.filter(s => s.role === 'elevation');
+  const elevationSlots = shadowStructure.filter(s => s.role === 'elevation');
   for (const slot of elevationSlots) {
     const match = findBestShadow(sortedDropShadows, slot.minBlur, slot.maxBlur, false);
 
@@ -576,7 +597,7 @@ function mapExtractedShadowsToStructure(
   }
 
   // Map component shadows (looking for inner shadows first)
-  const componentSlots = SHADOW_STRUCTURE.filter(s => s.role === 'component');
+  const componentSlots = shadowStructure.filter(s => s.role === 'component');
   for (const slot of componentSlots) {
     const pool = slot.isInner ? sortedInnerShadows : sortedDropShadows;
     const match = findBestShadow(pool, slot.minBlur, slot.maxBlur, slot.isInner);
@@ -972,7 +993,8 @@ async function createBoilerplateInLevel1(
   existingVars: Map<string, Variable>,
   extractedTokens?: ExtractedDesignTokens,
   primaryFontFamily?: string,
-  fontFamilies?: FontFamilyOverrides
+  fontFamilies?: FontFamilyOverrides,
+  useSpectrum: boolean = false
 ): Promise<{ count: number; categories: string[]; skipped: number }> {
   let count = 0;
   let skipped = 0;
@@ -1051,46 +1073,63 @@ async function createBoilerplateInLevel1(
     return { created, skipped: localSkipped };
   }
 
+  // Select token sets based on organizing principle
+  const activeTypography = useSpectrum ? spectrumTypographyTokens : typographyTokens;
+  const activeSpacing = useSpectrum ? spectrumSpacingTokens : spacingTokens;
+  const activeBorder = useSpectrum ? spectrumBorderTokens : borderTokens;
+  const activeShadow = useSpectrum ? spectrumShadowTokens : shadowTokens;
+  const activeTransition = useSpectrum ? spectrumTransitionTokens : transitionTokens;
+  const activeOpacity = useSpectrum ? spectrumOpacityTokens : opacityTokens;
+
   // Create Typography tokens
   const typographyStart = count;
 
-  // Override font families with extracted fonts (instead of hardcoded Geist/Georgia/SF Mono)
+  // Override font families with extracted fonts
   // Priority: fontFamilies overrides > primaryFontFamily > defaults
-  const fontFamilyTokens = {
-    ...typographyTokens.fontFamily,
-    'Font-Sans': {
-      ...typographyTokens.fontFamily['Font-Sans'],
-      $value: fontFamilies?.sans || primaryFontFamily || typographyTokens.fontFamily['Font-Sans'].$value,
+  const baseFontFamily = activeTypography.fontFamily as Record<string, { $value: string; $type: string; $description?: string }>;
+  const sansKey = useSpectrum ? 'font-family-sans' : 'Font-Sans';
+  const serifKey = useSpectrum ? 'font-family-serif' : 'Font-Serif';
+  const monoKey = useSpectrum ? 'font-family-mono' : 'Font-Mono';
+
+  const fontFamilyTokens: Record<string, { $value: string; $type: string; $description?: string }> = {
+    ...baseFontFamily,
+    [sansKey]: {
+      ...baseFontFamily[sansKey],
+      $value: fontFamilies?.sans || primaryFontFamily || baseFontFamily[sansKey].$value,
     },
-    'Font-Serif': {
-      ...typographyTokens.fontFamily['Font-Serif'],
-      $value: fontFamilies?.serif || typographyTokens.fontFamily['Font-Serif'].$value,
+    [serifKey]: {
+      ...baseFontFamily[serifKey],
+      $value: fontFamilies?.serif || baseFontFamily[serifKey].$value,
     },
-    'Font-Mono': {
-      ...typographyTokens.fontFamily['Font-Mono'],
-      $value: fontFamilies?.mono || typographyTokens.fontFamily['Font-Mono'].$value,
+    [monoKey]: {
+      ...baseFontFamily[monoKey],
+      $value: fontFamilies?.mono || baseFontFamily[monoKey].$value,
     },
   };
+  // Spectrum has a 4th font family (CJK) — include it if present
+  if (useSpectrum && baseFontFamily['font-family-han']) {
+    fontFamilyTokens['font-family-han'] = baseFontFamily['font-family-han'];
+  }
 
-  console.log(`[Boilerplate] Font families: Sans="${fontFamilyTokens['Font-Sans'].$value}", Serif="${fontFamilyTokens['Font-Serif'].$value}", Mono="${fontFamilyTokens['Font-Mono'].$value}"`);
+  console.log(`[Boilerplate] Font families (${useSpectrum ? 'Spectrum' : 'standard'}): Sans="${fontFamilyTokens[sansKey].$value}", Serif="${fontFamilyTokens[serifKey].$value}", Mono="${fontFamilyTokens[monoKey].$value}"`);
 
   let result = await createFromTokens(fontFamilyTokens, 'Typography/Font Family', 'fontFamily');
   count += result.created;
   skipped += result.skipped;
 
-  result = await createFromTokens(typographyTokens.fontSize, 'Typography/Font Size', 'fontSize');
+  result = await createFromTokens(activeTypography.fontSize, 'Typography/Font Size', 'fontSize');
   count += result.created;
   skipped += result.skipped;
 
-  result = await createFromTokens(typographyTokens.fontWeight, 'Typography/Font Weight', 'fontWeight');
+  result = await createFromTokens(activeTypography.fontWeight, 'Typography/Font Weight', 'fontWeight');
   count += result.created;
   skipped += result.skipped;
 
-  result = await createFromTokens(typographyTokens.lineHeight, 'Typography/Line Height', 'lineHeight');
+  result = await createFromTokens(activeTypography.lineHeight, 'Typography/Line Height', 'lineHeight');
   count += result.created;
   skipped += result.skipped;
 
-  result = await createFromTokens(typographyTokens.letterSpacing, 'Typography/Letter Spacing', 'letterSpacing');
+  result = await createFromTokens(activeTypography.letterSpacing, 'Typography/Letter Spacing', 'letterSpacing');
   count += result.created;
   skipped += result.skipped;
 
@@ -1098,46 +1137,64 @@ async function createBoilerplateInLevel1(
 
   // Create Spacing tokens
   const spacingStart = count;
-  result = await createFromTokens(spacingTokens.scale, 'Numbers/Spacing', 'spacing');
+  result = await createFromTokens(activeSpacing.scale, 'Numbers/Spacing', 'spacing');
   count += result.created;
   skipped += result.skipped;
   if (count > spacingStart) categories.push('spacing');
 
   // Create Border tokens
   const borderStart = count;
-  result = await createFromTokens(borderTokens.width, 'Numbers/Border Width', 'borderWidth');
+  result = await createFromTokens(activeBorder.width, 'Numbers/Border Width', 'borderWidth');
   count += result.created;
   skipped += result.skipped;
 
-  result = await createFromTokens(borderTokens.radius, 'Numbers/Border Radius', 'borderRadius');
+  result = await createFromTokens(activeBorder.radius, 'Numbers/Border Radius', 'borderRadius');
   count += result.created;
   skipped += result.skipped;
   if (count > borderStart) categories.push('borders');
 
   // Create Shadow tokens (as strings for now - Figma can't store complex shadows as variables)
   const shadowStart = count;
-  result = await createFromTokens(shadowTokens.elevation, 'Effects/Shadow', 'shadow');
+  result = await createFromTokens(activeShadow.elevation, 'Effects/Shadow', 'shadow');
   count += result.created;
   skipped += result.skipped;
   if (count > shadowStart) categories.push('shadows');
 
   // Create Transition tokens
   const transitionStart = count;
-  result = await createFromTokens(transitionTokens.duration, 'Effects/Transition/Duration', 'transitionDuration');
+  result = await createFromTokens(activeTransition.duration, 'Effects/Transition/Duration', 'transitionDuration');
   count += result.created;
   skipped += result.skipped;
 
-  result = await createFromTokens(transitionTokens.easing, 'Effects/Transition/Easing', 'transitionEasing');
-  count += result.created;
-  skipped += result.skipped;
+  if ('easing' in activeTransition) {
+    result = await createFromTokens((activeTransition as any).easing, 'Effects/Transition/Easing', 'transitionEasing');
+    count += result.created;
+    skipped += result.skipped;
+  }
   if (count > transitionStart) categories.push('transitions');
 
   // Create Opacity tokens
   const opacityStart = count;
-  result = await createFromTokens(opacityTokens.values, 'Numbers/Opacity', 'opacity');
+  result = await createFromTokens(activeOpacity.values, 'Numbers/Opacity', 'opacity');
   count += result.created;
   skipped += result.skipped;
   if (count > opacityStart) categories.push('opacity');
+
+  // Spectrum-specific: Component Height tokens
+  if (useSpectrum) {
+    const heightStart = count;
+    result = await createFromTokens(spectrumComponentHeightTokens.scale, 'Numbers/Component Height', 'componentHeight');
+    count += result.created;
+    skipped += result.skipped;
+    if (count > heightStart) categories.push('component-heights');
+
+    // Z-Index tokens
+    const zStart = count;
+    result = await createFromTokens(spectrumZIndexTokens.layers, 'Numbers/Z-Index', 'zIndex');
+    count += result.created;
+    skipped += result.skipped;
+    if (count > zStart) categories.push('z-index');
+  }
 
   return { count, categories, skipped };
 }
@@ -1721,7 +1778,8 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         existingLevel1Vars,
         payload.extractedTokens,
         boilerplatePrimaryFont, // Backward compatibility
-        fontFamilyOverrides
+        fontFamilyOverrides,
+        isSpectrum
       );
       results.collections[primitivesConfig.name].variableCount += boilerplateResults.count;
       results.totalVariables += boilerplateResults.count;
@@ -1891,8 +1949,25 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       // Convert mapped styles to the format expected by style creation
       // Include variable binding names based on the values
       const stylesToCreate = mappedStyles.map(mapped => {
-        // Map font size to variable name - using boilerplate naming convention
-        const sizeVarMap: Record<number, string> = {
+        // Spectrum uses flat numeric naming (font-size-100); standard uses t-shirt sizing (Size-Base)
+        const sizeVarMap: Record<number, string> = isSpectrum ? {
+          11: 'font-size-50',
+          12: 'font-size-75',
+          14: 'font-size-100',
+          16: 'font-size-200',
+          18: 'font-size-300',
+          20: 'font-size-400',
+          22: 'font-size-500',
+          25: 'font-size-600',
+          28: 'font-size-700',
+          32: 'font-size-800',
+          36: 'font-size-900',
+          40: 'font-size-1000',
+          45: 'font-size-1100',
+          48: 'font-size-1100',
+          50: 'font-size-1200',
+          60: 'font-size-1300',
+        } : {
           10: 'Size-2XS',
           11: 'Size-XS',
           12: 'Size-SM',
@@ -1920,7 +1995,17 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         }
 
         // Map font weight to variable name format
-        const weightVarMap: Record<string, string> = {
+        const weightVarMap: Record<string, string> = isSpectrum ? {
+          'Regular': 'font-weight-regular',
+          'Medium': 'font-weight-medium',
+          'SemiBold': 'font-weight-bold',
+          'Semi Bold': 'font-weight-bold',
+          'Bold': 'font-weight-bold',
+          'Light': 'font-weight-light',
+          'Thin': 'font-weight-light',
+          'ExtraBold': 'font-weight-extra-bold',
+          'Black': 'font-weight-black',
+        } : {
           'Regular': 'Weight-Regular',
           'Medium': 'Weight-Medium',
           'SemiBold': 'Weight-SemiBold',
@@ -1931,11 +2016,16 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
           'ExtraBold': 'Weight-ExtraBold',
           'Black': 'Weight-Black',
         };
-        const weightVarName = weightVarMap[mapped.fontWeight] || 'Weight-Regular';
+        const weightVarName = isSpectrum
+          ? (weightVarMap[mapped.fontWeight] || 'font-weight-regular')
+          : (weightVarMap[mapped.fontWeight] || 'Weight-Regular');
 
         // Determine font family variable — code styles use mono font
+        // Spectrum uses flat naming (font-family-mono); standard uses grouped (Font-Mono)
         const isCodeStyle = mapped.name.startsWith('code-');
-        const fontFamilyVarName = isCodeStyle ? 'Typography/Font Family/Font-Mono' : 'Typography/Font Family/Font-Sans';
+        const fontFamilyVarName = isSpectrum
+          ? (isCodeStyle ? 'Typography/Font Family/font-family-mono' : 'Typography/Font Family/font-family-sans')
+          : (isCodeStyle ? 'Typography/Font Family/Font-Mono' : 'Typography/Font Family/Font-Sans');
 
         return {
           name: mapped.name,
@@ -1946,7 +2036,7 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
           letterSpacing: mapped.letterSpacing,
           isExtracted: mapped.isExtracted,
           nodeIds: mapped.nodeIds || [], // Node IDs for binding
-          // Variable bindings - using boilerplate variable naming convention
+          // Variable bindings - using principle-specific variable naming convention
           fontFamilyVariable: fontFamilyVarName,
           fontSizeVariable: `Typography/Font Size/${sizeVarName}`,
           fontWeightVariable: `Typography/Font Weight/${weightVarName}`,
@@ -2299,7 +2389,7 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       const extractedShadows = payload.extractedTokens?.effects?.shadows || [];
       if (extractedShadows.length > 0) {
         const groupedShadows = processExtractedShadows(extractedShadows);
-        const mappedStyles = mapExtractedShadowsToStructure(groupedShadows);
+        const mappedStyles = mapExtractedShadowsToStructure(groupedShadows, isSpectrum ? SPECTRUM_SHADOW_STRUCTURE : SHADOW_STRUCTURE);
 
         console.log(`[DesignSystem] Mapped ${mappedStyles.length} extracted shadows to effect style structure`);
 
@@ -2364,7 +2454,8 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       if (includeBoilerplate) {
         console.log(`[DesignSystem] Adding boilerplate for gaps. ${filledStructureSlots.size} slots filled by extraction.`);
 
-        for (const styleDef of effectStyleDefinitions) {
+        const activeEffectStyleDefs = isSpectrum ? spectrumEffectStyleDefinitions : effectStyleDefinitions;
+        for (const styleDef of activeEffectStyleDefs) {
           // Skip if already exists (from file, payload, or filled by extracted)
           if (existingNames.has(styleDef.name) || filledStructureSlots.has(styleDef.name)) {
             if (!skippedEffectStyles.includes(styleDef.name)) {
@@ -2542,7 +2633,8 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
 
           // Mark this slot as covered so boilerplate doesn't duplicate
           // Check if it matches a boilerplate name pattern
-          for (const boilerplate of gridStyleDefinitions) {
+          const activeGridStyleDefs = isSpectrum ? spectrumGridStyleDefinitions : gridStyleDefinitions;
+          for (const boilerplate of activeGridStyleDefs) {
             if (name.toLowerCase().includes(boilerplate.name.toLowerCase().replace('Grid/', ''))) {
               coveredSlots.add(boilerplate.name);
             }
@@ -2564,7 +2656,8 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       if (includeBoilerplate) {
         console.log(`[DesignSystem] Adding boilerplate grid styles for gaps. ${coveredSlots.size} slots covered by existing.`);
 
-        for (const styleDef of gridStyleDefinitions) {
+        const activeGridBoilerplate = isSpectrum ? spectrumGridStyleDefinitions : gridStyleDefinitions;
+        for (const styleDef of activeGridBoilerplate) {
           // Skip if already exists or covered by extracted
           if (existingNames.has(styleDef.name) || coveredSlots.has(styleDef.name)) {
             skippedGridStyles.push(styleDef.name);
