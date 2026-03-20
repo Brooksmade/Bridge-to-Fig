@@ -13,6 +13,7 @@ export interface CommandResult {
   success: boolean;
   nodeId?: string;
   nodeIds?: string[];
+  styleId?: string;
   error?: string;
   data?: unknown;
   timestamp: number;
@@ -30,9 +31,14 @@ export interface ModifyPayload {
 }
 
 export interface QueryPayload {
-  queryType: 'node' | 'selection' | 'page' | 'children' | 'find';
+  queryType: 'node' | 'selection' | 'page' | 'children' | 'find' | 'deep' | 'describe' | 'findByType' | 'pages';
   properties?: string[];
   query?: string; // For find queries (by name)
+  depth?: number; // Traversal depth for 'deep' queryType
+  nodeTypes?: string[]; // Node types to search for in 'findByType'
+  parentId?: string; // Parent node ID for 'findByType'
+  maxDepth?: number; // Max depth for 'findByType'
+  includeDetails?: boolean; // Include detailed info in 'findByType'
 }
 
 export type NodeType =
@@ -183,6 +189,7 @@ export function successResult(commandId: string, data?: Partial<CommandResult>):
   if (data) {
     if (data.nodeId !== undefined) base.nodeId = data.nodeId;
     if (data.nodeIds !== undefined) base.nodeIds = data.nodeIds;
+    if (data.styleId !== undefined) base.styleId = data.styleId;
     if (data.error !== undefined) base.error = data.error;
     if (data.data !== undefined) base.data = data.data;
   }

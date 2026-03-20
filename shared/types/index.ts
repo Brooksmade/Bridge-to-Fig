@@ -88,8 +88,14 @@ export interface DeletePayload {
 
 // Payload for query commands
 export interface QueryPayload {
-  queryType: 'node' | 'selection' | 'page' | 'children';
+  queryType: 'node' | 'selection' | 'page' | 'children' | 'find' | 'deep' | 'describe' | 'findByType' | 'pages';
   properties?: string[]; // Which properties to return
+  query?: string; // Search string for 'find' queryType
+  depth?: number; // Traversal depth for 'deep' queryType
+  nodeTypes?: string[]; // Node types to search for in 'findByType'
+  parentId?: string; // Parent node ID for 'findByType'
+  maxDepth?: number; // Max depth for 'findByType'
+  includeDetails?: boolean; // Include detailed info in 'findByType'
 }
 
 // Payload for style commands
@@ -172,10 +178,17 @@ export interface ExtractedDesignTokens {
   // === TYPOGRAPHY ===
   typography: {
     fontFamily: string[];     // Unique font families
+    fontFamilies?: string[];  // Alias for fontFamily (used by website extraction)
     fontSize: number[];       // Unique font sizes
     fontWeight: number[];     // Unique font weights
     lineHeight: number[];     // Unique line heights (as multipliers)
     letterSpacing: number[];  // Unique letter spacing values
+    fontSizeNodes?: Record<number, string[]>; // Node IDs per font size
+    resolvedFonts?: Array<{   // Resolved font names from web search
+      cssName: string;
+      marketingName?: string;
+      confidence: string;
+    }>;
   };
 
   // === NUMBERS ===
@@ -215,7 +228,8 @@ export type OrganizingPrincipleName =
   | 'three-level'      // Simplified: Primitives → Tokens → Theme
   | 'two-level'        // Flat: Primitives → Tokens
   | 'material-design'  // Google M3: Reference → System → Component
-  | 'tailwind';        // Utility-first: Colors → Semantic
+  | 'tailwind'         // Utility-first: Colors → Semantic
+  | 'spectrum';        // Adobe Spectrum: Global → Alias → Component → System
 
 // === TEXT MEASUREMENT ===
 // Used by measureText command for accurate box sizing in FigJam workflows

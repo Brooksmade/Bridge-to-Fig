@@ -732,7 +732,7 @@ export async function handleCreateCodeBlock(command: FigmaCommand): Promise<Comm
     }
 
     if (payload && payload.language) {
-      codeBlock.codeLanguage = payload.language;
+      codeBlock.codeLanguage = payload.language as typeof codeBlock.codeLanguage;
     }
 
     if (payload && payload.x !== undefined) codeBlock.x = payload.x;
@@ -801,6 +801,192 @@ export async function handleMeasureText(command: FigmaCommand): Promise<CommandR
   } catch (err) {
     var message = err instanceof Error ? err.message : String(err);
     return errorResult(command.id, 'Failed to measure text: ' + message);
+  }
+}
+
+// Create a highlight (FigJam)
+export async function handleCreateHighlight(command: FigmaCommand): Promise<CommandResult> {
+  var payload = command.payload as {
+    x?: number;
+    y?: number;
+    parent?: string;
+  };
+
+  try {
+    if (typeof (figma as any).createHighlight !== 'function') {
+      return errorResult(command.id, 'createHighlight is not available in this Figma version (FigJam only)');
+    }
+
+    var highlight = (figma as any).createHighlight();
+
+    if (payload) {
+      if (payload.x !== undefined) highlight.x = payload.x;
+      if (payload.y !== undefined) highlight.y = payload.y;
+
+      if (payload.parent) {
+        var parentNode = await figma.getNodeByIdAsync(payload.parent);
+        if (parentNode && 'appendChild' in parentNode) {
+          (parentNode as FrameNode).appendChild(highlight);
+        }
+      }
+    }
+
+    return successResult(command.id, {
+      data: {
+        id: highlight.id,
+        name: highlight.name,
+        x: highlight.x,
+        y: highlight.y,
+      },
+    });
+  } catch (err) {
+    var message = err instanceof Error ? err.message : String(err);
+    return errorResult(command.id, 'Failed to create highlight: ' + message);
+  }
+}
+
+// Create a stamp (FigJam)
+export async function handleCreateStamp(command: FigmaCommand): Promise<CommandResult> {
+  var payload = command.payload as {
+    stampType?: string;
+    x?: number;
+    y?: number;
+    parent?: string;
+  };
+
+  try {
+    if (typeof (figma as any).createStamp !== 'function') {
+      return errorResult(command.id, 'createStamp is not available in this Figma version (FigJam only)');
+    }
+
+    var stamp = (figma as any).createStamp();
+
+    if (payload) {
+      if (payload.x !== undefined) stamp.x = payload.x;
+      if (payload.y !== undefined) stamp.y = payload.y;
+
+      if (payload.parent) {
+        var parentNode = await figma.getNodeByIdAsync(payload.parent);
+        if (parentNode && 'appendChild' in parentNode) {
+          (parentNode as FrameNode).appendChild(stamp);
+        }
+      }
+    }
+
+    return successResult(command.id, {
+      data: {
+        id: stamp.id,
+        name: stamp.name,
+        x: stamp.x,
+        y: stamp.y,
+      },
+    });
+  } catch (err) {
+    var message = err instanceof Error ? err.message : String(err);
+    return errorResult(command.id, 'Failed to create stamp: ' + message);
+  }
+}
+
+// Create washi tape (FigJam decorative connector)
+export async function handleCreateWashiTape(command: FigmaCommand): Promise<CommandResult> {
+  var payload = command.payload as {
+    connectorStartNodeId?: string;
+    connectorEndNodeId?: string;
+    startMagnet?: 'AUTO' | 'TOP' | 'BOTTOM' | 'LEFT' | 'RIGHT';
+    endMagnet?: 'AUTO' | 'TOP' | 'BOTTOM' | 'LEFT' | 'RIGHT';
+  };
+
+  try {
+    if (typeof (figma as any).createWashiTape !== 'function') {
+      return errorResult(command.id, 'createWashiTape is not available in this Figma version (FigJam only)');
+    }
+
+    var washiTape = (figma as any).createWashiTape();
+
+    if (payload) {
+      var startMagnet = (payload.startMagnet) || 'AUTO';
+      var endMagnet = (payload.endMagnet) || 'AUTO';
+
+      if (payload.connectorStartNodeId) {
+        var startNode = await figma.getNodeByIdAsync(payload.connectorStartNodeId);
+        if (startNode && 'x' in startNode) {
+          washiTape.connectorStart = {
+            endpointNodeId: startNode.id,
+            magnet: startMagnet,
+          };
+        }
+      }
+
+      if (payload.connectorEndNodeId) {
+        var endNode = await figma.getNodeByIdAsync(payload.connectorEndNodeId);
+        if (endNode && 'x' in endNode) {
+          washiTape.connectorEnd = {
+            endpointNodeId: endNode.id,
+            magnet: endMagnet,
+          };
+        }
+      }
+    }
+
+    return successResult(command.id, {
+      data: {
+        id: washiTape.id,
+        name: washiTape.name,
+        x: washiTape.x,
+        y: washiTape.y,
+      },
+    });
+  } catch (err) {
+    var message = err instanceof Error ? err.message : String(err);
+    return errorResult(command.id, 'Failed to create washi tape: ' + message);
+  }
+}
+
+// Create an embed (URL embed in FigJam)
+export async function handleCreateEmbed(command: FigmaCommand): Promise<CommandResult> {
+  var payload = command.payload as {
+    url: string;
+    x?: number;
+    y?: number;
+    parent?: string;
+  };
+
+  if (!payload || !payload.url) {
+    return errorResult(command.id, 'url is required');
+  }
+
+  try {
+    if (typeof (figma as any).createEmbedAsync !== 'function') {
+      return errorResult(command.id, 'createEmbedAsync is not available in this Figma version (FigJam only)');
+    }
+
+    var embed = await (figma as any).createEmbedAsync(payload.url);
+
+    if (payload.x !== undefined) embed.x = payload.x;
+    if (payload.y !== undefined) embed.y = payload.y;
+
+    if (payload.parent) {
+      var parentNode = await figma.getNodeByIdAsync(payload.parent);
+      if (parentNode && 'appendChild' in parentNode) {
+        (parentNode as FrameNode).appendChild(embed);
+      }
+    }
+
+    return successResult(command.id, {
+      data: {
+        id: embed.id,
+        name: embed.name,
+        type: embed.type,
+        x: embed.x,
+        y: embed.y,
+        width: embed.width,
+        height: embed.height,
+        url: payload.url,
+      },
+    });
+  } catch (err) {
+    var message = err instanceof Error ? err.message : String(err);
+    return errorResult(command.id, 'Failed to create embed: ' + message);
   }
 }
 

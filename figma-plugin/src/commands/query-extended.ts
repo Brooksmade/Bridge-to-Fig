@@ -156,12 +156,12 @@ export async function handleGetTopLevelFrame(command: FigmaCommand): Promise<Com
 // Get measurements from the document
 export async function handleGetMeasurements(command: FigmaCommand): Promise<CommandResult> {
   try {
-    var measurements = figma.measurements.getMeasurements();
+    var measurements = (figma as any).measurements.getMeasurements();
 
     return successResult(command.id, {
       data: {
         count: measurements.length,
-        measurements: measurements.map(m => ({
+        measurements: measurements.map((m: any) => ({
           id: m.id,
           start: m.start,
           end: m.end,
@@ -190,14 +190,14 @@ export async function handleGetMeasurementsForNode(command: FigmaCommand): Promi
       return errorResult(command.id, 'Node not found: ' + targetId);
     }
 
-    var measurements = figma.measurements.getMeasurementsForNode(node as SceneNode);
+    var measurements = (figma as any).measurements.getMeasurementsForNode(node as SceneNode);
 
     return successResult(command.id, {
       data: {
         nodeId: node.id,
         nodeName: node.name,
         count: measurements.length,
-        measurements: measurements.map(m => ({
+        measurements: measurements.map((m: any) => ({
           id: m.id,
           start: m.start,
           end: m.end,
@@ -214,12 +214,12 @@ export async function handleGetMeasurementsForNode(command: FigmaCommand): Promi
 // Get annotation categories
 export async function handleGetAnnotationCategories(command: FigmaCommand): Promise<CommandResult> {
   try {
-    var categories = await figma.getAnnotationCategoriesAsync();
+    var categories = await (figma as any).getAnnotationCategoriesAsync();
 
     return successResult(command.id, {
       data: {
         count: categories.length,
-        categories: categories.map(c => ({
+        categories: categories.map((c: any) => ({
           id: c.id,
           label: c.label,
           color: c.color,
@@ -243,7 +243,7 @@ export async function handleGetAnnotationCategoryById(command: FigmaCommand): Pr
   }
 
   try {
-    var category = await figma.getAnnotationCategoryByIdAsync(payload.categoryId);
+    var category = await (figma as any).getAnnotationCategoryByIdAsync(payload.categoryId);
 
     if (!category) {
       return successResult(command.id, {
@@ -393,5 +393,85 @@ export async function handleGetStyleConsumers(command: FigmaCommand): Promise<Co
   } catch (err) {
     var message = err instanceof Error ? err.message : String(err);
     return errorResult(command.id, 'Failed to get style consumers: ' + message);
+  }
+}
+
+// Get vector network data from a vector node
+export async function handleGetVectorNetwork(command: FigmaCommand): Promise<CommandResult> {
+  var targetId = command.target;
+
+  if (!targetId) {
+    return errorResult(command.id, 'Target vector node ID is required');
+  }
+
+  try {
+    var node = await figma.getNodeByIdAsync(targetId);
+
+    if (!node) {
+      return errorResult(command.id, 'Node not found: ' + targetId);
+    }
+
+    if (node.type !== 'VECTOR') {
+      return errorResult(command.id, 'Node is not a vector node (type: ' + node.type + ')');
+    }
+
+    var vectorNode = node as VectorNode;
+    var network = vectorNode.vectorNetwork;
+
+    return successResult(command.id, {
+      data: {
+        nodeId: node.id,
+        nodeName: node.name,
+        vectorNetwork: {
+          vertices: network.vertices,
+          segments: network.segments,
+          regions: network.regions,
+        },
+      },
+    });
+  } catch (err) {
+    var message = err instanceof Error ? err.message : String(err);
+    return errorResult(command.id, 'Failed to get vector network: ' + message);
+  }
+}
+
+// Get vector paths (SVG path data) from a vector node
+export async function handleGetVectorPaths(command: FigmaCommand): Promise<CommandResult> {
+  var targetId = command.target;
+
+  if (!targetId) {
+    return errorResult(command.id, 'Target vector node ID is required');
+  }
+
+  try {
+    var node = await figma.getNodeByIdAsync(targetId);
+
+    if (!node) {
+      return errorResult(command.id, 'Node not found: ' + targetId);
+    }
+
+    if (node.type !== 'VECTOR') {
+      return errorResult(command.id, 'Node is not a vector node (type: ' + node.type + ')');
+    }
+
+    var vectorNode = node as VectorNode;
+    var paths = vectorNode.vectorPaths;
+
+    return successResult(command.id, {
+      data: {
+        nodeId: node.id,
+        nodeName: node.name,
+        vectorPaths: paths.map(function(p) {
+          return {
+            windingRule: p.windingRule,
+            data: p.data,
+          };
+        }),
+        count: paths.length,
+      },
+    });
+  } catch (err) {
+    var message = err instanceof Error ? err.message : String(err);
+    return errorResult(command.id, 'Failed to get vector paths: ' + message);
   }
 }

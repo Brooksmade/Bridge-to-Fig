@@ -159,6 +159,10 @@ export {
   handleCreateShapeWithText,
   handleCreateCodeBlock,
   handleMeasureText,
+  handleCreateHighlight,
+  handleCreateStamp,
+  handleCreateWashiTape,
+  handleCreateEmbed,
 } from './advanced-nodes';
 export {
   handleCreateGridStyle,
@@ -253,6 +257,8 @@ export {
   handleGetComponentInstances,
   handleGetMainComponent,
   handleGetStyleConsumers,
+  handleGetVectorNetwork,
+  handleGetVectorPaths,
 } from './query-extended';
 
 // Dev resources and advanced operations
@@ -273,6 +279,28 @@ export {
   handleSetInstanceProperties,
   handleSetVectorNetwork,
 } from './dev-resources';
+
+// Prototyping operations
+export {
+  handleGetReactions,
+  handleCreateOverlay,
+  handleSetOverlaySettings,
+  handleSetTransition,
+} from './prototyping';
+
+// Annotation operations
+export {
+  handleAddAnnotation,
+  handleEditAnnotation,
+  handleDeleteAnnotation,
+} from './annotations';
+
+// Guide operations
+export {
+  handleAddGuide,
+  handleGetGuides,
+  handleRemoveGuide,
+} from './guides';
 
 // Variable aliases and bindings
 export {
@@ -443,6 +471,10 @@ import {
   handleCreateShapeWithText,
   handleCreateCodeBlock,
   handleMeasureText,
+  handleCreateHighlight,
+  handleCreateStamp,
+  handleCreateWashiTape,
+  handleCreateEmbed,
 } from './advanced-nodes';
 import {
   handleCreateGridStyle,
@@ -530,6 +562,8 @@ import {
   handleGetComponentInstances,
   handleGetMainComponent,
   handleGetStyleConsumers,
+  handleGetVectorNetwork,
+  handleGetVectorPaths,
 } from './query-extended';
 import {
   handleGetDevResources,
@@ -578,6 +612,22 @@ import {
   handleGetRangeFontName,
   handleSetRangeFontName,
 } from './text-extended';
+import {
+  handleGetReactions,
+  handleCreateOverlay,
+  handleSetOverlaySettings,
+  handleSetTransition,
+} from './prototyping';
+import {
+  handleAddAnnotation,
+  handleEditAnnotation,
+  handleDeleteAnnotation,
+} from './annotations';
+import {
+  handleAddGuide,
+  handleGetGuides,
+  handleRemoveGuide,
+} from './guides';
 
 // Main command router
 export async function executeCommand(command: FigmaCommand): Promise<CommandResult> {
@@ -1329,6 +1379,59 @@ export async function executeCommand(command: FigmaCommand): Promise<CommandResu
 
       case 'setRangeFontName':
         return handleSetRangeFontName(command);
+
+      // Prototyping commands
+      case 'getReactions':
+        return handleGetReactions(command);
+
+      case 'createOverlay':
+        return handleCreateOverlay(command);
+
+      case 'setOverlaySettings':
+        return handleSetOverlaySettings(command);
+
+      case 'setTransition':
+        return handleSetTransition(command);
+
+      // Annotation commands
+      case 'addAnnotation':
+        return handleAddAnnotation(command);
+
+      case 'editAnnotation':
+        return handleEditAnnotation(command);
+
+      case 'deleteAnnotation':
+        return handleDeleteAnnotation(command);
+
+      // Guide commands
+      case 'addGuide':
+        return handleAddGuide(command);
+
+      case 'getGuides':
+        return handleGetGuides(command);
+
+      case 'removeGuide':
+        return handleRemoveGuide(command);
+
+      // FigJam commands
+      case 'createHighlight':
+        return handleCreateHighlight(command);
+
+      case 'createStamp':
+        return handleCreateStamp(command);
+
+      case 'createWashiTape':
+        return handleCreateWashiTape(command);
+
+      case 'createEmbed':
+        return handleCreateEmbed(command);
+
+      // Vector query commands
+      case 'getVectorNetwork':
+        return handleGetVectorNetwork(command);
+
+      case 'getVectorPaths':
+        return handleGetVectorPaths(command);
 
       default:
         return errorResult(command.id, `Unknown command type: ${commandType}`);

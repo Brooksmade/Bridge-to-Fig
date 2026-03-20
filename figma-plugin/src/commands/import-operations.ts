@@ -101,7 +101,7 @@ export async function handleImportVariableByKey(command: FigmaCommand): Promise<
   }
 
   try {
-    var variable = await figma.importVariableByKeyAsync(payload.key);
+    var variable = await (figma as any).importVariableByKeyAsync(payload.key);
 
     return successResult(command.id, {
       data: {

@@ -131,7 +131,7 @@ export async function handleCreateComponent(command: FigmaCommand): Promise<Comm
         return errorResult(command.id, 'Node is already a component');
       }
 
-      if (!('createComponent' in figma)) {
+      if (!('createComponent' in (figma as unknown as Record<string, unknown>))) {
         // For older API, use component creation from frame
         if (node.type !== 'FRAME' && node.type !== 'GROUP') {
           return errorResult(command.id, 'Can only convert FRAME or GROUP to component');
@@ -463,7 +463,7 @@ export async function handleSetComponentPropertyReferences(command: FigmaCommand
 
     return successResult(command.id, {
       nodeId: node.id,
-      references: sceneNode.componentPropertyReferences,
+      data: { references: sceneNode.componentPropertyReferences },
     });
   } catch (error) {
     var message = error instanceof Error ? error.message : String(error);

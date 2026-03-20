@@ -476,7 +476,7 @@ export async function handleApplyStyle(command: FigmaCommand): Promise<CommandRe
       }
     } else if (style.type === 'TEXT') {
       if ('textStyleId' in node) {
-        (node as TextNode).textStyleId = style.id;
+        await (node as TextNode).setTextStyleIdAsync(style.id);
       } else {
         return errorResult(command.id, 'Cannot apply text style to non-text node');
       }
@@ -638,11 +638,13 @@ export async function handleBindTextStyleVariable(command: FigmaCommand): Promis
 
     return successResult(command.id, {
       styleId: style.id,
-      styleName: style.name,
-      field: payload.field,
-      variableId: variable.id,
-      variableName: variable.name,
-      message: 'Variable bound to text style successfully',
+      data: {
+        styleName: style.name,
+        field: payload.field,
+        variableId: variable.id,
+        variableName: variable.name,
+        message: 'Variable bound to text style successfully',
+      },
     });
   } catch (error) {
     var message = error instanceof Error ? error.message : String(error);
@@ -803,8 +805,7 @@ export async function handleCreateTextStyleWithVariables(command: FigmaCommand):
 
     return successResult(command.id, {
       styleId: style.id,
-      data: serializeTextStyle(style),
-      boundVariables: boundVariables,
+      data: { ...serializeTextStyle(style), boundVariables: boundVariables },
     });
   } catch (error) {
     var message = error instanceof Error ? error.message : String(error);

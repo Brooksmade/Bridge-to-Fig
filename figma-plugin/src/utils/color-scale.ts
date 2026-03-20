@@ -312,6 +312,143 @@ export function generateCoolGrayScale(): Record<string, string> {
 }
 
 /**
+ * Spectrum-style color scale steps (14 steps, 100-1400)
+ * Higher index = higher contrast with background
+ * In light themes: higher = darker. In dark themes: higher = lighter.
+ */
+export const SPECTRUM_COLOR_SCALE_STEPS = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400] as const;
+
+/**
+ * Generate a Spectrum-style 14-step color scale from a base hex color.
+ * Unlike the Tailwind scale (lightness-based), this is contrast-ratio oriented:
+ * - 100 = lowest contrast (lightest tint in light theme context)
+ * - 1400 = highest contrast (darkest shade)
+ * - The base color is placed near the 800-900 range (primary action level)
+ *
+ * Uses flat lowercase-dash naming: blue-100, blue-200, etc.
+ */
+export function generateSpectrumColorScale(baseHex: string, scaleName: string): Record<string, string> {
+  const baseHsl = hexToHsl(baseHex);
+  const scale: Record<string, string> = {};
+  const lowerName = scaleName.toLowerCase();
+
+  // Lightness targets for each step (Spectrum-style: contrast-driven)
+  // 100 = very light, 1400 = very dark
+  const lightnessTargets: Record<number, number> = {
+    100: 97,
+    200: 93,
+    300: 87,
+    400: 78,
+    500: 68,
+    600: 58,
+    700: 48,
+    800: baseHsl.l, // Base color placed at primary action level
+    900: 35,
+    1000: 28,
+    1100: 22,
+    1200: 16,
+    1300: 10,
+    1400: 5,
+  };
+
+  // Saturation adjustments — reduce at extremes for visual comfort
+  const saturationAdjust: Record<number, number> = {
+    100: -20,
+    200: -12,
+    300: -6,
+    400: -2,
+    500: 0,
+    600: 0,
+    700: 0,
+    800: 0,
+    900: 0,
+    1000: -3,
+    1100: -6,
+    1200: -10,
+    1300: -15,
+    1400: -20,
+  };
+
+  for (var i = 0; i < SPECTRUM_COLOR_SCALE_STEPS.length; i++) {
+    var step = SPECTRUM_COLOR_SCALE_STEPS[i];
+    let targetL: number;
+    let targetS: number;
+
+    if (step === 800) {
+      targetL = baseHsl.l;
+      targetS = baseHsl.s;
+    } else if (step < 800) {
+      const ratio = (800 - step) / 700;
+      const target = lightnessTargets[step];
+      targetL = baseHsl.l + (target - baseHsl.l) * ratio;
+      targetS = Math.max(0, baseHsl.s + saturationAdjust[step]);
+    } else {
+      const ratio = (step - 800) / 600;
+      const target = lightnessTargets[step];
+      targetL = baseHsl.l - (baseHsl.l - target) * ratio;
+      targetS = Math.max(0, baseHsl.s + saturationAdjust[step]);
+    }
+
+    targetL = Math.max(0, Math.min(100, targetL));
+    targetS = Math.max(0, Math.min(100, targetS));
+
+    scale[`${lowerName}-${step}`] = hslToHex({
+      h: baseHsl.h,
+      s: targetS,
+      l: targetL,
+    });
+  }
+
+  return scale;
+}
+
+/**
+ * Generate a Spectrum-style gray scale (11 steps, desaturated)
+ * Uses flat naming: gray-100, gray-200, ..., gray-1100
+ */
+export function generateSpectrumGrayScale(): Record<string, string> {
+  const scale: Record<string, string> = {};
+
+  // 11 gray steps matching Spectrum's approach
+  const graySteps = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100];
+  const lightnessMap: Record<number, number> = {
+    100: 97,   // Near-white (light theme default background)
+    200: 92,
+    300: 83,
+    400: 72,
+    500: 55,
+    600: 42,
+    700: 32,
+    800: 23,
+    900: 15,
+    1000: 10,
+    1100: 5,   // Near-black (darkest theme background)
+  };
+
+  for (var i = 0; i < graySteps.length; i++) {
+    var step = graySteps[i];
+    scale[`gray-${step}`] = hslToHex({
+      h: 0,
+      s: 0,
+      l: lightnessMap[step],
+    });
+  }
+
+  return scale;
+}
+
+/**
+ * Spectrum semantic feedback/status colors
+ * These are the 5 Spectrum semantic roles
+ */
+export const SPECTRUM_SEMANTIC_COLORS: Record<string, string> = {
+  informative: '#2680eb',  // Blue — information
+  positive: '#2d9d78',     // Green — success
+  notice: '#e68619',       // Orange — warning
+  negative: '#e34850',     // Red — error/destructive
+};
+
+/**
  * System colors that don't change with theme
  */
 export const SYSTEM_COLORS = {

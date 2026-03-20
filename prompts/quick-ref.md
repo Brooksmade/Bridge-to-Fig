@@ -205,6 +205,10 @@ curl http://localhost:4001/logs/running
 | `createConnector` | `{startNodeId, endNodeId, startMagnet?, endMagnet?, connectorEndStrokeCap?, strokeColor?, strokeWeight?}` | Magnets: AUTO, TOP, BOTTOM, LEFT, RIGHT. Use `connectorEndStrokeCap: "ARROW_LINES"` for arrows |
 | `createSection` | `{name, x, y, width, height, fillColor?}` | |
 | `createSticky` | `{text, x, y, color?}` | Colors: YELLOW, BLUE, GREEN, PINK, ORANGE, PURPLE, GRAY |
+| `createHighlight` | `{x?, y?, parent?}` | FigJam only |
+| `createStamp` | `{stampType?, x?, y?, parent?}` | FigJam only |
+| `createWashiTape` | `{connectorStartNodeId?, connectorEndNodeId?, startMagnet?, endMagnet?}` | Decorative connector, FigJam only |
+| `createEmbed` | `{url, x?, y?, parent?}` | URL embed, async, FigJam only |
 
 **ALWAYS use bridge commands for FigJam, NEVER MCP `generate_diagram`.**
 
@@ -220,6 +224,41 @@ curl http://localhost:4001/logs/running
 | `addTableColumn` | `{tableId, position}` |
 | `removeTableRow` | `{tableId, row}` |
 | `removeTableColumn` | `{tableId, column}` |
+
+## Prototyping
+
+| Command | Payload | Notes |
+|---------|---------|-------|
+| `getReactions` | `target` only | Returns all prototype interactions with triggers, actions, transitions |
+| `setReactions` | `{reactions: [...]}` + `target` | Set full reactions array |
+| `createOverlay` | `{name?, x?, y?, width?, height?, overlayPositionType?}` | Creates frame configured as overlay |
+| `setOverlaySettings` | `{overlayPositionType?, overlayBackground?, overlayBackgroundInteraction?}` + `target` | |
+| `setTransition` | `{reactionIndex, actionIndex?, transitionType?, duration?, easing?, direction?}` + `target` | Modifies transition on existing reaction |
+
+## Annotations
+
+| Command | Payload | Notes |
+|---------|---------|-------|
+| `addAnnotation` | `{label, description?, categoryId?}` + `target` | |
+| `editAnnotation` | `{annotationIndex, label?, description?, categoryId?}` + `target` | |
+| `deleteAnnotation` | `{annotationIndex}` + `target` | |
+| `getAnnotationCategories` | (none) | Returns all annotation categories |
+
+## Guides
+
+| Command | Payload | Notes |
+|---------|---------|-------|
+| `addGuide` | `{axis: "X"\|"Y", offset}` + optional `target` | Defaults to current page |
+| `getGuides` | optional `target` | Returns all guides |
+| `removeGuide` | `{guideIndex}` or `{axis, offset}` + optional `target` | Remove by index or match |
+
+## Vector Operations
+
+| Command | Payload | Notes |
+|---------|---------|-------|
+| `getVectorNetwork` | `target` only | Returns vertices, segments, regions |
+| `getVectorPaths` | `target` only | Returns SVG path data |
+| `setVectorNetwork` | `{vectorNetwork}` + `target` | Set vertices, segments, regions |
 
 ## Dev Resources & Plugin Data
 

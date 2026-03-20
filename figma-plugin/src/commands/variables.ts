@@ -621,7 +621,7 @@ export async function handleBindStrokeVariable(command: FigmaCommand): Promise<C
     const currentStrokes = strokeableNode.strokes;
 
     // Check if strokes is mixed
-    if (currentStrokes === figma.mixed) {
+    if ((currentStrokes as any) === figma.mixed) {
       return errorResult(command.id, 'Cannot bind variable to mixed strokes');
     }
 
@@ -728,8 +728,7 @@ export async function handleInspectFills(command: FigmaCommand): Promise<Command
 
     return successResult(command.id, {
       nodeId: node.id,
-      nodeName: node.name,
-      data: { fills: fillsInfo },
+      data: { fills: fillsInfo, nodeName: node.name },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -1288,9 +1287,9 @@ export async function handleBindMatchingColors(command: FigmaCommand): Promise<C
       let resolveDepth = 0;
       while (value && typeof value === 'object' && 'type' in value && (value as any).type === 'VARIABLE_ALIAS' && resolveDepth < 10) {
         const aliasedVar = await figma.variables.getVariableByIdAsync((value as any).id);
-        if (!aliasedVar) { value = null; break; }
+        if (!aliasedVar) { value = undefined as unknown as VariableValue; break; }
         const aliasedModeId = Object.keys(aliasedVar.valuesByMode)[0];
-        if (!aliasedModeId) { value = null; break; }
+        if (!aliasedModeId) { value = undefined as unknown as VariableValue; break; }
         value = aliasedVar.valuesByMode[aliasedModeId];
         resolveDepth++;
       }
@@ -2790,7 +2789,7 @@ export async function handleAutoBindByRole(command: FigmaCommand): Promise<Comma
                 nodeName: node.name,
                 nodeType: node.type,
                 originalColor: `mixed (${colorRanges.length} ranges)`,
-                role: { role: 'mixed-text', confidence: 0.9, reason: `Bound ${rangesBound}/${colorRanges.length} character ranges` },
+                role: { role: 'neutral' as const, confidence: 0.9, reason: `mixed-text: Bound ${rangesBound}/${colorRanges.length} character ranges` },
                 variableName: 'multiple',
                 success: true,
               });
@@ -3532,7 +3531,7 @@ export async function handleAutoBindSpacing(command: FigmaCommand): Promise<Comm
           const variable = findMatchingVariable(rectNode.cornerRadius, radiusVariables);
           if (variable) {
             try {
-              rectNode.setBoundVariable('cornerRadius', variable);
+              (rectNode as any).setBoundVariable('cornerRadius', variable);
               bindings.push({
                 nodeId: node.id,
                 nodeName: node.name,

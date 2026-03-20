@@ -31,7 +31,7 @@ FigmaPlugin/
 │   └── src/
 │       ├── code.ts         # Main plugin logic
 │       ├── ui.html/ts      # Plugin UI
-│       ├── commands/       # Command handlers (174 commands)
+│       ├── commands/       # Command handlers (255 commands)
 │       ├── data/           # Static data (boilerplate values)
 │       └── utils/          # Helper utilities
 │

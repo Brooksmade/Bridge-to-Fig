@@ -39,11 +39,17 @@ export interface ExtractedDesignTokens {
   // === TYPOGRAPHY ===
   typography: {
     fontFamily: string[];     // Unique font families
+    fontFamilies?: string[];  // Alias for fontFamily (used by website extraction)
     fontSize: number[];       // Unique font sizes
     fontWeight: number[];     // Unique font weights
     lineHeight: number[];     // Unique line heights (as multipliers)
     letterSpacing: number[];  // Unique letter spacing values
     fontSizeNodes?: Record<number, string[]>; // Node IDs per font size (for text style binding)
+    resolvedFonts?: Array<{   // Resolved font names from web search
+      cssName: string;
+      marketingName?: string;
+      confidence: string;
+    }>;
   };
 
   // === NUMBERS ===
@@ -210,7 +216,7 @@ function extractShadow(effect: DropShadowEffect | InnerShadowEffect): ExtractedS
     offsetX: effect.offset.x,
     offsetY: effect.offset.y,
     blur: effect.radius,
-    spread: effect.spread,
+    spread: effect.spread ?? 0,
     cssValue,
   };
 }
@@ -393,8 +399,8 @@ class TokenExtractor {
         }
 
         // Counter axis spacing (for wrap)
-        if ('counterAxisSpacing' in frameNode && frameNode.counterAxisSpacing !== undefined && frameNode.counterAxisSpacing > 0) {
-          this.spacings.add(frameNode.counterAxisSpacing);
+        if ('counterAxisSpacing' in frameNode && frameNode.counterAxisSpacing !== undefined && frameNode.counterAxisSpacing !== null && frameNode.counterAxisSpacing > 0) {
+          this.spacings.add(frameNode.counterAxisSpacing as number);
         }
 
         // Padding

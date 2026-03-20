@@ -51,10 +51,9 @@ export async function handleExportNode(command: FigmaCommand): Promise<CommandRe
     } else if (format === 'JPG') {
       settings = {
         format: 'JPG',
-        quality: 100,
         contentsOnly: payload && payload.contentsOnly,
         useAbsoluteBounds: payload && payload.useAbsoluteBounds,
-      };
+      } as ExportSettingsImage;
     } else {
       settings = {
         format: 'PNG',
@@ -65,7 +64,7 @@ export async function handleExportNode(command: FigmaCommand): Promise<CommandRe
     }
 
     var bytes = await sceneNode.exportAsync(settings);
-    var base64 = figma.base64Encode(String.fromCharCode.apply(null, Array.from(bytes)));
+    var base64 = figma.base64Encode(bytes);
 
     return successResult(command.id, {
       data: {
@@ -123,13 +122,13 @@ export async function handleBatchExport(command: FigmaCommand): Promise<CommandR
       } else if (format === 'PDF') {
         settings = { format: 'PDF' };
       } else if (format === 'JPG') {
-        settings = { format: 'JPG', quality: 100 };
+        settings = { format: 'JPG' } as ExportSettingsImage;
       } else {
         settings = { format: 'PNG', constraint: { type: 'SCALE', value: scale } };
       }
 
       var bytes = await sceneNode.exportAsync(settings);
-      var base64 = figma.base64Encode(String.fromCharCode.apply(null, Array.from(bytes)));
+      var base64 = figma.base64Encode(bytes);
 
       results.push({
         nodeId: sceneNode.id,

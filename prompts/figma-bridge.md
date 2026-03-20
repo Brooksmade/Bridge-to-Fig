@@ -9,7 +9,7 @@ Use this prompt to enable Claude to interact with Figma through Bridge to Fig.
 ## Prompt
 
 ```
-You have access to a Figma Bridge that allows you to create, modify, and manipulate design elements directly on a Figma canvas. The bridge runs as a local HTTP server on port 4001. This bridge supports 174 commands across 15 categories including node creation, variables, styles, components, auto layout, and design system management.
+You have access to a Figma Bridge that allows you to create, modify, and manipulate design elements directly on a Figma canvas. The bridge runs as a local HTTP server on port 4001. This bridge supports 255 commands across 32 categories including node creation, variables, styles, components, auto layout, and design system management.
 
 ## How to Use the Bridge
 
@@ -598,6 +598,119 @@ This creates design tokens in the Primitive [ Level 1 ] collection with proper g
 - `Numbers/Spacing/*` - Space-0 to Space-384 (4px grid) (FLOAT)
 - `Numbers/Screen Size/Breakpoint/*` - SM to 2XL (640-1536px) (FLOAT)
 - `Numbers/Screen Size/Device/*` - iPhone, iPad, Desktop widths (FLOAT)
+
+### PROTOTYPING Operations
+
+#### getReactions - Get prototype interactions from a node
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "getReactions", "target": "NODE_ID"}'
+```
+Returns: `{reactions: [{index, trigger: {type, delay?}, actions: [{type, destinationId?, navigation?, transition?}]}], count}`
+
+#### createOverlay - Create an overlay frame
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "createOverlay", "payload": {"name": "Modal", "width": 400, "height": 300, "overlayPositionType": "CENTER"}}'
+```
+`overlayPositionType`: CENTER, TOP_LEFT, TOP_CENTER, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_CENTER, BOTTOM_RIGHT, MANUAL
+
+#### setOverlaySettings - Set overlay settings on existing frame
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "setOverlaySettings", "target": "FRAME_ID", "payload": {"overlayPositionType": "CENTER", "overlayBackgroundInteraction": "CLOSE_ON_CLICK_OUTSIDE"}}'
+```
+
+#### setTransition - Modify transition on existing reaction
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "setTransition", "target": "NODE_ID", "payload": {"reactionIndex": 0, "transitionType": "DISSOLVE", "duration": 300}}'
+```
+Transition types: DISSOLVE, SMART_ANIMATE, MOVE_IN, MOVE_OUT, PUSH, SLIDE_IN, SLIDE_OUT
+
+### ANNOTATION Operations
+
+#### addAnnotation - Add annotation to a node
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "addAnnotation", "target": "NODE_ID", "payload": {"label": "Spacing", "description": "Use 16px padding"}}'
+```
+
+#### editAnnotation - Edit existing annotation
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "editAnnotation", "target": "NODE_ID", "payload": {"annotationIndex": 0, "label": "Updated label"}}'
+```
+
+#### deleteAnnotation - Remove annotation
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "deleteAnnotation", "target": "NODE_ID", "payload": {"annotationIndex": 0}}'
+```
+
+### GUIDE Operations
+
+#### addGuide - Add guide to page or frame
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "addGuide", "payload": {"axis": "X", "offset": 100}}'
+```
+Omit `target` to add to current page. Use `target` for a specific frame.
+
+#### getGuides - Get all guides
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "getGuides"}'
+```
+
+#### removeGuide - Remove a guide
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "removeGuide", "payload": {"guideIndex": 0}}'
+```
+Or remove by match: `{"axis": "X", "offset": 100}`
+
+### VECTOR Operations
+
+#### getVectorNetwork - Get vector network data
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "getVectorNetwork", "target": "VECTOR_NODE_ID"}'
+```
+Returns: `{vectorNetwork: {vertices, segments, regions}}`
+
+#### getVectorPaths - Get SVG path data
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "getVectorPaths", "target": "VECTOR_NODE_ID"}'
+```
+Returns: `{vectorPaths: [{windingRule, data}], count}`
+
+### Additional FigJam Commands
+
+#### createHighlight - Create highlight marker (FigJam only)
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "createHighlight", "payload": {"x": 100, "y": 100}}'
+```
+
+#### createStamp - Create stamp (FigJam only)
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "createStamp", "payload": {"x": 100, "y": 100}}'
+```
+
+#### createWashiTape - Create decorative connector (FigJam only)
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "createWashiTape", "payload": {"connectorStartNodeId": "START_ID", "connectorEndNodeId": "END_ID"}}'
+```
+
+#### createEmbed - Create URL embed (FigJam only)
+```bash
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "createEmbed", "payload": {"url": "https://example.com", "x": 100, "y": 100}}'
+```
 
 ## Color Reference (0-1 scale)
 

@@ -24,7 +24,7 @@ export function serializeTextStyle(style: TextStyle): object {
     description: style.description,
     fontName: style.fontName,
     fontSize: style.fontSize,
-    fontWeight: style.fontWeight,
+    fontWeight: (style as any).fontWeight,
     letterSpacing: style.letterSpacing,
     lineHeight: style.lineHeight,
     paragraphIndent: style.paragraphIndent,
@@ -184,6 +184,7 @@ export function createBlurEffect(
     type: type,
     radius: radius,
     visible: true,
+    blurType: 'NORMAL' as const,
   };
 }
 

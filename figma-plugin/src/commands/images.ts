@@ -183,7 +183,7 @@ export async function handleGetImageData(command: FigmaCommand): Promise<Command
       if (image) {
         var size = await image.getSizeAsync();
         var bytes = await image.getBytesAsync();
-        var base64 = figma.base64Encode(String.fromCharCode.apply(null, Array.from(bytes)));
+        var base64 = figma.base64Encode(bytes);
 
         images.push({
           hash: fill.imageHash,

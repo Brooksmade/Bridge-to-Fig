@@ -8,6 +8,9 @@ import {
   generateGrayScale,
   generateWarmGrayScale,
   generateCoolGrayScale,
+  generateSpectrumColorScale,
+  generateSpectrumGrayScale,
+  SPECTRUM_SEMANTIC_COLORS,
   SYSTEM_COLORS,
   FEEDBACK_COLORS,
 } from '../utils/color-scale';
@@ -340,6 +343,138 @@ function mapExtractedTypography(
   return result;
 }
 
+/**
+ * Map extracted typography to Spectrum-style text styles.
+ * Spectrum defines 4 text component types: Heading, Body, Detail, Code.
+ * Uses flat naming (heading-xxl, body-m, detail-s, code-m).
+ * Font scale follows Spectrum's 1.125 major second ratio.
+ */
+function mapExtractedTypographySpectrum(
+  extractedFontSizes: number[],
+  extractedLineHeights: number[],
+  extractedFontWeights: number[],
+  primaryFont: string,
+  fontSizeNodes?: Record<string, string[]>
+): MappedTypographyStyle[] {
+  if (!extractedFontSizes || extractedFontSizes.length === 0) {
+    return [];
+  }
+
+  const sortedSizes = [...extractedFontSizes].sort((a, b) => b - a);
+  const result: MappedTypographyStyle[] = [];
+
+  const weightMap: Record<number, string> = {
+    100: 'Thin', 200: 'ExtraLight', 300: 'Light', 400: 'Regular',
+    500: 'Medium', 600: 'SemiBold', 700: 'Bold', 800: 'ExtraBold', 900: 'Black',
+  };
+
+  const defaultWeight = extractedFontWeights?.length > 0
+    ? weightMap[extractedFontWeights[0]] || 'Regular'
+    : 'Regular';
+
+  for (let i = 0; i < sortedSizes.length; i++) {
+    const fontSize = sortedSizes[i];
+    let name: string;
+    let weight: string;
+
+    // Spectrum's 4-type system with flat naming
+    if (fontSize >= 45) {
+      // Heading — large display/hero sizes
+      if (fontSize >= 80) name = 'heading-xxxl';
+      else if (fontSize >= 60) name = 'heading-xxl';
+      else name = 'heading-xl';
+      weight = 'Bold';
+    } else if (fontSize >= 20) {
+      // Heading — standard heading sizes
+      if (fontSize >= 36) name = 'heading-l';
+      else if (fontSize >= 28) name = 'heading-m';
+      else if (fontSize >= 24) name = 'heading-s';
+      else name = 'heading-xs';
+      weight = fontSize >= 28 ? 'Bold' : 'SemiBold';
+    } else if (fontSize >= 13) {
+      // Body — paragraph/component text
+      if (fontSize >= 18) name = 'body-xl';
+      else if (fontSize >= 16) name = 'body-l';
+      else if (fontSize >= 14) name = 'body-m';
+      else name = 'body-s';
+      weight = defaultWeight;
+    } else {
+      // Detail — captions and supplementary text
+      if (fontSize >= 12) name = 'detail-l';
+      else if (fontSize >= 11) name = 'detail-m';
+      else name = 'detail-s';
+      weight = 'Regular';
+    }
+
+    // Ensure unique names
+    const existingNames = result.map(r => r.name);
+    if (existingNames.includes(name)) {
+      name = `${name}-${Math.round(fontSize)}`;
+    }
+
+    // Calculate line height using Spectrum ratios
+    // Heading/Detail: 1.3×, Body: 1.5×
+    let lineHeight: number;
+    if (name.startsWith('heading-') || name.startsWith('detail-')) {
+      lineHeight = Math.round(fontSize * 1.3);
+    } else {
+      lineHeight = Math.round(fontSize * 1.5);
+    }
+
+    // Check if extracted line height is close
+    const closestLineHeight = extractedLineHeights?.find(lh =>
+      Math.abs(lh - lineHeight) < 4 || Math.abs(lh / fontSize - 1.4) < 0.2
+    );
+    if (closestLineHeight) lineHeight = Math.round(closestLineHeight);
+
+    const sizeKey = String(Math.round(fontSize));
+    const nodeIds = fontSizeNodes?.[sizeKey] || [];
+
+    result.push({
+      name,
+      fontSize,
+      fontWeight: weight,
+      fontFamily: primaryFont,
+      lineHeight,
+      isExtracted: true,
+      nodeIds,
+    });
+  }
+
+  return result;
+}
+
+// Spectrum default typography styles (used when no extracted tokens)
+// Based on Spectrum's 1.125 major second ratio, 14px desktop base
+const SPECTRUM_DEFAULT_TYPOGRAPHY_STYLES: TypographyStyleDefinition[] = [
+  // Heading — creates hierarchical levels
+  { name: 'heading-xxxl', fontFamily: 'Inter', fontStyle: 'Bold', fontSize: 60, lineHeight: 78 },
+  { name: 'heading-xxl', fontFamily: 'Inter', fontStyle: 'Bold', fontSize: 48, lineHeight: 62 },
+  { name: 'heading-xl', fontFamily: 'Inter', fontStyle: 'Bold', fontSize: 36, lineHeight: 47 },
+  { name: 'heading-l', fontFamily: 'Inter', fontStyle: 'Bold', fontSize: 28, lineHeight: 36 },
+  { name: 'heading-m', fontFamily: 'Inter', fontStyle: 'Bold', fontSize: 22, lineHeight: 29 },
+  { name: 'heading-s', fontFamily: 'Inter', fontStyle: 'Semi Bold', fontSize: 18, lineHeight: 23 },
+  { name: 'heading-xs', fontFamily: 'Inter', fontStyle: 'Semi Bold', fontSize: 16, lineHeight: 21 },
+  { name: 'heading-xxs', fontFamily: 'Inter', fontStyle: 'Semi Bold', fontSize: 14, lineHeight: 18 },
+
+  // Body — component and paragraph text
+  { name: 'body-xl', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 20, lineHeight: 30 },
+  { name: 'body-l', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 18, lineHeight: 27 },
+  { name: 'body-m', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 16, lineHeight: 24 },
+  { name: 'body-s', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 14, lineHeight: 21 },
+  { name: 'body-xs', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 12, lineHeight: 18 },
+
+  // Detail — captions and supplementary text
+  { name: 'detail-l', fontFamily: 'Inter', fontStyle: 'Medium', fontSize: 14, lineHeight: 18 },
+  { name: 'detail-m', fontFamily: 'Inter', fontStyle: 'Medium', fontSize: 12, lineHeight: 16 },
+  { name: 'detail-s', fontFamily: 'Inter', fontStyle: 'Medium', fontSize: 11, lineHeight: 14 },
+
+  // Code — monospace code text
+  { name: 'code-l', fontFamily: 'Source Code Pro', fontStyle: 'Regular', fontSize: 16, lineHeight: 24 },
+  { name: 'code-m', fontFamily: 'Source Code Pro', fontStyle: 'Regular', fontSize: 14, lineHeight: 21 },
+  { name: 'code-s', fontFamily: 'Source Code Pro', fontStyle: 'Regular', fontSize: 12, lineHeight: 18 },
+];
+
 // === Shadow/Effect Style Mapping Helpers ===
 
 // Shadow structure matching the boilerplate naming - ordered by blur/elevation size
@@ -650,14 +785,16 @@ async function getOrCreateCollection(
 }
 
 // Helper to create a color variable in Level 1
+// prefix: defaults to 'Color/' for hierarchical naming; use '' for flat naming (Spectrum)
 async function createLevel1ColorVariable(
   collection: VariableCollection,
   name: string,
   hexValue: string,
-  existingVars: Map<string, Variable>
+  existingVars: Map<string, Variable>,
+  prefix: string = 'Color/'
 ): Promise<Variable | null> {
   // Check if variable already exists
-  const fullName = `Color/${name}`;
+  const fullName = `${prefix}${name}`;
   if (existingVars.has(fullName)) {
     return existingVars.get(fullName)!;
   }
@@ -695,6 +832,7 @@ async function findVariableInCollection(
 }
 
 // Helper to create a variable with mode aliases
+// Supports 2-mode (Light/Dark) and 3-mode (Light/Dark/Darkest) collections
 async function createAliasVariable(
   collection: VariableCollection,
   template: VariableTemplate,
@@ -710,6 +848,7 @@ async function createAliasVariable(
   // Resolve references
   const lightId = varMap.get(template.lightRef);
   const darkId = varMap.get(template.darkRef);
+  const darkestId = template.darkestRef ? varMap.get(template.darkestRef) : null;
 
   if (!lightId || !darkId) {
     console.warn(`Missing reference for ${template.name}: light=${template.lightRef} (${lightId}), dark=${template.darkRef} (${darkId})`);
@@ -723,8 +862,29 @@ async function createAliasVariable(
     var modes = collection.modes;
     for (var i = 0; i < modes.length; i++) {
       var mode = modes[i];
-      const isLightMode = mode.name === modeNames[0] || mode.name.includes('Light');
-      const refId = isLightMode ? lightId : darkId;
+      const modeLower = mode.name.toLowerCase();
+      let refId: string;
+
+      if (modeLower.includes('darkest') && darkestId) {
+        // 3rd mode: Darkest theme
+        refId = darkestId;
+      } else if (modeLower.includes('dark') && !modeLower.includes('darkest')) {
+        // 2nd mode: Dark theme
+        refId = darkId;
+      } else if (mode.name === modeNames[0] || modeLower.includes('light') || modeLower === 'value' || modeLower === 'default') {
+        // 1st mode: Light / Default / Value
+        refId = lightId;
+      } else if (i === 0) {
+        // Fallback: first mode = light
+        refId = lightId;
+      } else if (i === modes.length - 1 && darkestId) {
+        // Fallback: last mode of 3+ = darkest
+        refId = darkestId;
+      } else {
+        // Fallback: middle/other = dark
+        refId = darkId;
+      }
+
       variable.setValueForMode(mode.modeId, {
         type: 'VARIABLE_ALIAS',
         id: refId,
@@ -1119,100 +1279,192 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
 
     let level1Count = existingLevel1Vars.size;
 
-    // Create gray scale
-    const grayBase = payload.grayBase || 'neutral';
-    let grayScale: Record<string, string>;
-    switch (grayBase) {
-      case 'warm':
-        grayScale = generateWarmGrayScale();
-        break;
-      case 'cool':
-        grayScale = generateCoolGrayScale();
-        break;
-      default:
-        grayScale = generateGrayScale();
-    }
-
     // Track color variables for binding: {hex, variable}
     const colorVariablesForBinding: Array<{ hex: string; variable: Variable }> = [];
 
-    var grayNames = Object.keys(grayScale);
-    for (var i = 0; i < grayNames.length; i++) {
-      var name = grayNames[i];
-      var hex = grayScale[name];
-      const v = await createLevel1ColorVariable(level1, `Gray Scale/${name}`, hex, existingLevel1Vars);
-      if (v) {
-        if (!existingLevel1Vars.has(v.name)) level1Count++;
-        colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
-      }
-    }
+    // Determine if we're using Spectrum's flat naming (no prefix, lowercase-dash)
+    const isSpectrum = principleName === 'spectrum';
+    const colorPrefix = isSpectrum ? '' : 'Color/';
 
-    // Create brand color scale
-    const brandScale = generateColorScale(payload.brandColors.primary, 'Brand');
-    var brandNames = Object.keys(brandScale);
-    for (var i = 0; i < brandNames.length; i++) {
-      var name = brandNames[i];
-      var hex = brandScale[name];
-      const v = await createLevel1ColorVariable(level1, `Brand Scale/${name}`, hex, existingLevel1Vars);
-      if (v) {
-        if (!existingLevel1Vars.has(v.name)) level1Count++;
-        colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
-      }
-    }
+    if (isSpectrum) {
+      // === SPECTRUM PRIMITIVES: Flat naming, 14-step scale, 11-step grays ===
+      console.log('[DesignSystem] Using Spectrum-style flat naming with 14-step color scale');
 
-    // Create secondary color scale if provided
-    if (payload.brandColors.secondary) {
-      const secondaryScale = generateColorScale(payload.brandColors.secondary, 'Secondary');
-      var secondaryNames = Object.keys(secondaryScale);
-      for (var i = 0; i < secondaryNames.length; i++) {
-        var name = secondaryNames[i];
-        var hex = secondaryScale[name];
-        const v = await createLevel1ColorVariable(level1, `Secondary Scale/${name}`, hex, existingLevel1Vars);
+      // Create Spectrum gray scale (11 steps: gray-100 through gray-1100)
+      const specGrayScale = generateSpectrumGrayScale();
+      var specGrayNames = Object.keys(specGrayScale);
+      for (var i = 0; i < specGrayNames.length; i++) {
+        var name = specGrayNames[i];
+        var hex = specGrayScale[name];
+        const v = await createLevel1ColorVariable(level1, name, hex, existingLevel1Vars, '');
         if (v) {
           if (!existingLevel1Vars.has(v.name)) level1Count++;
           colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
         }
       }
-    }
 
-    // Create tertiary color scale if provided
-    if (payload.brandColors.tertiary) {
-      const tertiaryScale = generateColorScale(payload.brandColors.tertiary, 'Tertiary');
-      var tertiaryNames = Object.keys(tertiaryScale);
-      for (var i = 0; i < tertiaryNames.length; i++) {
-        var name = tertiaryNames[i];
-        var hex = tertiaryScale[name];
-        const v = await createLevel1ColorVariable(level1, `Tertiary Scale/${name}`, hex, existingLevel1Vars);
+      // Create brand color scale (14 steps: brand-100 through brand-1400)
+      const specBrandScale = generateSpectrumColorScale(payload.brandColors.primary, 'brand');
+      var specBrandNames = Object.keys(specBrandScale);
+      for (var i = 0; i < specBrandNames.length; i++) {
+        var name = specBrandNames[i];
+        var hex = specBrandScale[name];
+        const v = await createLevel1ColorVariable(level1, name, hex, existingLevel1Vars, '');
         if (v) {
           if (!existingLevel1Vars.has(v.name)) level1Count++;
           colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
         }
       }
-    }
 
-    // Create system colors
-    var systemNames = Object.keys(SYSTEM_COLORS);
-    for (var i = 0; i < systemNames.length; i++) {
-      var name = systemNames[i];
-      var hex = (SYSTEM_COLORS as Record<string, string>)[name];
-      if (hex !== 'transparent') {
+      // Create Spectrum semantic color scales (negative, positive, notice, informative)
+      for (const [roleName, roleHex] of Object.entries(SPECTRUM_SEMANTIC_COLORS)) {
+        const roleScale = generateSpectrumColorScale(roleHex, roleName);
+        var roleScaleNames = Object.keys(roleScale);
+        for (var i = 0; i < roleScaleNames.length; i++) {
+          var name = roleScaleNames[i];
+          var hex = roleScale[name];
+          const v = await createLevel1ColorVariable(level1, name, hex, existingLevel1Vars, '');
+          if (v) {
+            if (!existingLevel1Vars.has(v.name)) level1Count++;
+            colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+          }
+        }
+      }
+
+      // Create secondary color scale if provided
+      if (payload.brandColors.secondary) {
+        const secondaryScale = generateSpectrumColorScale(payload.brandColors.secondary, 'secondary');
+        var secondaryNames = Object.keys(secondaryScale);
+        for (var i = 0; i < secondaryNames.length; i++) {
+          var name = secondaryNames[i];
+          var hex = secondaryScale[name];
+          const v = await createLevel1ColorVariable(level1, name, hex, existingLevel1Vars, '');
+          if (v) {
+            if (!existingLevel1Vars.has(v.name)) level1Count++;
+            colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+          }
+        }
+      }
+
+      // Create tertiary color scale if provided
+      if (payload.brandColors.tertiary) {
+        const tertiaryScale = generateSpectrumColorScale(payload.brandColors.tertiary, 'tertiary');
+        var tertiaryNames = Object.keys(tertiaryScale);
+        for (var i = 0; i < tertiaryNames.length; i++) {
+          var name = tertiaryNames[i];
+          var hex = tertiaryScale[name];
+          const v = await createLevel1ColorVariable(level1, name, hex, existingLevel1Vars, '');
+          if (v) {
+            if (!existingLevel1Vars.has(v.name)) level1Count++;
+            colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+          }
+        }
+      }
+
+      // Create system colors (white, black) with flat names
+      const specSystemColors: Record<string, string> = { white: '#ffffff', black: '#000000' };
+      for (const [sysName, sysHex] of Object.entries(specSystemColors)) {
+        const v = await createLevel1ColorVariable(level1, sysName, sysHex, existingLevel1Vars, '');
+        if (v) {
+          if (!existingLevel1Vars.has(v.name)) level1Count++;
+          colorVariablesForBinding.push({ hex: sysHex.toLowerCase(), variable: v });
+        }
+      }
+    } else {
+      // === STANDARD PRIMITIVES: Hierarchical naming with Color/ prefix ===
+
+      // Create gray scale
+      const grayBase = payload.grayBase || 'neutral';
+      let grayScale: Record<string, string>;
+      switch (grayBase) {
+        case 'warm':
+          grayScale = generateWarmGrayScale();
+          break;
+        case 'cool':
+          grayScale = generateCoolGrayScale();
+          break;
+        default:
+          grayScale = generateGrayScale();
+      }
+
+      var grayNames = Object.keys(grayScale);
+      for (var i = 0; i < grayNames.length; i++) {
+        var name = grayNames[i];
+        var hex = grayScale[name];
+        const v = await createLevel1ColorVariable(level1, `Gray Scale/${name}`, hex, existingLevel1Vars);
+        if (v) {
+          if (!existingLevel1Vars.has(v.name)) level1Count++;
+          colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+        }
+      }
+
+      // Create brand color scale
+      const brandScale = generateColorScale(payload.brandColors.primary, 'Brand');
+      var brandNames = Object.keys(brandScale);
+      for (var i = 0; i < brandNames.length; i++) {
+        var name = brandNames[i];
+        var hex = brandScale[name];
+        const v = await createLevel1ColorVariable(level1, `Brand Scale/${name}`, hex, existingLevel1Vars);
+        if (v) {
+          if (!existingLevel1Vars.has(v.name)) level1Count++;
+          colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+        }
+      }
+
+      // Create secondary color scale if provided
+      if (payload.brandColors.secondary) {
+        const secondaryScale = generateColorScale(payload.brandColors.secondary, 'Secondary');
+        var secondaryNames = Object.keys(secondaryScale);
+        for (var i = 0; i < secondaryNames.length; i++) {
+          var name = secondaryNames[i];
+          var hex = secondaryScale[name];
+          const v = await createLevel1ColorVariable(level1, `Secondary Scale/${name}`, hex, existingLevel1Vars);
+          if (v) {
+            if (!existingLevel1Vars.has(v.name)) level1Count++;
+            colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+          }
+        }
+      }
+
+      // Create tertiary color scale if provided
+      if (payload.brandColors.tertiary) {
+        const tertiaryScale = generateColorScale(payload.brandColors.tertiary, 'Tertiary');
+        var tertiaryNames = Object.keys(tertiaryScale);
+        for (var i = 0; i < tertiaryNames.length; i++) {
+          var name = tertiaryNames[i];
+          var hex = tertiaryScale[name];
+          const v = await createLevel1ColorVariable(level1, `Tertiary Scale/${name}`, hex, existingLevel1Vars);
+          if (v) {
+            if (!existingLevel1Vars.has(v.name)) level1Count++;
+            colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+          }
+        }
+      }
+
+      // Create system colors
+      var systemNames = Object.keys(SYSTEM_COLORS);
+      for (var i = 0; i < systemNames.length; i++) {
+        var name = systemNames[i];
+        var hex = (SYSTEM_COLORS as Record<string, string>)[name];
+        if (hex !== 'transparent') {
+          const v = await createLevel1ColorVariable(level1, `System/${name}`, hex, existingLevel1Vars);
+          if (v) {
+            if (!existingLevel1Vars.has(v.name)) level1Count++;
+            colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+          }
+        }
+      }
+
+      // Create feedback colors
+      var feedbackNames = Object.keys(FEEDBACK_COLORS);
+      for (var i = 0; i < feedbackNames.length; i++) {
+        var name = feedbackNames[i];
+        var hex = (FEEDBACK_COLORS as Record<string, string>)[name];
         const v = await createLevel1ColorVariable(level1, `System/${name}`, hex, existingLevel1Vars);
         if (v) {
           if (!existingLevel1Vars.has(v.name)) level1Count++;
           colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
         }
-      }
-    }
-
-    // Create feedback colors
-    var feedbackNames = Object.keys(FEEDBACK_COLORS);
-    for (var i = 0; i < feedbackNames.length; i++) {
-      var name = feedbackNames[i];
-      var hex = (FEEDBACK_COLORS as Record<string, string>)[name];
-      const v = await createLevel1ColorVariable(level1, `System/${name}`, hex, existingLevel1Vars);
-      if (v) {
-        if (!existingLevel1Vars.has(v.name)) level1Count++;
-        colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
       }
     }
 
@@ -1367,7 +1619,9 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
 
       if (created || collectionCount === 0) {
         // Get templates using the specified getter function
-        const templates = getTemplatesByName(templateGetterName, 'Brand');
+        // Spectrum uses lowercase flat names; others use PascalCase
+        const brandNameForTemplates = isSpectrum ? 'brand' : 'Brand';
+        const templates = getTemplatesByName(templateGetterName, brandNameForTemplates);
 
         for (let ti = 0; ti < templates.length; ti++) {
           const template = templates[ti];
@@ -1425,8 +1679,8 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       // Also check resolved fonts (marketing names from web search)
       const resolvedFonts = payload.extractedTokens?.typography?.resolvedFonts || [];
       const resolvedFontNames = resolvedFonts
-        .filter((f: { marketingName?: string; confidence: string }) => f.marketingName)
-        .map((f: { marketingName: string }) => f.marketingName);
+        .filter((f) => f.marketingName)
+        .map((f) => f.marketingName!);
 
       // Combine all fonts, prioritizing resolved names
       const allFonts = [...new Set([...resolvedFontNames, ...extractedFonts])];
@@ -1603,28 +1857,31 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
 
       // Map extracted typography to text styles
       // ONLY creates styles for font sizes that actually exist in the file
+      // Spectrum uses flat naming (heading-xxl, body-m, detail-s, code-m)
       let mappedStyles: MappedTypographyStyle[];
       if (payload.extractedTokens?.typography?.fontSize?.length) {
-        mappedStyles = mapExtractedTypography(
+        const mapFn = isSpectrum ? mapExtractedTypographySpectrum : mapExtractedTypography;
+        mappedStyles = mapFn(
           payload.extractedTokens.typography.fontSize,
           payload.extractedTokens.typography.lineHeight || [],
           payload.extractedTokens.typography.fontWeight || [],
           primaryFont,
           payload.extractedTokens.typography.fontSizeNodes // Pass node IDs for binding
         );
-        console.log(`[DesignSystem] Created ${mappedStyles.length} text styles from ${payload.extractedTokens.typography.fontSize.length} extracted font sizes`);
+        console.log(`[DesignSystem] Created ${mappedStyles.length} text styles from ${payload.extractedTokens.typography.fontSize.length} extracted font sizes (${isSpectrum ? 'Spectrum naming' : 'standard naming'})`);
       } else if (includeBoilerplate) {
         // No extracted tokens but boilerplate requested - use defaults
-        mappedStyles = DEFAULT_TYPOGRAPHY_STYLES.map(style => ({
+        const defaultStyles = isSpectrum ? SPECTRUM_DEFAULT_TYPOGRAPHY_STYLES : DEFAULT_TYPOGRAPHY_STYLES;
+        mappedStyles = defaultStyles.map(style => ({
           name: style.name,
           fontSize: style.fontSize,
           fontWeight: style.fontStyle,
-          fontFamily: primaryFont,
+          fontFamily: style.name.startsWith('code-') ? (style.fontFamily || primaryFont) : primaryFont,
           lineHeight: typeof style.lineHeight === 'number' ? style.lineHeight : undefined,
           letterSpacing: style.letterSpacing,
           isExtracted: false,
         }));
-        console.log(`[DesignSystem] No extracted font sizes, using ${mappedStyles.length} boilerplate text styles`);
+        console.log(`[DesignSystem] No extracted font sizes, using ${mappedStyles.length} ${isSpectrum ? 'Spectrum' : 'boilerplate'} text styles`);
       } else {
         // No extracted tokens and no boilerplate - skip text styles
         mappedStyles = [];
@@ -1676,17 +1933,21 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         };
         const weightVarName = weightVarMap[mapped.fontWeight] || 'Weight-Regular';
 
+        // Determine font family variable — code styles use mono font
+        const isCodeStyle = mapped.name.startsWith('code-');
+        const fontFamilyVarName = isCodeStyle ? 'Typography/Font Family/Font-Mono' : 'Typography/Font Family/Font-Sans';
+
         return {
           name: mapped.name,
           fontFamily: mapped.fontFamily,
           fontStyle: mapped.fontWeight === 'SemiBold' ? 'Semi Bold' : mapped.fontWeight,
           fontSize: mapped.fontSize,
-          lineHeight: mapped.lineHeight || Math.round(mapped.fontSize * 1.4),
+          lineHeight: mapped.lineHeight || Math.round(mapped.fontSize * (isSpectrum ? 1.3 : 1.4)),
           letterSpacing: mapped.letterSpacing,
           isExtracted: mapped.isExtracted,
           nodeIds: mapped.nodeIds || [], // Node IDs for binding
           // Variable bindings - using boilerplate variable naming convention
-          fontFamilyVariable: 'Typography/Font Family/Font-Sans',
+          fontFamilyVariable: fontFamilyVarName,
           fontSizeVariable: `Typography/Font Size/${sizeVarName}`,
           fontWeightVariable: `Typography/Font Weight/${weightVarName}`,
         };
@@ -1716,7 +1977,17 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         console.warn(`[Typography] Failed to fetch variables (stale refs?): ${varErr}`);
       }
 
-      const createdStyles: Array<{ name: string; styleId: string }> = [];
+      const createdStyles: Array<{
+        name: string;
+        styleId: string;
+        fontSize?: number;
+        isExtracted?: boolean;
+        fontFamilyBound?: boolean;
+        fontSizeBound?: boolean;
+        fontWeightBound?: boolean;
+        nodesStyled?: number;
+        nodeBindingDetails?: any;
+      }> = [];
       const skippedStyles: string[] = [];
       let skippedNodesStyled = 0; // Track nodes styled from existing (skipped) styles
 

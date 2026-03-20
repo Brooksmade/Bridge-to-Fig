@@ -306,6 +306,7 @@ export async function handleSetEffects(command: FigmaCommand): Promise<CommandRe
         type: eff.type,
         radius: eff.radius || 10,
         visible: eff.visible !== false,
+        blurType: 'NORMAL' as const,
       };
       newEffects.push(blur);
     }

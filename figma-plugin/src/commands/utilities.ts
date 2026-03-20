@@ -64,7 +64,7 @@ export async function handleSaveVersion(command: FigmaCommand): Promise<CommandR
 
   try {
     await figma.saveVersionHistoryAsync(
-      payload && payload.title ? payload.title : undefined,
+      (payload && payload.title) || '',
       payload && payload.description ? payload.description : undefined
     );
 
@@ -210,7 +210,7 @@ export async function handleSetFileThumbnail(command: FigmaCommand): Promise<Com
   }
 
   try {
-    await figma.setFileThumbnailNodeAsync(node as SceneNode);
+    await figma.setFileThumbnailNodeAsync(node as FrameNode | ComponentNode | ComponentSetNode | SectionNode);
 
     return successResult(command.id, {
       data: {
@@ -235,7 +235,7 @@ export async function handleBase64Encode(command: FigmaCommand): Promise<Command
     return errorResult(command.id, 'Data is required');
   }
 
-  var encoded = figma.base64Encode(payload.data);
+  var encoded = figma.base64Encode(payload.data as unknown as Uint8Array);
 
   return successResult(command.id, {
     data: {

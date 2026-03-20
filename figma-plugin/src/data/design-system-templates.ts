@@ -8,6 +8,7 @@ export interface VariableTemplate {
   name: string;
   lightRef: string;  // Reference to Level 1 variable (e.g., 'Gray-50')
   darkRef: string;   // Reference to Level 1 variable (e.g., 'Gray-950')
+  darkestRef?: string; // Optional: Reference for 3rd mode (e.g., Spectrum "Darkest" theme)
   scopes: VariableScope[];
   description?: string;
 }
@@ -1384,6 +1385,718 @@ export function getTailwindSemanticTemplates(brandColorName: string = 'Brand'): 
   ];
 }
 
+// ============================================================================
+// SPECTRUM-STYLE TEMPLATE FUNCTIONS
+// ============================================================================
+
+/**
+ * Spectrum Alias Templates
+ * Semantic color references following Adobe Spectrum's 5-role system.
+ * Uses flat naming (no `/` groups) and 3-mode support (Light/Dark/Darkest).
+ * References: Global collection primitives (flat names like gray-800, blue-400)
+ */
+export function getSpectrumAliasTemplates(brandColorName: string = 'brand'): VariableTemplate[] {
+  const brand = brandColorName.toLowerCase();
+  return [
+    // === Accent (brand-derived) ===
+    {
+      name: 'accent-background-color-default',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      darkestRef: `${brand}-400`,
+      scopes: ['ALL_FILLS'],
+      description: 'Default accent background color',
+    },
+    {
+      name: 'accent-background-color-hover',
+      lightRef: `${brand}-900`,
+      darkRef: `${brand}-400`,
+      darkestRef: `${brand}-300`,
+      scopes: ['ALL_FILLS'],
+      description: 'Accent background hover state',
+    },
+    {
+      name: 'accent-background-color-down',
+      lightRef: `${brand}-1000`,
+      darkRef: `${brand}-300`,
+      darkestRef: `${brand}-200`,
+      scopes: ['ALL_FILLS'],
+      description: 'Accent background pressed/down state',
+    },
+    {
+      name: 'accent-content-color-default',
+      lightRef: 'white',
+      darkRef: `${brand}-1200`,
+      darkestRef: `${brand}-1300`,
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Content on accent backgrounds',
+    },
+    {
+      name: 'accent-border-color-default',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      darkestRef: `${brand}-400`,
+      scopes: ['STROKE_COLOR'],
+      description: 'Accent border color',
+    },
+
+    // === Negative (error/destructive) ===
+    {
+      name: 'negative-background-color-default',
+      lightRef: 'negative-800',
+      darkRef: 'negative-500',
+      darkestRef: 'negative-400',
+      scopes: ['ALL_FILLS'],
+      description: 'Error/destructive background',
+    },
+    {
+      name: 'negative-content-color-default',
+      lightRef: 'negative-900',
+      darkRef: 'negative-300',
+      darkestRef: 'negative-200',
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Error/destructive content text',
+    },
+    {
+      name: 'negative-border-color-default',
+      lightRef: 'negative-800',
+      darkRef: 'negative-500',
+      darkestRef: 'negative-400',
+      scopes: ['STROKE_COLOR'],
+      description: 'Error/destructive border',
+    },
+
+    // === Positive (success) ===
+    {
+      name: 'positive-background-color-default',
+      lightRef: 'positive-800',
+      darkRef: 'positive-500',
+      darkestRef: 'positive-400',
+      scopes: ['ALL_FILLS'],
+      description: 'Success background',
+    },
+    {
+      name: 'positive-content-color-default',
+      lightRef: 'positive-900',
+      darkRef: 'positive-300',
+      darkestRef: 'positive-200',
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Success content text',
+    },
+    {
+      name: 'positive-border-color-default',
+      lightRef: 'positive-800',
+      darkRef: 'positive-500',
+      darkestRef: 'positive-400',
+      scopes: ['STROKE_COLOR'],
+      description: 'Success border',
+    },
+
+    // === Notice (warning) ===
+    {
+      name: 'notice-background-color-default',
+      lightRef: 'notice-800',
+      darkRef: 'notice-500',
+      darkestRef: 'notice-400',
+      scopes: ['ALL_FILLS'],
+      description: 'Warning background',
+    },
+    {
+      name: 'notice-content-color-default',
+      lightRef: 'notice-900',
+      darkRef: 'notice-300',
+      darkestRef: 'notice-200',
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Warning content text',
+    },
+    {
+      name: 'notice-border-color-default',
+      lightRef: 'notice-800',
+      darkRef: 'notice-500',
+      darkestRef: 'notice-400',
+      scopes: ['STROKE_COLOR'],
+      description: 'Warning border',
+    },
+
+    // === Informative (info) ===
+    {
+      name: 'informative-background-color-default',
+      lightRef: 'informative-800',
+      darkRef: 'informative-500',
+      darkestRef: 'informative-400',
+      scopes: ['ALL_FILLS'],
+      description: 'Informative background',
+    },
+    {
+      name: 'informative-content-color-default',
+      lightRef: 'informative-900',
+      darkRef: 'informative-300',
+      darkestRef: 'informative-200',
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Informative content text',
+    },
+    {
+      name: 'informative-border-color-default',
+      lightRef: 'informative-800',
+      darkRef: 'informative-500',
+      darkestRef: 'informative-400',
+      scopes: ['STROKE_COLOR'],
+      description: 'Informative border',
+    },
+
+    // === Neutral backgrounds ===
+    {
+      name: 'background-color-default',
+      lightRef: 'gray-100',
+      darkRef: 'gray-800',
+      darkestRef: 'gray-1100',
+      scopes: ['FRAME_FILL'],
+      description: 'Default page background (gray-100 per theme)',
+    },
+    {
+      name: 'background-color-elevated',
+      lightRef: 'white',
+      darkRef: 'gray-700',
+      darkestRef: 'gray-1000',
+      scopes: ['FRAME_FILL'],
+      description: 'Elevated surface (cards, popovers)',
+    },
+    {
+      name: 'background-color-layer-1',
+      lightRef: 'gray-200',
+      darkRef: 'gray-700',
+      darkestRef: 'gray-1000',
+      scopes: ['FRAME_FILL'],
+      description: 'First layer above background',
+    },
+    {
+      name: 'background-color-layer-2',
+      lightRef: 'gray-300',
+      darkRef: 'gray-600',
+      darkestRef: 'gray-900',
+      scopes: ['FRAME_FILL'],
+      description: 'Second layer above background',
+    },
+
+    // === Neutral content (text/icons) ===
+    {
+      name: 'heading-color',
+      lightRef: 'gray-1100',
+      darkRef: 'gray-100',
+      darkestRef: 'gray-100',
+      scopes: ['TEXT_FILL'],
+      description: 'Heading text color (highest contrast)',
+    },
+    {
+      name: 'body-color',
+      lightRef: 'gray-900',
+      darkRef: 'gray-200',
+      darkestRef: 'gray-200',
+      scopes: ['TEXT_FILL'],
+      description: 'Body text color',
+    },
+    {
+      name: 'detail-color',
+      lightRef: 'gray-700',
+      darkRef: 'gray-400',
+      darkestRef: 'gray-400',
+      scopes: ['TEXT_FILL'],
+      description: 'Detail/caption text color',
+    },
+    {
+      name: 'disabled-content-color',
+      lightRef: 'gray-400',
+      darkRef: 'gray-600',
+      darkestRef: 'gray-700',
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Disabled text/icon color',
+    },
+
+    // === Neutral borders ===
+    {
+      name: 'border-color-default',
+      lightRef: 'gray-300',
+      darkRef: 'gray-600',
+      darkestRef: 'gray-800',
+      scopes: ['STROKE_COLOR'],
+      description: 'Default border color',
+    },
+    {
+      name: 'border-color-hover',
+      lightRef: 'gray-400',
+      darkRef: 'gray-500',
+      darkestRef: 'gray-700',
+      scopes: ['STROKE_COLOR'],
+      description: 'Border hover state',
+    },
+    {
+      name: 'border-color-focus',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      darkestRef: `${brand}-400`,
+      scopes: ['STROKE_COLOR'],
+      description: 'Focus indicator border (accent)',
+    },
+    {
+      name: 'border-color-disabled',
+      lightRef: 'gray-200',
+      darkRef: 'gray-700',
+      darkestRef: 'gray-900',
+      scopes: ['STROKE_COLOR'],
+      description: 'Disabled border color',
+    },
+
+    // === Icon colors ===
+    {
+      name: 'icon-color-default',
+      lightRef: 'gray-900',
+      darkRef: 'gray-200',
+      darkestRef: 'gray-200',
+      scopes: ['SHAPE_FILL'],
+      description: 'Default icon color',
+    },
+    {
+      name: 'icon-color-hover',
+      lightRef: 'gray-1100',
+      darkRef: 'gray-100',
+      darkestRef: 'gray-100',
+      scopes: ['SHAPE_FILL'],
+      description: 'Icon hover color',
+    },
+    {
+      name: 'icon-color-disabled',
+      lightRef: 'gray-400',
+      darkRef: 'gray-600',
+      darkestRef: 'gray-700',
+      scopes: ['SHAPE_FILL'],
+      description: 'Disabled icon color',
+    },
+
+    // === Disabled backgrounds ===
+    {
+      name: 'disabled-background-color',
+      lightRef: 'gray-200',
+      darkRef: 'gray-700',
+      darkestRef: 'gray-900',
+      scopes: ['ALL_FILLS'],
+      description: 'Disabled element background',
+    },
+
+    // === Focus ===
+    {
+      name: 'focus-indicator-color',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      darkestRef: `${brand}-400`,
+      scopes: ['STROKE_COLOR'],
+      description: 'Focus ring indicator color',
+    },
+
+    // === Overlay ===
+    {
+      name: 'overlay-color',
+      lightRef: 'black',
+      darkRef: 'black',
+      darkestRef: 'black',
+      scopes: ['ALL_FILLS'],
+      description: 'Overlay/scrim color (apply opacity separately)',
+    },
+  ];
+}
+
+/**
+ * Spectrum Component Templates
+ * Component-scoped tokens following Spectrum's per-component isolation.
+ * Uses flat naming and 3-mode support (Light/Dark/Darkest).
+ * References: Global collection primitives
+ */
+export function getSpectrumComponentTemplates(brandColorName: string = 'brand'): VariableTemplate[] {
+  const brand = brandColorName.toLowerCase();
+  return [
+    // === Button ===
+    {
+      name: 'button-background-color-default',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      darkestRef: `${brand}-400`,
+      scopes: ['ALL_FILLS'],
+      description: 'Primary button background',
+    },
+    {
+      name: 'button-background-color-hover',
+      lightRef: `${brand}-900`,
+      darkRef: `${brand}-400`,
+      darkestRef: `${brand}-300`,
+      scopes: ['ALL_FILLS'],
+      description: 'Primary button hover background',
+    },
+    {
+      name: 'button-background-color-down',
+      lightRef: `${brand}-1000`,
+      darkRef: `${brand}-300`,
+      darkestRef: `${brand}-200`,
+      scopes: ['ALL_FILLS'],
+      description: 'Primary button pressed background',
+    },
+    {
+      name: 'button-background-color-disabled',
+      lightRef: 'gray-200',
+      darkRef: 'gray-700',
+      darkestRef: 'gray-900',
+      scopes: ['ALL_FILLS'],
+      description: 'Disabled button background',
+    },
+    {
+      name: 'button-content-color-default',
+      lightRef: 'white',
+      darkRef: `${brand}-1200`,
+      darkestRef: `${brand}-1300`,
+      scopes: ['TEXT_FILL'],
+      description: 'Primary button text',
+    },
+    {
+      name: 'button-border-color-default',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      darkestRef: `${brand}-400`,
+      scopes: ['STROKE_COLOR'],
+      description: 'Button border color',
+    },
+    {
+      name: 'button-secondary-background-color-default',
+      lightRef: 'gray-200',
+      darkRef: 'gray-700',
+      darkestRef: 'gray-900',
+      scopes: ['ALL_FILLS'],
+      description: 'Secondary button background',
+    },
+    {
+      name: 'button-secondary-content-color-default',
+      lightRef: 'gray-900',
+      darkRef: 'gray-200',
+      darkestRef: 'gray-200',
+      scopes: ['TEXT_FILL'],
+      description: 'Secondary button text',
+    },
+
+    // === Input/TextField ===
+    {
+      name: 'input-background-color',
+      lightRef: 'white',
+      darkRef: 'gray-800',
+      darkestRef: 'gray-1000',
+      scopes: ['FRAME_FILL'],
+      description: 'Input field background',
+    },
+    {
+      name: 'input-border-color-default',
+      lightRef: 'gray-400',
+      darkRef: 'gray-500',
+      darkestRef: 'gray-700',
+      scopes: ['STROKE_COLOR'],
+      description: 'Input border default state',
+    },
+    {
+      name: 'input-border-color-hover',
+      lightRef: 'gray-500',
+      darkRef: 'gray-400',
+      darkestRef: 'gray-600',
+      scopes: ['STROKE_COLOR'],
+      description: 'Input border hover state',
+    },
+    {
+      name: 'input-border-color-focus',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      darkestRef: `${brand}-400`,
+      scopes: ['STROKE_COLOR'],
+      description: 'Input border focus state',
+    },
+    {
+      name: 'input-label-color',
+      lightRef: 'gray-700',
+      darkRef: 'gray-300',
+      darkestRef: 'gray-400',
+      scopes: ['TEXT_FILL'],
+      description: 'Input label text',
+    },
+    {
+      name: 'input-placeholder-color',
+      lightRef: 'gray-500',
+      darkRef: 'gray-500',
+      darkestRef: 'gray-600',
+      scopes: ['TEXT_FILL'],
+      description: 'Input placeholder text',
+    },
+
+    // === Card ===
+    {
+      name: 'card-background-color',
+      lightRef: 'white',
+      darkRef: 'gray-700',
+      darkestRef: 'gray-1000',
+      scopes: ['FRAME_FILL'],
+      description: 'Card background',
+    },
+    {
+      name: 'card-border-color',
+      lightRef: 'gray-200',
+      darkRef: 'gray-600',
+      darkestRef: 'gray-800',
+      scopes: ['STROKE_COLOR'],
+      description: 'Card border',
+    },
+
+    // === Tooltip ===
+    {
+      name: 'tooltip-background-color',
+      lightRef: 'gray-1100',
+      darkRef: 'gray-200',
+      darkestRef: 'gray-300',
+      scopes: ['FRAME_FILL'],
+      description: 'Tooltip background (inverted)',
+    },
+    {
+      name: 'tooltip-content-color',
+      lightRef: 'white',
+      darkRef: 'gray-1100',
+      darkestRef: 'gray-1100',
+      scopes: ['TEXT_FILL'],
+      description: 'Tooltip text color',
+    },
+
+    // === Checkbox ===
+    {
+      name: 'checkbox-control-color-default',
+      lightRef: 'gray-400',
+      darkRef: 'gray-500',
+      darkestRef: 'gray-700',
+      scopes: ['STROKE_COLOR'],
+      description: 'Checkbox unchecked border',
+    },
+    {
+      name: 'checkbox-control-color-selected',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      darkestRef: `${brand}-400`,
+      scopes: ['ALL_FILLS'],
+      description: 'Checkbox checked fill',
+    },
+
+    // === Switch/Toggle ===
+    {
+      name: 'switch-track-color-default',
+      lightRef: 'gray-300',
+      darkRef: 'gray-600',
+      darkestRef: 'gray-800',
+      scopes: ['ALL_FILLS'],
+      description: 'Switch track off state',
+    },
+    {
+      name: 'switch-track-color-selected',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      darkestRef: `${brand}-400`,
+      scopes: ['ALL_FILLS'],
+      description: 'Switch track on state',
+    },
+    {
+      name: 'switch-handle-color',
+      lightRef: 'white',
+      darkRef: 'white',
+      darkestRef: 'gray-100',
+      scopes: ['ALL_FILLS'],
+      description: 'Switch handle/thumb',
+    },
+
+    // === Navigation ===
+    {
+      name: 'nav-item-background-color-selected',
+      lightRef: `${brand}-100`,
+      darkRef: `${brand}-1000`,
+      darkestRef: `${brand}-1100`,
+      scopes: ['FRAME_FILL'],
+      description: 'Selected nav item background',
+    },
+    {
+      name: 'nav-item-content-color-default',
+      lightRef: 'gray-700',
+      darkRef: 'gray-300',
+      darkestRef: 'gray-400',
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Nav item text/icon default',
+    },
+    {
+      name: 'nav-item-content-color-selected',
+      lightRef: `${brand}-900`,
+      darkRef: `${brand}-400`,
+      darkestRef: `${brand}-300`,
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Selected nav item text/icon',
+    },
+
+    // === Tab ===
+    {
+      name: 'tab-indicator-color-selected',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      darkestRef: `${brand}-400`,
+      scopes: ['ALL_FILLS'],
+      description: 'Selected tab indicator',
+    },
+    {
+      name: 'tab-content-color-default',
+      lightRef: 'gray-700',
+      darkRef: 'gray-300',
+      darkestRef: 'gray-400',
+      scopes: ['TEXT_FILL'],
+      description: 'Tab label default',
+    },
+    {
+      name: 'tab-content-color-selected',
+      lightRef: 'gray-1100',
+      darkRef: 'gray-100',
+      darkestRef: 'gray-100',
+      scopes: ['TEXT_FILL'],
+      description: 'Tab label selected',
+    },
+
+    // === Badge ===
+    {
+      name: 'badge-background-color-default',
+      lightRef: `${brand}-100`,
+      darkRef: `${brand}-1000`,
+      darkestRef: `${brand}-1100`,
+      scopes: ['ALL_FILLS'],
+      description: 'Badge background',
+    },
+    {
+      name: 'badge-content-color-default',
+      lightRef: `${brand}-900`,
+      darkRef: `${brand}-300`,
+      darkestRef: `${brand}-200`,
+      scopes: ['TEXT_FILL'],
+      description: 'Badge text',
+    },
+
+    // === Divider ===
+    {
+      name: 'divider-color-default',
+      lightRef: 'gray-300',
+      darkRef: 'gray-600',
+      darkestRef: 'gray-800',
+      scopes: ['STROKE_COLOR', 'ALL_FILLS'],
+      description: 'Divider/separator color',
+    },
+  ];
+}
+
+/**
+ * Spectrum System Templates
+ * Brand bridge layer — maps component tokens for brand variants.
+ * Modes: "Default" and "Express" (2 brand variants, not light/dark).
+ * References: Global collection primitives.
+ *
+ * The System layer enables multi-brand theming from the same design system.
+ * "Default" = standard Spectrum, "Express" = Adobe Express (bolder, rounder).
+ */
+export function getSpectrumSystemTemplates(brandColorName: string = 'brand'): VariableTemplate[] {
+  const brand = brandColorName.toLowerCase();
+  return [
+    // === System backgrounds ===
+    {
+      name: 'system-background-color-default',
+      lightRef: 'gray-100',
+      darkRef: 'gray-100',
+      scopes: ['FRAME_FILL'],
+      description: 'System background — maps to different values per brand',
+    },
+    {
+      name: 'system-accent-color',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-700`,
+      scopes: ['ALL_FILLS'],
+      description: 'System accent — can shift hue/saturation per brand',
+    },
+    {
+      name: 'system-accent-color-hover',
+      lightRef: `${brand}-900`,
+      darkRef: `${brand}-800`,
+      scopes: ['ALL_FILLS'],
+      description: 'System accent hover per brand',
+    },
+
+    // === System typography colors ===
+    {
+      name: 'system-heading-color',
+      lightRef: 'gray-1100',
+      darkRef: 'gray-1100',
+      scopes: ['TEXT_FILL'],
+      description: 'System heading text per brand',
+    },
+    {
+      name: 'system-body-color',
+      lightRef: 'gray-900',
+      darkRef: 'gray-900',
+      scopes: ['TEXT_FILL'],
+      description: 'System body text per brand',
+    },
+
+    // === System borders ===
+    {
+      name: 'system-border-color',
+      lightRef: 'gray-300',
+      darkRef: 'gray-400',
+      scopes: ['STROKE_COLOR'],
+      description: 'System border per brand — Express uses thicker, more visible borders',
+    },
+    {
+      name: 'system-focus-indicator-color',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-700`,
+      scopes: ['STROKE_COLOR'],
+      description: 'System focus indicator per brand',
+    },
+
+    // === System component overrides ===
+    {
+      name: 'system-button-background-color',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-700`,
+      scopes: ['ALL_FILLS'],
+      description: 'System button background — Express may use different saturation',
+    },
+    {
+      name: 'system-button-content-color',
+      lightRef: 'white',
+      darkRef: 'white',
+      scopes: ['TEXT_FILL'],
+      description: 'System button text per brand',
+    },
+    {
+      name: 'system-card-background-color',
+      lightRef: 'white',
+      darkRef: 'white',
+      scopes: ['FRAME_FILL'],
+      description: 'System card background per brand',
+    },
+    {
+      name: 'system-input-border-color',
+      lightRef: 'gray-400',
+      darkRef: 'gray-500',
+      scopes: ['STROKE_COLOR'],
+      description: 'System input border per brand',
+    },
+    {
+      name: 'system-nav-background-color',
+      lightRef: 'gray-100',
+      darkRef: 'gray-200',
+      scopes: ['FRAME_FILL'],
+      description: 'System nav background per brand',
+    },
+  ];
+}
+
 /**
  * Helper to get templates by function name
  * Used by design-system.ts to dynamically call template functions
@@ -1398,6 +2111,9 @@ export function getTemplatesByName(getterName: string, brandColorName: string = 
     getMaterialSystemTemplates,
     getMaterialComponentTemplates,
     getTailwindSemanticTemplates,
+    getSpectrumAliasTemplates,
+    getSpectrumComponentTemplates,
+    getSpectrumSystemTemplates,
   };
 
   const getter = templateGetters[getterName];

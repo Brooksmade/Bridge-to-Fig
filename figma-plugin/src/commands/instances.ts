@@ -345,6 +345,7 @@ export async function handleOverrideInstanceEffects(command: FigmaCommand): Prom
           type: eff.type,
           radius: eff.radius,
           visible: true,
+          blurType: 'NORMAL' as const,
         };
         newEffects.push(blur);
       }

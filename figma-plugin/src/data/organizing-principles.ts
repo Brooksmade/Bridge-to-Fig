@@ -11,7 +11,8 @@ export type OrganizingPrincipleName =
   | 'three-level'      // Simplified: Primitives → Tokens → Theme
   | 'two-level'        // Flat: Primitives → Tokens
   | 'material-design'  // Google M3: Reference → System → Component
-  | 'tailwind';        // Utility-first: Colors → Semantic
+  | 'tailwind'         // Utility-first: Colors → Semantic
+  | 'spectrum';        // Adobe Spectrum: Global → Alias → Component → System
 
 /**
  * Configuration for a single collection within an organizing principle
@@ -191,6 +192,43 @@ export const ORGANIZING_PRINCIPLES: Record<OrganizingPrincipleName, OrganizingPr
     ],
     templateGetters: {
       1: 'getTailwindSemanticTemplates',
+    },
+  },
+  'spectrum': {
+    name: 'spectrum',
+    displayName: 'Adobe Spectrum Style',
+    description: 'Adobe Spectrum-inspired token architecture with global primitives, semantic aliases, component-scoped tokens, and a system bridge layer. Uses flat naming and 3-theme support.',
+    bestFor: 'Enterprise design systems, component libraries, multi-brand/multi-theme projects, accessibility-focused teams',
+    collections: [
+      {
+        name: 'Global',
+        modes: ['Value'],
+        description: 'Raw color palette, spacing, sizing, and layout primitives with flat naming (gray-100, blue-800)',
+        minVariableCount: 50,
+      },
+      {
+        name: 'Alias',
+        modes: ['Light', 'Dark', 'Darkest'],
+        description: 'Semantic color references (accent, negative, positive, notice, informative) with 3-theme support',
+        minVariableCount: 20,
+      },
+      {
+        name: 'Component',
+        modes: ['Light', 'Dark', 'Darkest'],
+        description: 'Component-scoped tokens (button, input, card, tooltip, nav) isolated per component family',
+        minVariableCount: 15,
+      },
+      {
+        name: 'System',
+        modes: ['Default', 'Express'],
+        description: 'Brand bridge layer — remaps component tokens for different brand variants',
+        minVariableCount: 10,
+      },
+    ],
+    templateGetters: {
+      1: 'getSpectrumAliasTemplates',
+      2: 'getSpectrumComponentTemplates',
+      3: 'getSpectrumSystemTemplates',
     },
   },
 };
