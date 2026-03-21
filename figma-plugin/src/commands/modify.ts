@@ -3,10 +3,12 @@ import { successResult, errorResult } from './types';
 import { applyProperties, applyChildLayoutProperties, serializeNode } from '../utils/node-factory';
 
 export async function handleModify(command: FigmaCommand): Promise<CommandResult> {
-  const targetId = command.target;
+  // Accept nodeId in payload as fallback for target (common convenience pattern)
+  const rawPayload = command.payload as Record<string, any> | undefined;
+  const targetId = command.target || rawPayload?.nodeId;
 
   if (!targetId) {
-    return errorResult(command.id, 'No target node specified');
+    return errorResult(command.id, 'No target node specified (use "target" field or "payload.nodeId")');
   }
 
   const node = await figma.getNodeByIdAsync(targetId);

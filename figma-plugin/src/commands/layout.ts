@@ -3,9 +3,19 @@
 import type { FigmaCommand, CommandResult } from './types';
 import { successResult, errorResult } from './types';
 
+/**
+ * Get target node ID from command, accepting payload.nodeId as fallback.
+ * This prevents the common mistake of putting nodeId in the payload instead of target.
+ */
+function resolveTargetId(command: FigmaCommand): string | undefined {
+  const payload = command.payload as Record<string, any> | undefined;
+  return command.target || payload?.nodeId;
+}
+
 // Set auto layout on a frame
 export async function handleSetAutoLayout(command: FigmaCommand): Promise<CommandResult> {
   var payload = command.payload as {
+    nodeId?: string; // Fallback for target — accepted for convenience
     mode?: 'HORIZONTAL' | 'VERTICAL' | 'NONE';
     direction?: 'HORIZONTAL' | 'VERTICAL' | 'NONE'; // alias for mode
     spacing?: number;
@@ -18,17 +28,19 @@ export async function handleSetAutoLayout(command: FigmaCommand): Promise<Comman
     primaryAxisAlignItems?: 'MIN' | 'MAX' | 'CENTER' | 'SPACE_BETWEEN';
     counterAxisAlignItems?: 'MIN' | 'MAX' | 'CENTER' | 'BASELINE';
     layoutWrap?: 'NO_WRAP' | 'WRAP';
-    primaryAxisSizing?: 'FIXED' | 'AUTO';
-    counterAxisSizing?: 'FIXED' | 'AUTO';
-    primaryAxisSizingMode?: 'FIXED' | 'AUTO'; // alias
-    counterAxisSizingMode?: 'FIXED' | 'AUTO'; // alias
+    primaryAxisSizing?: string;
+    counterAxisSizing?: string;
+    primaryAxisSizingMode?: string; // alias
+    counterAxisSizingMode?: string; // alias
   };
 
-  if (!command.target) {
-    return errorResult(command.id, 'Target node ID is required');
+  // Accept nodeId in payload as fallback for target (common mistake)
+  var targetId = command.target || payload.nodeId;
+  if (!targetId) {
+    return errorResult(command.id, 'Target node ID is required (use "target" field or "payload.nodeId")');
   }
 
-  var node = await figma.getNodeByIdAsync(command.target);
+  var node = await figma.getNodeByIdAsync(targetId);
   if (!node) {
     return errorResult(command.id, 'Node not found');
   }
@@ -93,14 +105,15 @@ export async function handleSetAutoLayout(command: FigmaCommand): Promise<Comman
   }
 
   // Set sizing (accept both short and full property names)
+  // Also accept "HUG" as alias for "AUTO" (common mistake — Figma UI says "Hug" but API uses "AUTO")
   var primarySizing = payload.primaryAxisSizing || payload.primaryAxisSizingMode;
   if (primarySizing) {
-    frame.primaryAxisSizingMode = primarySizing;
+    frame.primaryAxisSizingMode = (primarySizing.toUpperCase() === 'HUG' ? 'AUTO' : primarySizing) as 'FIXED' | 'AUTO';
   }
 
   var counterSizing = payload.counterAxisSizing || payload.counterAxisSizingMode;
   if (counterSizing) {
-    frame.counterAxisSizingMode = counterSizing;
+    frame.counterAxisSizingMode = (counterSizing.toUpperCase() === 'HUG' ? 'AUTO' : counterSizing) as 'FIXED' | 'AUTO';
   }
 
   return successResult(command.id, {
@@ -122,11 +135,12 @@ export async function handleSetAutoLayout(command: FigmaCommand): Promise<Comman
 
 // Get auto layout settings
 export async function handleGetAutoLayout(command: FigmaCommand): Promise<CommandResult> {
-  if (!command.target) {
-    return errorResult(command.id, 'Target node ID is required');
+  var _tid = resolveTargetId(command);
+  if (!_tid) {
+    return errorResult(command.id, 'Target node ID is required (use "target" field or "payload.nodeId")');
   }
 
-  var node = await figma.getNodeByIdAsync(command.target);
+  var node = await figma.getNodeByIdAsync(_tid);
   if (!node) {
     return errorResult(command.id, 'Node not found');
   }
@@ -167,11 +181,12 @@ export async function handleSetLayoutChild(command: FigmaCommand): Promise<Comma
     layoutPositioning?: 'AUTO' | 'ABSOLUTE';
   };
 
-  if (!command.target) {
-    return errorResult(command.id, 'Target node ID is required');
+  var _tid = resolveTargetId(command);
+  if (!_tid) {
+    return errorResult(command.id, 'Target node ID is required (use "target" field or "payload.nodeId")');
   }
 
-  var node = await figma.getNodeByIdAsync(command.target);
+  var node = await figma.getNodeByIdAsync(_tid);
   if (!node) {
     return errorResult(command.id, 'Node not found');
   }
@@ -211,11 +226,12 @@ export async function handleSetConstraints(command: FigmaCommand): Promise<Comma
     vertical?: 'MIN' | 'CENTER' | 'MAX' | 'STRETCH' | 'SCALE';
   };
 
-  if (!command.target) {
-    return errorResult(command.id, 'Target node ID is required');
+  var _tid = resolveTargetId(command);
+  if (!_tid) {
+    return errorResult(command.id, 'Target node ID is required (use "target" field or "payload.nodeId")');
   }
 
-  var node = await figma.getNodeByIdAsync(command.target);
+  var node = await figma.getNodeByIdAsync(_tid);
   if (!node) {
     return errorResult(command.id, 'Node not found');
   }
@@ -250,11 +266,12 @@ export async function handleSetConstraints(command: FigmaCommand): Promise<Comma
 
 // Get constraints
 export async function handleGetConstraints(command: FigmaCommand): Promise<CommandResult> {
-  if (!command.target) {
-    return errorResult(command.id, 'Target node ID is required');
+  var _tid = resolveTargetId(command);
+  if (!_tid) {
+    return errorResult(command.id, 'Target node ID is required (use "target" field or "payload.nodeId")');
   }
 
-  var node = await figma.getNodeByIdAsync(command.target);
+  var node = await figma.getNodeByIdAsync(_tid);
   if (!node) {
     return errorResult(command.id, 'Node not found');
   }
@@ -282,11 +299,12 @@ export async function handleSetSizeConstraints(command: FigmaCommand): Promise<C
     maxHeight?: number | null;
   };
 
-  if (!command.target) {
-    return errorResult(command.id, 'Target node ID is required');
+  var _tid = resolveTargetId(command);
+  if (!_tid) {
+    return errorResult(command.id, 'Target node ID is required (use "target" field or "payload.nodeId")');
   }
 
-  var node = await figma.getNodeByIdAsync(command.target);
+  var node = await figma.getNodeByIdAsync(_tid);
   if (!node) {
     return errorResult(command.id, 'Node not found');
   }
@@ -323,11 +341,12 @@ export async function handleSetSizeConstraints(command: FigmaCommand): Promise<C
 
 // Infer auto layout from existing layout
 export async function handleInferAutoLayout(command: FigmaCommand): Promise<CommandResult> {
-  if (!command.target) {
-    return errorResult(command.id, 'Target node ID is required');
+  var _tid = resolveTargetId(command);
+  if (!_tid) {
+    return errorResult(command.id, 'Target node ID is required (use "target" field or "payload.nodeId")');
   }
 
-  var node = await figma.getNodeByIdAsync(command.target);
+  var node = await figma.getNodeByIdAsync(_tid);
   if (!node) {
     return errorResult(command.id, 'Node not found');
   }
