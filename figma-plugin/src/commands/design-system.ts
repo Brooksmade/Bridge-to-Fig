@@ -1236,9 +1236,10 @@ async function createBoilerplateInLevel1(
   // Override font families with extracted fonts
   // Priority: fontFamilies overrides > primaryFontFamily > defaults
   const baseFontFamily = activeTypography.fontFamily as Record<string, { $value: string; $type: string; $description?: string }>;
-  const sansKey = useSpectrum ? 'font-family-sans' : 'Font-Sans';
-  const serifKey = useSpectrum ? 'font-family-serif' : 'Font-Serif';
-  const monoKey = useSpectrum ? 'font-family-mono' : 'Font-Mono';
+  const useLowercaseKeys = useSpectrum || useAppleHIG || useTailwind || useMaterial;
+  const sansKey = useLowercaseKeys ? 'font-family-sans' : 'Font-Sans';
+  const serifKey = useLowercaseKeys ? 'font-family-serif' : 'Font-Serif';
+  const monoKey = useLowercaseKeys ? 'font-family-mono' : 'Font-Mono';
 
   const fontFamilyTokens: Record<string, { $value: string; $type: string; $description?: string }> = {
     ...baseFontFamily,
