@@ -523,7 +523,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::AppleScript,
+            MacosLauncher::LaunchAgent,
             None,
         ))
         .invoke_handler(tauri::generate_handler![
@@ -535,11 +535,15 @@ pub fn run() {
             let handle = app.handle().clone();
 
             // === Auto-start: enable by default on first run ===
+            // Uses LaunchAgent on macOS (plist in ~/Library/LaunchAgents/)
+            // which is reliable on Ventura+ without accessibility permissions.
             let autolaunch = app.autolaunch();
             let autostart_enabled = autolaunch.is_enabled().unwrap_or(false);
             if !autostart_enabled {
-                let _ = autolaunch.enable();
-                println!("[Tauri] Auto-start enabled (first run)");
+                match autolaunch.enable() {
+                    Ok(_) => println!("[Tauri] Auto-start enabled (first run)"),
+                    Err(e) => eprintln!("[Tauri] Failed to enable auto-start: {}", e),
+                }
             }
             let autostart_checked = autolaunch.is_enabled().unwrap_or(false);
 
@@ -592,11 +596,15 @@ pub fn run() {
                         let autolaunch = app.autolaunch();
                         let currently_enabled = autolaunch.is_enabled().unwrap_or(false);
                         if currently_enabled {
-                            let _ = autolaunch.disable();
-                            println!("[Tauri] Auto-start disabled by user");
+                            match autolaunch.disable() {
+                                Ok(_) => println!("[Tauri] Auto-start disabled by user"),
+                                Err(e) => eprintln!("[Tauri] Failed to disable auto-start: {}", e),
+                            }
                         } else {
-                            let _ = autolaunch.enable();
-                            println!("[Tauri] Auto-start enabled by user");
+                            match autolaunch.enable() {
+                                Ok(_) => println!("[Tauri] Auto-start enabled by user"),
+                                Err(e) => eprintln!("[Tauri] Failed to enable auto-start: {}", e),
+                            }
                         }
                     }
                     "check_updates" => {
