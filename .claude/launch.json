@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Bridge Server (dev)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@bridge-to-fig/server", "dev"],
+      "port": 4001
+    },
+    {
+      "name": "Figma Plugin (watch)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@bridge-to-fig/plugin", "watch"],
+      "port": 0
+    },
+    {
+      "name": "Orchestrator (dev)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@bridge-to-fig/orchestrator", "dev"],
+      "port": 0
+    }
+  ]
+}

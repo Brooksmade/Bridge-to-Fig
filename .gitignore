@@ -27,6 +27,9 @@ nul
 .vscode/
 .idea/
 
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json
+
 # Plans (local planning docs)
 plans/
 
