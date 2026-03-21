@@ -466,3 +466,102 @@ export const FEEDBACK_COLORS = {
   Error: '#ef4444',    // Red-500
   Info: '#3b82f6',     // Blue-500
 };
+
+// ─── Apple HIG Color Scales ─────────────────────────────────────────────────
+
+/**
+ * Apple's 12 system colors (light appearance defaults)
+ * Reference: Apple Human Interface Guidelines
+ */
+export const APPLE_SYSTEM_COLORS: Record<string, string> = {
+  systemRed: '#FF3B30',
+  systemOrange: '#FF9500',
+  systemYellow: '#FFCC00',
+  systemGreen: '#34C759',
+  systemMint: '#00C7BE',
+  systemTeal: '#30B0C7',
+  systemCyan: '#32ADE6',
+  systemBlue: '#007AFF',
+  systemIndigo: '#5856D6',
+  systemPurple: '#AF52DE',
+  systemPink: '#FF2D55',
+  systemBrown: '#A2845E',
+};
+
+/**
+ * Apple's 6 named system grays with light and dark appearance values
+ * Reference: Apple Human Interface Guidelines
+ */
+export const APPLE_SYSTEM_GRAYS: Record<string, { light: string; dark: string }> = {
+  systemGray: { light: '#8E8E93', dark: '#8E8E93' },
+  systemGray2: { light: '#AEAEB2', dark: '#636366' },
+  systemGray3: { light: '#C7C7CC', dark: '#48484A' },
+  systemGray4: { light: '#D1D1D6', dark: '#3A3A3C' },
+  systemGray5: { light: '#E5E5EA', dark: '#2C2C2E' },
+  systemGray6: { light: '#F2F2F7', dark: '#1C1C1E' },
+};
+
+/**
+ * Generate an Apple HIG-style 14-step tonal scale from a base hex color.
+ * Similar approach to generateSpectrumColorScale but with Apple's slightly
+ * warmer lightness distribution. The base color lands around the 700-800 position.
+ *
+ * Uses flat lowercase-dash naming: {scaleName}-100 through {scaleName}-1400.
+ */
+export function generateAppleColorScale(baseHex: string, scaleName: string): Record<string, string> {
+  const baseHsl = hexToHsl(baseHex);
+  const scale: Record<string, string> = {};
+  const lowerName = scaleName.toLowerCase();
+
+  // Lightness targets (Apple colors tend to be slightly more vivid than Spectrum)
+  const lightnessSteps = [
+    { step: 100, l: 97 },
+    { step: 200, l: 93 },
+    { step: 300, l: 86 },
+    { step: 400, l: 76 },
+    { step: 500, l: 65 },
+    { step: 600, l: 55 },
+    { step: 700, l: 48 },
+    { step: 800, l: 42 },
+    { step: 900, l: 36 },
+    { step: 1000, l: 30 },
+    { step: 1100, l: 24 },
+    { step: 1200, l: 18 },
+    { step: 1300, l: 12 },
+    { step: 1400, l: 6 },
+  ];
+
+  for (const { step, l } of lightnessSteps) {
+    // Saturation: boost slightly in mid-tones, reduce in very light/dark
+    let satAdj = baseHsl.s;
+    if (l > 90) satAdj = Math.max(baseHsl.s * 0.3, 10);
+    else if (l > 75) satAdj = baseHsl.s * 0.65;
+    else if (l < 15) satAdj = baseHsl.s * 0.6;
+    else if (l < 25) satAdj = baseHsl.s * 0.75;
+
+    const hex = hslToHex({ h: baseHsl.h, s: Math.min(satAdj, 100), l });
+    scale[`${lowerName}-${step}`] = hex;
+  }
+
+  return scale;
+}
+
+/**
+ * Generate an Apple HIG-style 11-step gray ramp for use as primitives.
+ * Values match Apple's named system grays across both light and dark appearances.
+ */
+export function generateAppleGrayScale(): Record<string, string> {
+  return {
+    'gray-100': '#F2F2F7',   // Lightest (matches systemGray6 light)
+    'gray-200': '#E5E5EA',   // matches systemGray5 light
+    'gray-300': '#D1D1D6',   // matches systemGray4 light
+    'gray-400': '#C7C7CC',   // matches systemGray3 light
+    'gray-500': '#AEAEB2',   // matches systemGray2 light
+    'gray-600': '#8E8E93',   // matches systemGray light
+    'gray-700': '#636366',   // matches systemGray2 dark
+    'gray-800': '#48484A',   // matches systemGray3 dark
+    'gray-900': '#3A3A3C',   // matches systemGray4 dark
+    'gray-1000': '#2C2C2E',  // matches systemGray5 dark
+    'gray-1100': '#1C1C1E',  // matches systemGray6 dark
+  };
+}

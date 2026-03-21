@@ -2097,6 +2097,511 @@ export function getSpectrumSystemTemplates(brandColorName: string = 'brand'): Va
   ];
 }
 
+// ============================================================================
+// APPLE HIG TEMPLATES
+// Apple Human Interface Guidelines token architecture
+// Collection 1 (Dynamic Colors): Semantic colors with Light/Dark mode aliases
+// Collection 2 (Component Tokens): Component-scoped tokens
+// Uses Apple's camelCase naming grouped with / separators
+// References: System Palette primitives (flat names like gray-600, systemBlue-800)
+// ============================================================================
+
+/**
+ * Apple HIG Dynamic Colors — semantic color aliases
+ * Maps to iOS UIColor semantic colors and macOS NSColor dynamic colors.
+ * References primitives from "System Palette" collection.
+ */
+export function getAppleHIGDynamicTemplates(brandColorName: string = 'systemBlue'): VariableTemplate[] {
+  const brand = brandColorName.toLowerCase();
+  return [
+    // === Backgrounds (System set — flat/ungrouped) ===
+    {
+      name: 'Background/systemBackground',
+      lightRef: 'white',
+      darkRef: 'black',
+      scopes: ['FRAME_FILL'],
+      description: 'Primary overall view background',
+    },
+    {
+      name: 'Background/secondarySystemBackground',
+      lightRef: 'gray-100',
+      darkRef: 'gray-1100',
+      scopes: ['FRAME_FILL'],
+      description: 'Grouping content within overall view',
+    },
+    {
+      name: 'Background/tertiarySystemBackground',
+      lightRef: 'white',
+      darkRef: 'gray-1000',
+      scopes: ['FRAME_FILL'],
+      description: 'Content within secondary elements',
+    },
+
+    // === Backgrounds (Grouped set — table views) ===
+    {
+      name: 'Background/systemGroupedBackground',
+      lightRef: 'gray-100',
+      darkRef: 'black',
+      scopes: ['FRAME_FILL'],
+      description: 'Primary grouped table view background',
+    },
+    {
+      name: 'Background/secondarySystemGroupedBackground',
+      lightRef: 'white',
+      darkRef: 'gray-1100',
+      scopes: ['FRAME_FILL'],
+      description: 'Content grouping in grouped layout',
+    },
+    {
+      name: 'Background/tertiarySystemGroupedBackground',
+      lightRef: 'gray-100',
+      darkRef: 'gray-1000',
+      scopes: ['FRAME_FILL'],
+      description: 'Content within secondary grouping',
+    },
+
+    // === Labels (4 levels) ===
+    {
+      name: 'Label/label',
+      lightRef: 'black',
+      darkRef: 'white',
+      scopes: ['TEXT_FILL'],
+      description: 'Primary content text',
+    },
+    {
+      name: 'Label/secondaryLabel',
+      lightRef: 'gray-600',
+      darkRef: 'gray-500',
+      scopes: ['TEXT_FILL'],
+      description: 'Secondary content text (60% opacity equivalent)',
+    },
+    {
+      name: 'Label/tertiaryLabel',
+      lightRef: 'gray-500',
+      darkRef: 'gray-700',
+      scopes: ['TEXT_FILL'],
+      description: 'Tertiary content text (30% opacity equivalent)',
+    },
+    {
+      name: 'Label/quaternaryLabel',
+      lightRef: 'gray-400',
+      darkRef: 'gray-800',
+      scopes: ['TEXT_FILL'],
+      description: 'Quaternary content text (18% opacity equivalent)',
+    },
+    {
+      name: 'Label/placeholderText',
+      lightRef: 'gray-400',
+      darkRef: 'gray-700',
+      scopes: ['TEXT_FILL'],
+      description: 'Placeholder text in controls and text views',
+    },
+
+    // === Fill Colors (4 levels — for thin overlays) ===
+    {
+      name: 'Fill/systemFill',
+      lightRef: 'gray-500',
+      darkRef: 'gray-600',
+      scopes: ['ALL_FILLS'],
+      description: 'System fill (thin overlay, 20% light / 36% dark equivalent)',
+    },
+    {
+      name: 'Fill/secondarySystemFill',
+      lightRef: 'gray-400',
+      darkRef: 'gray-700',
+      scopes: ['ALL_FILLS'],
+      description: 'Secondary system fill (16% light / 32% dark equivalent)',
+    },
+    {
+      name: 'Fill/tertiarySystemFill',
+      lightRef: 'gray-300',
+      darkRef: 'gray-800',
+      scopes: ['ALL_FILLS'],
+      description: 'Tertiary system fill (12% light / 24% dark equivalent)',
+    },
+    {
+      name: 'Fill/quaternarySystemFill',
+      lightRef: 'gray-200',
+      darkRef: 'gray-900',
+      scopes: ['ALL_FILLS'],
+      description: 'Quaternary system fill (8% light / 18% dark equivalent)',
+    },
+
+    // === Separators ===
+    {
+      name: 'Separator/separator',
+      lightRef: 'gray-300',
+      darkRef: 'gray-800',
+      scopes: ['ALL_FILLS', 'STROKE_COLOR'],
+      description: 'Standard separator (allows underlying content visible)',
+    },
+    {
+      name: 'Separator/opaqueSeparator',
+      lightRef: 'gray-400',
+      darkRef: 'gray-900',
+      scopes: ['ALL_FILLS', 'STROKE_COLOR'],
+      description: 'Opaque separator (no underlying content visible)',
+    },
+
+    // === Link ===
+    {
+      name: 'Link/link',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      scopes: ['TEXT_FILL'],
+      description: 'Link text color',
+    },
+
+    // === Accent / Tint ===
+    {
+      name: 'Accent/tintColor',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      scopes: ['ALL_FILLS'],
+      description: 'System accent/tint color',
+    },
+    {
+      name: 'Accent/tintColorHover',
+      lightRef: `${brand}-900`,
+      darkRef: `${brand}-400`,
+      scopes: ['ALL_FILLS'],
+      description: 'Accent/tint hover state',
+    },
+
+    // === Semantic status colors ===
+    {
+      name: 'Status/destructive',
+      lightRef: 'systemRed-800',
+      darkRef: 'systemRed-500',
+      scopes: ['ALL_FILLS', 'TEXT_FILL'],
+      description: 'Destructive/error action color',
+    },
+    {
+      name: 'Status/success',
+      lightRef: 'systemGreen-800',
+      darkRef: 'systemGreen-500',
+      scopes: ['ALL_FILLS', 'TEXT_FILL'],
+      description: 'Success/positive color',
+    },
+    {
+      name: 'Status/warning',
+      lightRef: 'systemOrange-800',
+      darkRef: 'systemOrange-500',
+      scopes: ['ALL_FILLS', 'TEXT_FILL'],
+      description: 'Warning/notice color',
+    },
+    {
+      name: 'Status/info',
+      lightRef: 'systemBlue-800',
+      darkRef: 'systemBlue-500',
+      scopes: ['ALL_FILLS', 'TEXT_FILL'],
+      description: 'Informational color',
+    },
+
+    // === macOS Semantic Colors ===
+    {
+      name: 'macOS/windowBackground',
+      lightRef: 'gray-100',
+      darkRef: 'gray-1000',
+      scopes: ['FRAME_FILL'],
+      description: 'macOS window background',
+    },
+    {
+      name: 'macOS/controlBackground',
+      lightRef: 'white',
+      darkRef: 'gray-900',
+      scopes: ['FRAME_FILL'],
+      description: 'macOS control background',
+    },
+    {
+      name: 'macOS/selectedContentBackground',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-600`,
+      scopes: ['ALL_FILLS'],
+      description: 'macOS selected content background (key window)',
+    },
+    {
+      name: 'macOS/underPageBackground',
+      lightRef: 'gray-200',
+      darkRef: 'gray-1100',
+      scopes: ['FRAME_FILL'],
+      description: 'macOS background behind document content',
+    },
+
+    // === Disabled ===
+    {
+      name: 'Disabled/disabledContent',
+      lightRef: 'gray-400',
+      darkRef: 'gray-800',
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Disabled text and icon color',
+    },
+    {
+      name: 'Disabled/disabledBackground',
+      lightRef: 'gray-200',
+      darkRef: 'gray-1000',
+      scopes: ['ALL_FILLS'],
+      description: 'Disabled element background',
+    },
+
+    // === Focus ===
+    {
+      name: 'Focus/focusRing',
+      lightRef: `${brand}-700`,
+      darkRef: `${brand}-400`,
+      scopes: ['STROKE_COLOR'],
+      description: 'Keyboard focus indicator',
+    },
+  ];
+}
+
+/**
+ * Apple HIG Component Tokens — component-scoped design tokens
+ * Maps to iOS UIKit and SwiftUI component appearances.
+ * References primitives from "System Palette" collection.
+ */
+export function getAppleHIGComponentTemplates(brandColorName: string = 'systemBlue'): VariableTemplate[] {
+  const brand = brandColorName.toLowerCase();
+  return [
+    // === Button (Filled) ===
+    {
+      name: 'Button/filled-background',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-600`,
+      scopes: ['ALL_FILLS'],
+      description: 'Filled button background',
+    },
+    {
+      name: 'Button/filled-foreground',
+      lightRef: 'white',
+      darkRef: 'white',
+      scopes: ['TEXT_FILL'],
+      description: 'Filled button text',
+    },
+    {
+      name: 'Button/tinted-background',
+      lightRef: `${brand}-200`,
+      darkRef: `${brand}-1300`,
+      scopes: ['ALL_FILLS'],
+      description: 'Tinted button background',
+    },
+    {
+      name: 'Button/tinted-foreground',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      scopes: ['TEXT_FILL'],
+      description: 'Tinted button text',
+    },
+    {
+      name: 'Button/plain-foreground',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      scopes: ['TEXT_FILL'],
+      description: 'Plain button text (no background)',
+    },
+    {
+      name: 'Button/destructive-foreground',
+      lightRef: 'systemRed-800',
+      darkRef: 'systemRed-500',
+      scopes: ['TEXT_FILL'],
+      description: 'Destructive button text',
+    },
+
+    // === Navigation Bar ===
+    {
+      name: 'NavigationBar/background',
+      lightRef: 'gray-100',
+      darkRef: 'gray-1100',
+      scopes: ['FRAME_FILL'],
+      description: 'Navigation bar background (translucent in practice)',
+    },
+    {
+      name: 'NavigationBar/title',
+      lightRef: 'black',
+      darkRef: 'white',
+      scopes: ['TEXT_FILL'],
+      description: 'Navigation bar title text',
+    },
+    {
+      name: 'NavigationBar/tint',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Navigation bar tint (back button, bar items)',
+    },
+
+    // === Tab Bar ===
+    {
+      name: 'TabBar/background',
+      lightRef: 'gray-100',
+      darkRef: 'gray-1100',
+      scopes: ['FRAME_FILL'],
+      description: 'Tab bar background',
+    },
+    {
+      name: 'TabBar/selectedTint',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Selected tab item tint',
+    },
+    {
+      name: 'TabBar/unselectedTint',
+      lightRef: 'gray-600',
+      darkRef: 'gray-600',
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Unselected tab item tint',
+    },
+
+    // === Toolbar ===
+    {
+      name: 'Toolbar/background',
+      lightRef: 'gray-100',
+      darkRef: 'gray-1100',
+      scopes: ['FRAME_FILL'],
+      description: 'Toolbar background',
+    },
+    {
+      name: 'Toolbar/tint',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      scopes: ['TEXT_FILL', 'SHAPE_FILL'],
+      description: 'Toolbar item tint',
+    },
+
+    // === Search Bar ===
+    {
+      name: 'SearchBar/background',
+      lightRef: 'gray-200',
+      darkRef: 'gray-900',
+      scopes: ['FRAME_FILL'],
+      description: 'Search bar field background',
+    },
+    {
+      name: 'SearchBar/text',
+      lightRef: 'black',
+      darkRef: 'white',
+      scopes: ['TEXT_FILL'],
+      description: 'Search bar text',
+    },
+    {
+      name: 'SearchBar/placeholder',
+      lightRef: 'gray-600',
+      darkRef: 'gray-600',
+      scopes: ['TEXT_FILL'],
+      description: 'Search bar placeholder text',
+    },
+    {
+      name: 'SearchBar/icon',
+      lightRef: 'gray-600',
+      darkRef: 'gray-600',
+      scopes: ['SHAPE_FILL'],
+      description: 'Search bar icon (magnifying glass)',
+    },
+
+    // === Alert ===
+    {
+      name: 'Alert/background',
+      lightRef: 'white',
+      darkRef: 'gray-900',
+      scopes: ['FRAME_FILL'],
+      description: 'Alert dialog background',
+    },
+    {
+      name: 'Alert/title',
+      lightRef: 'black',
+      darkRef: 'white',
+      scopes: ['TEXT_FILL'],
+      description: 'Alert title text',
+    },
+    {
+      name: 'Alert/message',
+      lightRef: 'gray-600',
+      darkRef: 'gray-500',
+      scopes: ['TEXT_FILL'],
+      description: 'Alert message body text',
+    },
+    {
+      name: 'Alert/destructiveAction',
+      lightRef: 'systemRed-800',
+      darkRef: 'systemRed-500',
+      scopes: ['TEXT_FILL'],
+      description: 'Alert destructive action button',
+    },
+    {
+      name: 'Alert/defaultAction',
+      lightRef: `${brand}-800`,
+      darkRef: `${brand}-500`,
+      scopes: ['TEXT_FILL'],
+      description: 'Alert default action button',
+    },
+
+    // === Sheet ===
+    {
+      name: 'Sheet/background',
+      lightRef: 'white',
+      darkRef: 'gray-1100',
+      scopes: ['FRAME_FILL'],
+      description: 'Sheet/modal background',
+    },
+    {
+      name: 'Sheet/handleIndicator',
+      lightRef: 'gray-400',
+      darkRef: 'gray-700',
+      scopes: ['ALL_FILLS'],
+      description: 'Sheet grab handle indicator',
+    },
+
+    // === Card / Grouped Content ===
+    {
+      name: 'Card/background',
+      lightRef: 'white',
+      darkRef: 'gray-1100',
+      scopes: ['FRAME_FILL'],
+      description: 'Card/grouped content background',
+    },
+    {
+      name: 'Card/border',
+      lightRef: 'gray-300',
+      darkRef: 'gray-800',
+      scopes: ['STROKE_COLOR'],
+      description: 'Card border (when visible)',
+    },
+
+    // === Toggle / Switch ===
+    {
+      name: 'Toggle/trackOn',
+      lightRef: 'systemGreen-800',
+      darkRef: 'systemGreen-600',
+      scopes: ['ALL_FILLS'],
+      description: 'Toggle track on state (Apple green)',
+    },
+    {
+      name: 'Toggle/trackOff',
+      lightRef: 'gray-200',
+      darkRef: 'gray-800',
+      scopes: ['ALL_FILLS'],
+      description: 'Toggle track off state',
+    },
+    {
+      name: 'Toggle/thumb',
+      lightRef: 'white',
+      darkRef: 'white',
+      scopes: ['ALL_FILLS'],
+      description: 'Toggle thumb/knob',
+    },
+
+    // === Divider ===
+    {
+      name: 'Divider/default',
+      lightRef: 'gray-300',
+      darkRef: 'gray-800',
+      scopes: ['ALL_FILLS', 'STROKE_COLOR'],
+      description: 'Standard divider/separator line',
+    },
+  ];
+}
+
 /**
  * Helper to get templates by function name
  * Used by design-system.ts to dynamically call template functions
@@ -2114,6 +2619,8 @@ export function getTemplatesByName(getterName: string, brandColorName: string = 
     getSpectrumAliasTemplates,
     getSpectrumComponentTemplates,
     getSpectrumSystemTemplates,
+    getAppleHIGDynamicTemplates,
+    getAppleHIGComponentTemplates,
   };
 
   const getter = templateGetters[getterName];

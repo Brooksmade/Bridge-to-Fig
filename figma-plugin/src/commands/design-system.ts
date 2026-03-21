@@ -13,6 +13,10 @@ import {
   SPECTRUM_SEMANTIC_COLORS,
   SYSTEM_COLORS,
   FEEDBACK_COLORS,
+  generateAppleColorScale,
+  generateAppleGrayScale,
+  APPLE_SYSTEM_COLORS,
+  APPLE_SYSTEM_GRAYS,
 } from '../utils/color-scale';
 import { parseColor, getModeIdByName, convertVariableValue } from '../utils/variable-factory';
 import {
@@ -62,6 +66,40 @@ import {
   spectrumEffectStyleDefinitions,
   spectrumGridStyleDefinitions,
 } from '../data/boilerplate-spectrum';
+import {
+  appleTypographyTokens as appleHIGTypographyTokens,
+  appleSpacingTokens as appleHIGSpacingTokens,
+  appleBorderTokens as appleHIGBorderTokens,
+  appleShadowTokens as appleHIGShadowTokens,
+  appleOpacityTokens as appleHIGOpacityTokens,
+  appleTransitionTokens as appleHIGTransitionTokens,
+  appleComponentHeightTokens as appleHIGComponentHeightTokens,
+  appleEffectStyleDefinitions as appleHIGEffectStyleDefinitions,
+  appleGridStyleDefinitions as appleHIGGridStyleDefinitions,
+} from '../data/boilerplate-apple-hig';
+import {
+  tailwindTypographyTokens,
+  tailwindSpacingTokens,
+  tailwindBorderTokens,
+  tailwindShadowTokens,
+  tailwindOpacityTokens,
+  tailwindTransitionTokens,
+  tailwindComponentHeightTokens,
+  tailwindZIndexTokens,
+  tailwindEffectStyleDefinitions,
+  tailwindGridStyleDefinitions,
+} from '../data/boilerplate-tailwind';
+import {
+  materialTypographyTokens,
+  materialSpacingTokens,
+  materialBorderTokens,
+  materialShadowTokens,
+  materialOpacityTokens,
+  materialTransitionTokens,
+  materialComponentHeightTokens,
+  materialEffectStyleDefinitions,
+  materialGridStyleDefinitions,
+} from '../data/boilerplate-material';
 
 // === Shadow Processing Helpers ===
 
@@ -485,6 +523,96 @@ const SPECTRUM_DEFAULT_TYPOGRAPHY_STYLES: TypographyStyleDefinition[] = [
   { name: 'code-l', fontFamily: 'Source Code Pro', fontStyle: 'Regular', fontSize: 16, lineHeight: 24 },
   { name: 'code-m', fontFamily: 'Source Code Pro', fontStyle: 'Regular', fontSize: 14, lineHeight: 21 },
   { name: 'code-s', fontFamily: 'Source Code Pro', fontStyle: 'Regular', fontSize: 12, lineHeight: 18 },
+];
+
+// Apple HIG default typography styles (used when no extracted tokens)
+// Based on Apple iOS Dynamic Type defaults (Large size category)
+const APPLE_HIG_DEFAULT_TYPOGRAPHY_STYLES: TypographyStyleDefinition[] = [
+  // Titles
+  { name: 'largeTitle', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 34, lineHeight: 41, letterSpacing: 0.40 },
+  { name: 'title1', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 28, lineHeight: 34, letterSpacing: 0.38 },
+  { name: 'title2', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 22, lineHeight: 28, letterSpacing: 0.35 },
+  { name: 'title3', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 20, lineHeight: 25, letterSpacing: -0.45 },
+
+  // Heading & Body
+  { name: 'headline', fontFamily: 'Inter', fontStyle: 'Semi Bold', fontSize: 17, lineHeight: 22, letterSpacing: -0.43 },
+  { name: 'body', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 17, lineHeight: 22, letterSpacing: -0.43 },
+  { name: 'callout', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 16, lineHeight: 21, letterSpacing: -0.31 },
+  { name: 'subheadline', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 15, lineHeight: 20, letterSpacing: -0.23 },
+
+  // Small text
+  { name: 'footnote', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 13, lineHeight: 18, letterSpacing: -0.08 },
+  { name: 'caption1', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 12, lineHeight: 16, letterSpacing: 0 },
+  { name: 'caption2', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 11, lineHeight: 13, letterSpacing: 0.06 },
+];
+
+// Apple HIG shadow structure — 4 elevation levels
+const APPLE_HIG_SHADOW_STRUCTURE = [
+  { name: 'Shadow/Small', role: 'elevation', minBlur: 0, maxBlur: 4, isInner: false },
+  { name: 'Shadow/Medium', role: 'elevation', minBlur: 4, maxBlur: 10, isInner: false },
+  { name: 'Shadow/Large', role: 'elevation', minBlur: 10, maxBlur: 25, isInner: false },
+  { name: 'Shadow/Modal', role: 'elevation', minBlur: 25, maxBlur: 100, isInner: false },
+];
+
+// Tailwind default typography styles (used when no extracted tokens)
+const TAILWIND_DEFAULT_TYPOGRAPHY_STYLES: TypographyStyleDefinition[] = [
+  { name: 'heading-xxxl', fontFamily: 'Inter', fontStyle: 'Bold', fontSize: 72, lineHeight: 72 },
+  { name: 'heading-xxl', fontFamily: 'Inter', fontStyle: 'Bold', fontSize: 60, lineHeight: 60 },
+  { name: 'heading-xl', fontFamily: 'Inter', fontStyle: 'Bold', fontSize: 48, lineHeight: 48 },
+  { name: 'heading-l', fontFamily: 'Inter', fontStyle: 'Bold', fontSize: 36, lineHeight: 40 },
+  { name: 'heading-m', fontFamily: 'Inter', fontStyle: 'Bold', fontSize: 30, lineHeight: 36 },
+  { name: 'heading-s', fontFamily: 'Inter', fontStyle: 'Semi Bold', fontSize: 24, lineHeight: 32 },
+  { name: 'heading-xs', fontFamily: 'Inter', fontStyle: 'Semi Bold', fontSize: 20, lineHeight: 28 },
+  { name: 'heading-xxs', fontFamily: 'Inter', fontStyle: 'Semi Bold', fontSize: 18, lineHeight: 28 },
+  { name: 'body-xl', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 20, lineHeight: 28 },
+  { name: 'body-l', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 18, lineHeight: 28 },
+  { name: 'body-m', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 16, lineHeight: 24 },
+  { name: 'body-s', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 14, lineHeight: 20 },
+  { name: 'body-xs', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 12, lineHeight: 16 },
+  { name: 'detail-l', fontFamily: 'Inter', fontStyle: 'Medium', fontSize: 14, lineHeight: 20 },
+  { name: 'detail-m', fontFamily: 'Inter', fontStyle: 'Medium', fontSize: 12, lineHeight: 16 },
+  { name: 'detail-s', fontFamily: 'Inter', fontStyle: 'Medium', fontSize: 11, lineHeight: 14 },
+  { name: 'code-l', fontFamily: 'JetBrains Mono', fontStyle: 'Regular', fontSize: 16, lineHeight: 24 },
+  { name: 'code-m', fontFamily: 'JetBrains Mono', fontStyle: 'Regular', fontSize: 14, lineHeight: 20 },
+  { name: 'code-s', fontFamily: 'JetBrains Mono', fontStyle: 'Regular', fontSize: 12, lineHeight: 16 },
+];
+
+// Material Design 3 default typography styles (M3 type scale)
+const MATERIAL_DEFAULT_TYPOGRAPHY_STYLES: TypographyStyleDefinition[] = [
+  { name: 'display-large', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 57, lineHeight: 64, letterSpacing: -0.25 },
+  { name: 'display-medium', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 45, lineHeight: 52 },
+  { name: 'display-small', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 36, lineHeight: 44 },
+  { name: 'headline-large', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 32, lineHeight: 40 },
+  { name: 'headline-medium', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 28, lineHeight: 36 },
+  { name: 'headline-small', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 24, lineHeight: 32 },
+  { name: 'title-large', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 22, lineHeight: 28 },
+  { name: 'title-medium', fontFamily: 'Inter', fontStyle: 'Medium', fontSize: 16, lineHeight: 24, letterSpacing: 0.15 },
+  { name: 'title-small', fontFamily: 'Inter', fontStyle: 'Medium', fontSize: 14, lineHeight: 20, letterSpacing: 0.1 },
+  { name: 'body-large', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 16, lineHeight: 24, letterSpacing: 0.5 },
+  { name: 'body-medium', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 14, lineHeight: 20, letterSpacing: 0.25 },
+  { name: 'body-small', fontFamily: 'Inter', fontStyle: 'Regular', fontSize: 12, lineHeight: 16, letterSpacing: 0.4 },
+  { name: 'label-large', fontFamily: 'Inter', fontStyle: 'Medium', fontSize: 14, lineHeight: 20, letterSpacing: 0.1 },
+  { name: 'label-medium', fontFamily: 'Inter', fontStyle: 'Medium', fontSize: 12, lineHeight: 16, letterSpacing: 0.5 },
+  { name: 'label-small', fontFamily: 'Inter', fontStyle: 'Medium', fontSize: 11, lineHeight: 16, letterSpacing: 0.5 },
+];
+
+// Material Design 3 shadow structure — 5 elevation levels
+const MATERIAL_SHADOW_STRUCTURE = [
+  { name: 'Shadow/Level 1', role: 'elevation', minBlur: 0, maxBlur: 4, isInner: false },
+  { name: 'Shadow/Level 2', role: 'elevation', minBlur: 4, maxBlur: 8, isInner: false },
+  { name: 'Shadow/Level 3', role: 'elevation', minBlur: 8, maxBlur: 12, isInner: false },
+  { name: 'Shadow/Level 4', role: 'elevation', minBlur: 12, maxBlur: 16, isInner: false },
+  { name: 'Shadow/Level 5', role: 'elevation', minBlur: 16, maxBlur: 100, isInner: false },
+];
+
+// Tailwind shadow structure — 6 elevation levels
+const TAILWIND_SHADOW_STRUCTURE = [
+  { name: 'Shadow/sm', role: 'elevation', minBlur: 0, maxBlur: 3, isInner: false },
+  { name: 'Shadow/default', role: 'elevation', minBlur: 3, maxBlur: 5, isInner: false },
+  { name: 'Shadow/md', role: 'elevation', minBlur: 5, maxBlur: 10, isInner: false },
+  { name: 'Shadow/lg', role: 'elevation', minBlur: 10, maxBlur: 20, isInner: false },
+  { name: 'Shadow/xl', role: 'elevation', minBlur: 20, maxBlur: 30, isInner: false },
+  { name: 'Shadow/2xl', role: 'elevation', minBlur: 30, maxBlur: 100, isInner: false },
 ];
 
 // === Shadow/Effect Style Mapping Helpers ===
@@ -994,7 +1122,10 @@ async function createBoilerplateInLevel1(
   extractedTokens?: ExtractedDesignTokens,
   primaryFontFamily?: string,
   fontFamilies?: FontFamilyOverrides,
-  useSpectrum: boolean = false
+  useSpectrum: boolean = false,
+  useAppleHIG: boolean = false,
+  useTailwind: boolean = false,
+  useMaterial: boolean = false,
 ): Promise<{ count: number; categories: string[]; skipped: number }> {
   let count = 0;
   let skipped = 0;
@@ -1074,12 +1205,30 @@ async function createBoilerplateInLevel1(
   }
 
   // Select token sets based on organizing principle
-  const activeTypography = useSpectrum ? spectrumTypographyTokens : typographyTokens;
-  const activeSpacing = useSpectrum ? spectrumSpacingTokens : spacingTokens;
-  const activeBorder = useSpectrum ? spectrumBorderTokens : borderTokens;
-  const activeShadow = useSpectrum ? spectrumShadowTokens : shadowTokens;
-  const activeTransition = useSpectrum ? spectrumTransitionTokens : transitionTokens;
-  const activeOpacity = useSpectrum ? spectrumOpacityTokens : opacityTokens;
+  const activeTypography = useAppleHIG ? appleHIGTypographyTokens
+    : useTailwind ? tailwindTypographyTokens
+    : useMaterial ? materialTypographyTokens
+    : useSpectrum ? spectrumTypographyTokens : typographyTokens;
+  const activeSpacing = useAppleHIG ? appleHIGSpacingTokens
+    : useTailwind ? tailwindSpacingTokens
+    : useMaterial ? materialSpacingTokens
+    : useSpectrum ? spectrumSpacingTokens : spacingTokens;
+  const activeBorder = useAppleHIG ? appleHIGBorderTokens
+    : useTailwind ? tailwindBorderTokens
+    : useMaterial ? materialBorderTokens
+    : useSpectrum ? spectrumBorderTokens : borderTokens;
+  const activeShadow = useAppleHIG ? appleHIGShadowTokens
+    : useTailwind ? tailwindShadowTokens
+    : useMaterial ? materialShadowTokens
+    : useSpectrum ? spectrumShadowTokens : shadowTokens;
+  const activeTransition = useAppleHIG ? appleHIGTransitionTokens
+    : useTailwind ? tailwindTransitionTokens
+    : useMaterial ? materialTransitionTokens
+    : useSpectrum ? spectrumTransitionTokens : transitionTokens;
+  const activeOpacity = useAppleHIG ? appleHIGOpacityTokens
+    : useTailwind ? tailwindOpacityTokens
+    : useMaterial ? materialOpacityTokens
+    : useSpectrum ? spectrumOpacityTokens : opacityTokens;
 
   // Create Typography tokens
   const typographyStart = count;
@@ -1180,7 +1329,7 @@ async function createBoilerplateInLevel1(
   skipped += result.skipped;
   if (count > opacityStart) categories.push('opacity');
 
-  // Spectrum-specific: Component Height tokens
+  // Spectrum-specific: Component Height and Z-Index tokens
   if (useSpectrum) {
     const heightStart = count;
     result = await createFromTokens(spectrumComponentHeightTokens.scale, 'Numbers/Component Height', 'componentHeight');
@@ -1188,12 +1337,44 @@ async function createBoilerplateInLevel1(
     skipped += result.skipped;
     if (count > heightStart) categories.push('component-heights');
 
-    // Z-Index tokens
     const zStart = count;
     result = await createFromTokens(spectrumZIndexTokens.layers, 'Numbers/Z-Index', 'zIndex');
     count += result.created;
     skipped += result.skipped;
     if (count > zStart) categories.push('z-index');
+  }
+
+  // Apple HIG-specific: Component Height tokens (iOS touch targets)
+  if (useAppleHIG) {
+    const heightStart = count;
+    result = await createFromTokens(appleHIGComponentHeightTokens.scale, 'Numbers/Component Height', 'componentHeight');
+    count += result.created;
+    skipped += result.skipped;
+    if (count > heightStart) categories.push('component-heights');
+  }
+
+  // Tailwind-specific: Component Height and Z-Index tokens
+  if (useTailwind) {
+    const heightStart = count;
+    result = await createFromTokens(tailwindComponentHeightTokens.scale, 'Numbers/Component Height', 'componentHeight');
+    count += result.created;
+    skipped += result.skipped;
+    if (count > heightStart) categories.push('component-heights');
+
+    const zStart = count;
+    result = await createFromTokens(tailwindZIndexTokens.layers, 'Numbers/Z-Index', 'zIndex');
+    count += result.created;
+    skipped += result.skipped;
+    if (count > zStart) categories.push('z-index');
+  }
+
+  // Material Design 3-specific: Component Height tokens
+  if (useMaterial) {
+    const heightStart = count;
+    result = await createFromTokens(materialComponentHeightTokens.scale, 'Numbers/Component Height', 'componentHeight');
+    count += result.created;
+    skipped += result.skipped;
+    if (count > heightStart) categories.push('component-heights');
   }
 
   return { count, categories, skipped };
@@ -1339,9 +1520,13 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
     // Track color variables for binding: {hex, variable}
     const colorVariablesForBinding: Array<{ hex: string; variable: Variable }> = [];
 
-    // Determine if we're using Spectrum's flat naming (no prefix, lowercase-dash)
+    // Determine which organizing principle we're using
     const isSpectrum = principleName === 'spectrum';
-    const colorPrefix = isSpectrum ? '' : 'Color/';
+    const isAppleHIG = principleName === 'apple-hig';
+    const isTailwind = principleName === 'tailwind';
+    const isMaterial = principleName === 'material-design';
+    const usesFlatNaming = isSpectrum || isAppleHIG;
+    const colorPrefix = usesFlatNaming ? '' : 'Color/';
 
     if (isSpectrum) {
       // === SPECTRUM PRIMITIVES: Flat naming, 14-step scale, 11-step grays ===
@@ -1421,6 +1606,98 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       // Create system colors (white, black) with flat names
       const specSystemColors: Record<string, string> = { white: '#ffffff', black: '#000000' };
       for (const [sysName, sysHex] of Object.entries(specSystemColors)) {
+        const v = await createLevel1ColorVariable(level1, sysName, sysHex, existingLevel1Vars, '');
+        if (v) {
+          if (!existingLevel1Vars.has(v.name)) level1Count++;
+          colorVariablesForBinding.push({ hex: sysHex.toLowerCase(), variable: v });
+        }
+      }
+    } else if (isAppleHIG) {
+      // === APPLE HIG PRIMITIVES: Flat naming, 12 system colors, 6 system grays ===
+      console.log('[DesignSystem] Using Apple HIG naming with system color scales');
+
+      // Create Apple gray scale (11 steps: gray-100 through gray-1100)
+      const appleGrayScale = generateAppleGrayScale();
+      var appleGrayNames = Object.keys(appleGrayScale);
+      for (var i = 0; i < appleGrayNames.length; i++) {
+        var name = appleGrayNames[i];
+        var hex = appleGrayScale[name];
+        const v = await createLevel1ColorVariable(level1, name, hex, existingLevel1Vars, '');
+        if (v) {
+          if (!existingLevel1Vars.has(v.name)) level1Count++;
+          colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+        }
+      }
+
+      // Create named system grays (systemGray through systemGray6) with light-mode values
+      for (const [grayName, grayValues] of Object.entries(APPLE_SYSTEM_GRAYS)) {
+        const v = await createLevel1ColorVariable(level1, grayName, grayValues.light, existingLevel1Vars, '');
+        if (v) {
+          if (!existingLevel1Vars.has(v.name)) level1Count++;
+          colorVariablesForBinding.push({ hex: grayValues.light.toLowerCase(), variable: v });
+        }
+      }
+
+      // Create brand color scale (user's chosen accent, defaults to systemBlue)
+      const appleBrandScale = generateAppleColorScale(payload.brandColors.primary, 'brand');
+      var appleBrandNames = Object.keys(appleBrandScale);
+      for (var i = 0; i < appleBrandNames.length; i++) {
+        var name = appleBrandNames[i];
+        var hex = appleBrandScale[name];
+        const v = await createLevel1ColorVariable(level1, name, hex, existingLevel1Vars, '');
+        if (v) {
+          if (!existingLevel1Vars.has(v.name)) level1Count++;
+          colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+        }
+      }
+
+      // Create all 12 Apple system color scales
+      for (const [colorName, colorHex] of Object.entries(APPLE_SYSTEM_COLORS)) {
+        const colorScale = generateAppleColorScale(colorHex, colorName);
+        var colorScaleNames = Object.keys(colorScale);
+        for (var i = 0; i < colorScaleNames.length; i++) {
+          var name = colorScaleNames[i];
+          var hex = colorScale[name];
+          const v = await createLevel1ColorVariable(level1, name, hex, existingLevel1Vars, '');
+          if (v) {
+            if (!existingLevel1Vars.has(v.name)) level1Count++;
+            colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+          }
+        }
+      }
+
+      // Create secondary/tertiary scales if provided
+      if (payload.brandColors.secondary) {
+        const secondaryScale = generateAppleColorScale(payload.brandColors.secondary, 'secondary');
+        var secondaryNames = Object.keys(secondaryScale);
+        for (var i = 0; i < secondaryNames.length; i++) {
+          var name = secondaryNames[i];
+          var hex = secondaryScale[name];
+          const v = await createLevel1ColorVariable(level1, name, hex, existingLevel1Vars, '');
+          if (v) {
+            if (!existingLevel1Vars.has(v.name)) level1Count++;
+            colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+          }
+        }
+      }
+
+      if (payload.brandColors.tertiary) {
+        const tertiaryScale = generateAppleColorScale(payload.brandColors.tertiary, 'tertiary');
+        var tertiaryNames = Object.keys(tertiaryScale);
+        for (var i = 0; i < tertiaryNames.length; i++) {
+          var name = tertiaryNames[i];
+          var hex = tertiaryScale[name];
+          const v = await createLevel1ColorVariable(level1, name, hex, existingLevel1Vars, '');
+          if (v) {
+            if (!existingLevel1Vars.has(v.name)) level1Count++;
+            colorVariablesForBinding.push({ hex: hex.toLowerCase(), variable: v });
+          }
+        }
+      }
+
+      // Create system colors (white, black) with flat names
+      const appleSystemColors: Record<string, string> = { white: '#ffffff', black: '#000000' };
+      for (const [sysName, sysHex] of Object.entries(appleSystemColors)) {
         const v = await createLevel1ColorVariable(level1, sysName, sysHex, existingLevel1Vars, '');
         if (v) {
           if (!existingLevel1Vars.has(v.name)) level1Count++;
@@ -1676,8 +1953,8 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
 
       if (created || collectionCount === 0) {
         // Get templates using the specified getter function
-        // Spectrum uses lowercase flat names; others use PascalCase
-        const brandNameForTemplates = isSpectrum ? 'brand' : 'Brand';
+        // Spectrum/Apple HIG use lowercase flat names; others use PascalCase
+        const brandNameForTemplates = (isSpectrum || isAppleHIG) ? 'brand' : 'Brand';
         const templates = getTemplatesByName(templateGetterName, brandNameForTemplates);
 
         for (let ti = 0; ti < templates.length; ti++) {
@@ -1779,7 +2056,10 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         payload.extractedTokens,
         boilerplatePrimaryFont, // Backward compatibility
         fontFamilyOverrides,
-        isSpectrum
+        isSpectrum,
+        isAppleHIG,
+        isTailwind,
+        isMaterial
       );
       results.collections[primitivesConfig.name].variableCount += boilerplateResults.count;
       results.totalVariables += boilerplateResults.count;
@@ -1918,7 +2198,7 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       // Spectrum uses flat naming (heading-xxl, body-m, detail-s, code-m)
       let mappedStyles: MappedTypographyStyle[];
       if (payload.extractedTokens?.typography?.fontSize?.length) {
-        const mapFn = isSpectrum ? mapExtractedTypographySpectrum : mapExtractedTypography;
+        const mapFn = (isSpectrum || isAppleHIG || isTailwind || isMaterial) ? mapExtractedTypographySpectrum : mapExtractedTypography;
         mappedStyles = mapFn(
           payload.extractedTokens.typography.fontSize,
           payload.extractedTokens.typography.lineHeight || [],
@@ -1929,7 +2209,10 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         console.log(`[DesignSystem] Created ${mappedStyles.length} text styles from ${payload.extractedTokens.typography.fontSize.length} extracted font sizes (${isSpectrum ? 'Spectrum naming' : 'standard naming'})`);
       } else if (includeBoilerplate) {
         // No extracted tokens but boilerplate requested - use defaults
-        const defaultStyles = isSpectrum ? SPECTRUM_DEFAULT_TYPOGRAPHY_STYLES : DEFAULT_TYPOGRAPHY_STYLES;
+        const defaultStyles = isAppleHIG ? APPLE_HIG_DEFAULT_TYPOGRAPHY_STYLES
+          : isTailwind ? TAILWIND_DEFAULT_TYPOGRAPHY_STYLES
+          : isMaterial ? MATERIAL_DEFAULT_TYPOGRAPHY_STYLES
+          : isSpectrum ? SPECTRUM_DEFAULT_TYPOGRAPHY_STYLES : DEFAULT_TYPOGRAPHY_STYLES;
         mappedStyles = defaultStyles.map(style => ({
           name: style.name,
           fontSize: style.fontSize,
@@ -1949,8 +2232,45 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       // Convert mapped styles to the format expected by style creation
       // Include variable binding names based on the values
       const stylesToCreate = mappedStyles.map(mapped => {
-        // Spectrum uses flat numeric naming (font-size-100); standard uses t-shirt sizing (Size-Base)
-        const sizeVarMap: Record<number, string> = isSpectrum ? {
+        // Spectrum/Apple HIG use flat naming; standard uses t-shirt sizing
+        const sizeVarMap: Record<number, string> = isAppleHIG ? {
+          11: 'font-size-caption2',
+          12: 'font-size-caption1',
+          13: 'font-size-footnote',
+          15: 'font-size-subheadline',
+          16: 'font-size-callout',
+          17: 'font-size-body',
+          20: 'font-size-title3',
+          22: 'font-size-title2',
+          28: 'font-size-title1',
+          34: 'font-size-largeTitle',
+        } : isTailwind ? {
+          12: 'font-size-xs',
+          14: 'font-size-sm',
+          16: 'font-size-base',
+          18: 'font-size-lg',
+          20: 'font-size-xl',
+          24: 'font-size-2xl',
+          30: 'font-size-3xl',
+          36: 'font-size-4xl',
+          48: 'font-size-5xl',
+          60: 'font-size-6xl',
+          72: 'font-size-7xl',
+          96: 'font-size-8xl',
+          128: 'font-size-9xl',
+        } : isMaterial ? {
+          11: 'font-size-label-small',
+          12: 'font-size-body-small',
+          14: 'font-size-body-medium',
+          16: 'font-size-body-large',
+          22: 'font-size-title-large',
+          24: 'font-size-headline-small',
+          28: 'font-size-headline-medium',
+          32: 'font-size-headline-large',
+          36: 'font-size-display-small',
+          45: 'font-size-display-medium',
+          57: 'font-size-display-large',
+        } : isSpectrum ? {
           11: 'font-size-50',
           12: 'font-size-75',
           14: 'font-size-100',
@@ -1995,7 +2315,7 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         }
 
         // Map font weight to variable name format
-        const weightVarMap: Record<string, string> = isSpectrum ? {
+        const weightVarMap: Record<string, string> = (isSpectrum || isAppleHIG || isTailwind || isMaterial) ? {
           'Regular': 'font-weight-regular',
           'Medium': 'font-weight-medium',
           'SemiBold': 'font-weight-bold',
@@ -2016,14 +2336,14 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
           'ExtraBold': 'Weight-ExtraBold',
           'Black': 'Weight-Black',
         };
-        const weightVarName = isSpectrum
+        const weightVarName = (isSpectrum || isAppleHIG || isTailwind || isMaterial)
           ? (weightVarMap[mapped.fontWeight] || 'font-weight-regular')
           : (weightVarMap[mapped.fontWeight] || 'Weight-Regular');
 
         // Determine font family variable — code styles use mono font
         // Spectrum uses flat naming (font-family-mono); standard uses grouped (Font-Mono)
         const isCodeStyle = mapped.name.startsWith('code-');
-        const fontFamilyVarName = isSpectrum
+        const fontFamilyVarName = (isSpectrum || isAppleHIG || isTailwind || isMaterial)
           ? (isCodeStyle ? 'Typography/Font Family/font-family-mono' : 'Typography/Font Family/font-family-sans')
           : (isCodeStyle ? 'Typography/Font Family/Font-Mono' : 'Typography/Font Family/Font-Sans');
 
@@ -2032,7 +2352,7 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
           fontFamily: mapped.fontFamily,
           fontStyle: mapped.fontWeight === 'SemiBold' ? 'Semi Bold' : mapped.fontWeight,
           fontSize: mapped.fontSize,
-          lineHeight: mapped.lineHeight || Math.round(mapped.fontSize * (isSpectrum ? 1.3 : 1.4)),
+          lineHeight: mapped.lineHeight || Math.round(mapped.fontSize * ((isSpectrum || isAppleHIG || isTailwind || isMaterial) ? 1.3 : 1.4)),
           letterSpacing: mapped.letterSpacing,
           isExtracted: mapped.isExtracted,
           nodeIds: mapped.nodeIds || [], // Node IDs for binding
@@ -2389,7 +2709,10 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       const extractedShadows = payload.extractedTokens?.effects?.shadows || [];
       if (extractedShadows.length > 0) {
         const groupedShadows = processExtractedShadows(extractedShadows);
-        const mappedStyles = mapExtractedShadowsToStructure(groupedShadows, isSpectrum ? SPECTRUM_SHADOW_STRUCTURE : SHADOW_STRUCTURE);
+        const mappedStyles = mapExtractedShadowsToStructure(groupedShadows, isAppleHIG ? APPLE_HIG_SHADOW_STRUCTURE
+          : isTailwind ? TAILWIND_SHADOW_STRUCTURE
+          : isMaterial ? MATERIAL_SHADOW_STRUCTURE
+          : isSpectrum ? SPECTRUM_SHADOW_STRUCTURE : SHADOW_STRUCTURE);
 
         console.log(`[DesignSystem] Mapped ${mappedStyles.length} extracted shadows to effect style structure`);
 
@@ -2454,7 +2777,10 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       if (includeBoilerplate) {
         console.log(`[DesignSystem] Adding boilerplate for gaps. ${filledStructureSlots.size} slots filled by extraction.`);
 
-        const activeEffectStyleDefs = isSpectrum ? spectrumEffectStyleDefinitions : effectStyleDefinitions;
+        const activeEffectStyleDefs = isAppleHIG ? appleHIGEffectStyleDefinitions
+          : isTailwind ? tailwindEffectStyleDefinitions
+          : isMaterial ? materialEffectStyleDefinitions
+          : isSpectrum ? spectrumEffectStyleDefinitions : effectStyleDefinitions;
         for (const styleDef of activeEffectStyleDefs) {
           // Skip if already exists (from file, payload, or filled by extracted)
           if (existingNames.has(styleDef.name) || filledStructureSlots.has(styleDef.name)) {
@@ -2633,7 +2959,10 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
 
           // Mark this slot as covered so boilerplate doesn't duplicate
           // Check if it matches a boilerplate name pattern
-          const activeGridStyleDefs = isSpectrum ? spectrumGridStyleDefinitions : gridStyleDefinitions;
+          const activeGridStyleDefs = isAppleHIG ? appleHIGGridStyleDefinitions
+            : isTailwind ? tailwindGridStyleDefinitions
+            : isMaterial ? materialGridStyleDefinitions
+            : isSpectrum ? spectrumGridStyleDefinitions : gridStyleDefinitions;
           for (const boilerplate of activeGridStyleDefs) {
             if (name.toLowerCase().includes(boilerplate.name.toLowerCase().replace('Grid/', ''))) {
               coveredSlots.add(boilerplate.name);
@@ -2656,7 +2985,10 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       if (includeBoilerplate) {
         console.log(`[DesignSystem] Adding boilerplate grid styles for gaps. ${coveredSlots.size} slots covered by existing.`);
 
-        const activeGridBoilerplate = isSpectrum ? spectrumGridStyleDefinitions : gridStyleDefinitions;
+        const activeGridBoilerplate = isAppleHIG ? appleHIGGridStyleDefinitions
+          : isTailwind ? tailwindGridStyleDefinitions
+          : isMaterial ? materialGridStyleDefinitions
+          : isSpectrum ? spectrumGridStyleDefinitions : gridStyleDefinitions;
         for (const styleDef of activeGridBoilerplate) {
           // Skip if already exists or covered by extracted
           if (existingNames.has(styleDef.name) || coveredSlots.has(styleDef.name)) {

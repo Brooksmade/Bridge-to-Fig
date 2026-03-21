@@ -12,7 +12,8 @@ export type OrganizingPrincipleName =
   | 'two-level'        // Flat: Primitives → Tokens
   | 'material-design'  // Google M3: Reference → System → Component
   | 'tailwind'         // Utility-first: Colors → Semantic
-  | 'spectrum';        // Adobe Spectrum: Global → Alias → Component → System
+  | 'spectrum'         // Adobe Spectrum: Global → Alias → Component → System
+  | 'apple-hig';       // Apple HIG: System Palette → Dynamic Colors → Component Tokens
 
 /**
  * Configuration for a single collection within an organizing principle
@@ -229,6 +230,36 @@ export const ORGANIZING_PRINCIPLES: Record<OrganizingPrincipleName, OrganizingPr
       1: 'getSpectrumAliasTemplates',
       2: 'getSpectrumComponentTemplates',
       3: 'getSpectrumSystemTemplates',
+    },
+  },
+  'apple-hig': {
+    name: 'apple-hig',
+    displayName: 'Apple Human Interface Guidelines',
+    description: 'Apple HIG token architecture with system palette primitives, dynamic semantic colors, and component tokens. Uses iOS/macOS naming conventions with light/dark mode support.',
+    bestFor: 'iOS/macOS apps, SwiftUI projects, Apple platform design',
+    collections: [
+      {
+        name: 'System Palette',
+        modes: ['Value'],
+        description: 'Apple system color primitives (12 system colors, 6 system grays, typography, spacing)',
+        minVariableCount: 50,
+      },
+      {
+        name: 'Dynamic Colors',
+        modes: ['Light', 'Dark'],
+        description: 'iOS/macOS semantic colors (backgrounds, labels, fills, separators, grouped backgrounds)',
+        minVariableCount: 20,
+      },
+      {
+        name: 'Component Tokens',
+        modes: ['Light', 'Dark'],
+        description: 'Component-scoped tokens for buttons, navigation bars, tab bars, alerts, sheets',
+        minVariableCount: 15,
+      },
+    ],
+    templateGetters: {
+      1: 'getAppleHIGDynamicTemplates',
+      2: 'getAppleHIGComponentTemplates',
     },
   },
 };
