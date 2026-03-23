@@ -1981,13 +1981,17 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       const genericFonts = ['sans-serif', 'serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-sans-serif', 'ui-serif', 'ui-monospace'];
 
       // Helper to check if font is a sans-serif type font
+      // NOTE: Only match known sans patterns — do NOT use a catch-all fallback.
+      // Unknown fonts should be classified by elimination (not sans, not mono → try serif → else unclassified)
       const isSansFont = (font: string) => {
         const lower = font.toLowerCase();
         return lower.includes('sans') || lower.includes('arial') || lower.includes('helvetica') ||
                lower.includes('inter') || lower.includes('roboto') || lower.includes('geist') ||
                lower.includes('grotesk') || lower.includes('gothic') || lower.includes('neue') ||
-               !lower.includes('serif') && !lower.includes('mono') && !lower.includes('code') &&
-               !lower.includes('courier') && !lower.includes('consolas');
+               lower.includes('poppins') || lower.includes('open sans') || lower.includes('lato') ||
+               lower.includes('montserrat') || lower.includes('nunito') || lower.includes('raleway') ||
+               lower.includes('manrope') || lower.includes('dm sans') || lower.includes('work sans') ||
+               lower.includes('plus jakarta') || lower.includes('outfit') || lower.includes('figtree');
       };
 
       // Helper to check if font is a serif type font
@@ -1995,7 +1999,12 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         const lower = font.toLowerCase();
         return (lower.includes('serif') && !lower.includes('sans')) ||
                lower.includes('times') || lower.includes('georgia') || lower.includes('palatino') ||
-               lower.includes('garamond') || lower.includes('baskerville') || lower.includes('minion');
+               lower.includes('garamond') || lower.includes('baskerville') || lower.includes('minion') ||
+               lower.includes('newsreader') || lower.includes('merriweather') || lower.includes('lora') ||
+               lower.includes('playfair') || lower.includes('libre baskerville') || lower.includes('noto serif') ||
+               lower.includes('source serif') || lower.includes('dm serif') || lower.includes('bitter') ||
+               lower.includes('crimson') || lower.includes('literata') || lower.includes('vollkorn') ||
+               lower.includes('spectral') || lower.includes('cormorant') || lower.includes('alegreya');
       };
 
       // Helper to check if font is a monospace type font
@@ -2027,6 +2036,7 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       let boilerplateSerifFont: string | undefined;
       let boilerplateMonoFont: string | undefined;
 
+      const unclassifiedFonts: string[] = [];
       for (const font of allFonts) {
         if (!boilerplatePrimaryFont && isSansFont(font)) {
           boilerplatePrimaryFont = font;
@@ -2037,6 +2047,19 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         } else if (!boilerplateMonoFont && isMonoFont(font)) {
           boilerplateMonoFont = font;
           console.log(`[DesignSystem] Using "${font}" for Font-Mono`);
+        } else {
+          unclassifiedFonts.push(font);
+        }
+      }
+
+      // Assign unclassified fonts to empty slots (prefer serif, then sans)
+      for (const font of unclassifiedFonts) {
+        if (!boilerplateSerifFont) {
+          boilerplateSerifFont = font;
+          console.log(`[DesignSystem] Using unclassified "${font}" for Font-Serif`);
+        } else if (!boilerplatePrimaryFont) {
+          boilerplatePrimaryFont = font;
+          console.log(`[DesignSystem] Using unclassified "${font}" for Font-Sans`);
         }
       }
 
