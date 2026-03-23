@@ -670,6 +670,32 @@ Given: 3 project cards (1:663, 1:701, 1:739) in container 1:662.
 
 ---
 
+## HARD RULES
+
+These rules are non-negotiable. Every script MUST follow them.
+
+1. **ALWAYS `widen_texts_to_parent()` on every master component immediately after creation.** Set every text node's width to its parent container's full width. The `max_len * N` pixel estimate DOES NOT WORK — font sizes vary. Use parent width.
+
+2. **ALWAYS `saveVersion` before any batch operation.** If something breaks, `triggerUndo` repeatedly to restore.
+
+3. **NEVER stack elements.** Check for existing content before creating. Use layout cursor on Components page. Delete old content before rebuilding.
+
+4. **NEVER replace originals without reading content first.** Use `get_all_texts()` recursive children walk. Map by tree position with `zip()`. Use `textNodeId` not `textNodeName`.
+
+5. **ALWAYS `setPage` before `createComponent`.** Figma selects the new component — must be on the same page.
+
+6. **Clone of COMPONENT = COMPONENT.** Don't call `createComponent` on it — just `renameNode`.
+
+7. **Structural diffs need variants, not overrides.** Active vs inactive links = component set with `state=active` / `state=default`. Use `swapInstance` to switch.
+
+8. **Flag non-text diffs (icons, images, colors) during content audit.** Document which need manual fix vs instance swap property vs fill override.
+
+9. **Use `shapeType` not `shape` for FigJam shapes.** Wrong field name silently defaults to ELLIPSE.
+
+10. **Process replacements ONE AT A TIME.** Never batch. Verify each before proceeding.
+
+---
+
 ## Knowledge Base
 
 For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
