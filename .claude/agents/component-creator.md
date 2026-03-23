@@ -28,6 +28,8 @@ Bridge server: http://localhost:4001
 
 ## Core Workflow
 
+The original design frame stays intact throughout. Masters live on the Components page from the start.
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  1. DISCOVER — Identify elements to componentize        │
@@ -37,37 +39,41 @@ Bridge server: http://localhost:4001
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────┐
-│  2. CONVERT — Turn frames into components               │
-│     createComponent with nodeId (converts in place)     │
-│     Rename to follow naming conventions                 │
+│  2. COPY — Clone element to Components page             │
+│     clone the target frame                              │
+│     reparent the clone to Components page               │
+│     Original stays untouched in the design              │
 └──────────────────────┬──────────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────┐
-│  3. VARIANT — Create state variations                   │
-│     addVariant with sourceVariantId (clone + modify)    │
-│     Modify fills, strokes, opacity for each state       │
+│  3. CONVERT — Turn the copy into a component            │
+│     createComponent with nodeId on the COPY             │
+│     Rename to state=default for variant detection       │
 └──────────────────────┬──────────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────┐
-│  4. COMBINE — Group into component set                  │
-│     createComponentSet with componentIds                │
+│  4. VARIANT — Create state variations                   │
+│     clone the component for each additional state       │
+│     Rename clones (state=hover, state=disabled, etc.)   │
+│     Modify fills, strokes, opacity per state            │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│  5. COMBINE — Group into component set                  │
+│     createComponentSet with all variant componentIds    │
 │     Name the set (e.g., "Navigation / CTAButton")       │
+│     Add component properties (text, boolean, etc.)      │
 └──────────────────────┬──────────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────┐
-│  5. ORGANIZE — Move master to Components page           │
-│     reparent component set to Components page           │
-│     Lay out neatly on the page                          │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────┐
-│  6. INSTANCE — Place instance back in design            │
-│     createInstance with parent (original frame)         │
-│     Position where the original was                     │
+│  6. INSTANCE — Replace original with instance           │
+│     createInstance in the original's parent frame       │
+│     Delete the original frame from the design           │
+│     Verify the instance matches the original layout     │
 └──────────────────────┬──────────────────────────────────┘
                        │
                        ▼
@@ -109,27 +115,48 @@ Bridge server: http://localhost:4001
 | Molecule | Button, Input, Chip, NavLink | Small group of atoms working together |
 | Organism | Card, Header, NavBar, Form | Complex group of molecules |
 
-### Step 2: CONVERT
+### Step 2: COPY
 
-Convert an existing frame to a component **in place**:
+Clone the element and move the copy to the Components page:
+
+```json
+// Clone the element
+{"type": "clone", "target": "FRAME_ID"}
+// Returns: nodeIds: ["CLONE_ID"]
+
+// Move clone to Components page
+{"type": "reparent", "target": "CLONE_ID", "payload": {
+  "newParent": "COMPONENTS_PAGE_ID"
+}}
+```
+
+**Key points:**
+- `clone` creates an exact copy next to the original
+- `reparent` moves it to the Components page
+- The original design frame is never touched
+- Now you have a copy on the Components page ready to convert
+
+### Step 3: CONVERT
+
+Convert the **copy** (on the Components page) to a component:
 
 ```json
 {
   "type": "createComponent",
   "payload": {
-    "nodeId": "FRAME_ID",
-    "name": "Navigation / CTAButton"
+    "nodeId": "CLONE_ID",
+    "name": "state=default"
   }
 }
 ```
 
 **Key points:**
-- `nodeId` converts the existing frame — keeps all children, styles, position
-- `name` follows the `/` hierarchy convention
-- The original frame is replaced by the component in the same position
-- Parent frame now contains a COMPONENT instead of a FRAME
+- `nodeId` converts the copy — keeps all children, styles
+- Name it `state=default` so Figma auto-detects variant properties when combining
+- The copy on Components page is now a COMPONENT
+- The original in the design frame is still a plain FRAME
 
-**Naming convention:**
+**Naming convention for the component set (applied in Step 5):**
 ```
 [Category] / [Name]                    → Navigation / CTAButton
 [Category] / [Name] / [Subcategory]    → Form / Input / Text
@@ -219,19 +246,21 @@ state=hover       → Adds value "hover" to "state" property
 state=disabled    → Adds value "disabled" to "state" property
 ```
 
-### Step 5: ORGANIZE
+### Step 5: COMBINE
 
-Create a Components page (if it doesn't exist) and move the component set there:
+The component set is already on the Components page (since the copies were made there).
 
 ```json
-// Create page (skip if exists)
-{"type": "createPage", "payload": {"name": "Components"}}
-
-// Move component set to Components page
-{"type": "reparent", "target": "COMPONENT_SET_ID", "payload": {
-  "newParent": "COMPONENTS_PAGE_ID"
-}}
+{
+  "type": "createComponentSet",
+  "payload": {
+    "componentIds": ["COMP_DEFAULT_ID", "COMP_HOVER_ID", "COMP_DISABLED_ID", "COMP_FOCUS_ID"],
+    "name": "Navigation / CTAButton"
+  }
+}
 ```
+
+No reparenting needed — the masters were built on the Components page from the start.
 
 **Layout on Components page:**
 - Position component sets with enough space between them
@@ -240,9 +269,11 @@ Create a Components page (if it doesn't exist) and move the component set there:
 
 ### Step 6: INSTANCE
 
-Place an instance of the component back where the original was:
+Replace the original frame in the design with an instance:
 
 ```json
+// First, note the original's position and parent
+// Then create the instance in the same parent
 {
   "type": "createInstance",
   "payload": {
@@ -252,6 +283,9 @@ Place an instance of the component back where the original was:
     "y": 0
   }
 }
+
+// Delete the original frame (it's been replaced by the instance)
+{"type": "delete", "target": "ORIGINAL_FRAME_ID"}
 ```
 
 **Key points:**
@@ -259,6 +293,7 @@ Place an instance of the component back where the original was:
 - COMPONENT_SET uses the default variant (top-left)
 - `parent` places it inside the design frame
 - Adjust x/y to match original position within parent
+- Delete the original frame AFTER creating the instance
 - The design frame now uses an INSTANCE linked to the master
 
 ### Step 7: BIND
@@ -329,48 +364,45 @@ Then link child nodes to properties:
 
 ## Example: Converting a Dashboard Button
 
-```python
-# 1. DISCOVER - Examine the button
-#    Node 1:805 is a "Button" frame with "Create Mode" text
-#    It's a molecule (text inside styled frame)
+```
+Given: Node 1:805 is a "Button" frame with "Create Mode" text inside 1:804.
+       Components page exists at 2:371.
 
-# 2. CONVERT - Turn it into a component
-{"type": "createComponent", "payload": {
-  "nodeId": "1:805",
-  "name": "Navigation / CTAButton / state=default"
-}}
-# Returns: nodeId "2:370" (now a COMPONENT in place)
+# 1. DISCOVER
+#    Query 1:805 deep → it's a molecule (styled frame with text child)
+#    Parent is 1:804, position x=3, y=0
 
-# 3. VARIANT - Clone for hover state
-#    First we need a second component to make a set.
-#    Clone the component, then modify for hover:
-{"type": "addVariant", "payload": {
-  "componentSetId": "...",  # after combining
-  "name": "state=hover",
-  "sourceVariantId": "2:370"
-}}
-# Modify the hover variant's fill color
+# 2. COPY — Clone to Components page
+{"type": "clone", "target": "1:805"}
+# Returns: nodeIds: ["CLONE_ID"]
+{"type": "reparent", "target": "CLONE_ID", "payload": {"newParent": "2:371"}}
 
-# 4. COMBINE - Create component set
+# 3. CONVERT — Make the copy a component
+{"type": "createComponent", "payload": {"nodeId": "CLONE_ID", "name": "state=default"}}
+# Returns: nodeId "COMP_DEFAULT"
+
+# 4. VARIANT — Clone + modify for each state
+{"type": "clone", "target": "COMP_DEFAULT"}  → rename "state=hover", darken fill
+{"type": "clone", "target": "COMP_DEFAULT"}  → rename "state=active", darken more
+{"type": "clone", "target": "COMP_DEFAULT"}  → rename "state=disabled", opacity 0.4
+{"type": "clone", "target": "COMP_DEFAULT"}  → rename "state=focus", add focus ring
+
+# 5. COMBINE — Group into component set
 {"type": "createComponentSet", "payload": {
-  "componentIds": ["2:370", "HOVER_ID"],
+  "componentIds": ["COMP_DEFAULT", "HOVER", "ACTIVE", "DISABLED", "FOCUS"],
   "name": "Navigation / CTAButton"
 }}
+# Already on Components page — no reparenting needed
 
-# 5. ORGANIZE - Move to Components page
-{"type": "reparent", "target": "COMPONENT_SET_ID", "payload": {
-  "newParent": "COMPONENTS_PAGE_ID"
-}}
-
-# 6. INSTANCE - Place instance back in dashboard header
+# 6. INSTANCE — Replace original in design
 {"type": "createInstance", "payload": {
-  "componentId": "COMPONENT_SET_ID",
-  "parent": "1:804"  # original parent frame
+  "componentId": "COMPONENT_SET_ID", "parent": "1:804", "x": 3, "y": 0
 }}
+{"type": "delete", "target": "1:805"}  # remove original frame
 
-# 7. BIND - Connect to design system
+# 7. BIND — on the MASTER component
 {"type": "bindFillVariable", "payload": {
-  "nodeId": "2:370", "variableId": "VariableID:Theme/Interactive/Default"
+  "nodeId": "COMP_DEFAULT", "variableId": "VariableID:Theme/Interactive/Default"
 }}
 ```
 

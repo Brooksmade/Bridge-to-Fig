@@ -12,11 +12,11 @@ Components should be **converted from existing design frames**, not built from s
 
 ```
 1. DISCOVER  — Identify elements to componentize in the design frame
-2. CONVERT   — createComponent with nodeId (converts frame in place)
-3. VARIANT   — addVariant + modify for each state (hover, disabled, focus...)
-4. COMBINE   — createComponentSet to group variants
-5. ORGANIZE  — reparent master to Components page
-6. INSTANCE  — createInstance back in the design frame
+2. COPY      — Clone element to Components page (original stays untouched)
+3. CONVERT   — createComponent with nodeId on the COPY
+4. VARIANT   — Clone + modify for each state (hover, disabled, focus...)
+5. COMBINE   — createComponentSet to group variants (already on Components page)
+6. INSTANCE  — createInstance in original's parent, delete original frame
 7. BIND      — Bind design system variables on the MASTER component
 ```
 
