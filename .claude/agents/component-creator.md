@@ -257,6 +257,41 @@ Add component properties for consumer customization.
 
 ---
 
+## Components Page Layout
+
+When placing masters on the Components page, **never stack at (0,0)**. Track a layout cursor and position each component with spacing.
+
+```python
+# Layout cursor for Components page
+layout_x = 0
+layout_y = 0
+ROW_HEIGHT = 0
+COL_GAP = 80
+ROW_GAP = 120
+MAX_ROW_WIDTH = 2000
+
+def place_component(comp_id, width, height):
+    """Position a component on the Components page and advance the cursor"""
+    global layout_x, layout_y, ROW_HEIGHT
+
+    # Wrap to next row if too wide
+    if layout_x + width > MAX_ROW_WIDTH and layout_x > 0:
+        layout_x = 0
+        layout_y += ROW_HEIGHT + ROW_GAP
+        ROW_HEIGHT = 0
+
+    send({"type": "modify", "target": comp_id, "payload": {
+        "properties": {"x": layout_x, "y": layout_y}
+    }})
+
+    ROW_HEIGHT = max(ROW_HEIGHT, height)
+    layout_x += width + COL_GAP
+```
+
+Call `place_component()` after each `createComponent` on the Components page.
+
+---
+
 ## Step 0: CHECKPOINT
 
 **ALWAYS save a version before any modifications.** This is your undo safety net.
