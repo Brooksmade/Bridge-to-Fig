@@ -31,6 +31,7 @@ Bridge server: http://localhost:4001
 The original design frame stays intact throughout. Masters live on the Components page from the start. Variables are bound on the default BEFORE creating variants so bindings carry over to clones.
 
 ```
+0. CHECKPOINT   → saveVersion before ANY modifications
 1. DISCOVER     → Identify elements, check design system, check Components page
 2. COPY         → Clone element to Components page (original untouched)
 3. CONVERT      → createComponent on the copy, rename state=default
@@ -38,7 +39,14 @@ The original design frame stays intact throughout. Masters live on the Component
 5. VARIANTS     → Clone default (bindings carry), convert, rename, rebind per state
 6. COMBINE      → createComponentSet with all variant IDs
 7. PROPERTIES   → Add text, boolean, instance swap properties
-8. INSTANCE     → Replace original with instance, delete original
+8. INSTANCE     → Replace ALL originals with instances, ONE AT A TIME:
+                  a. Read all text content from original (deep query)
+                  b. Note position and index in parent
+                  c. Create instance at same position
+                  d. Apply text overrides (editInstanceText for each text node)
+                  e. Verify instance matches original
+                  f. Delete original
+                  g. Repeat for each instance of this element
 ```
 
 ### Decision Gates
@@ -249,92 +257,166 @@ Add component properties for consumer customization.
 
 ---
 
-## Step 8: INSTANCE
+## Step 0: CHECKPOINT
 
-Replace the original frame in the design with an instance of the component.
+**ALWAYS save a version before any modifications.** This is your undo safety net.
 
 ```json
-// Note original's position and parent first
-// Then create the instance in the same parent
-{"type": "createInstance", "payload": {
-  "componentId": "COMPONENT_SET_ID",
-  "parent": "ORIGINAL_PARENT_FRAME_ID",
-  "x": 3, "y": 0
+{"type": "saveVersion", "payload": {
+  "title": "Pre-component: [component name]",
+  "description": "Checkpoint before creating [component name] component"
 }}
-
-// Delete the original frame (replaced by the instance)
-{"type": "delete", "target": "ORIGINAL_FRAME_ID"}
 ```
 
-**Key points:**
-- COMPONENT_SET uses the default variant (top-left)
-- `parent` places it inside the design frame
-- Match x/y to the original's position within its parent
-- Delete the original AFTER confirming the instance looks correct
+If anything goes wrong, use `triggerUndo` repeatedly to restore, or the user can restore from version history in Figma.
 
 ---
 
-## Example: Converting a Dashboard Button
+## Step 8: INSTANCE (Safe Replacement)
+
+Replace ALL originals with instances, **one at a time**, preserving unique content.
+
+**CRITICAL: For elements that repeat (e.g., 3 project cards with different data), each original has unique text/images. You MUST read and re-apply this content as overrides on the instance.**
+
+### For each original element:
+
+```json
+// 8a. READ all text content from the original (deep query)
+{"type": "query", "target": "ORIGINAL_ID", "payload": {"queryType": "deep"}}
+// Walk the tree and collect: [{nodeId, name, characters}, ...] for every TEXT node
+
+// 8b. NOTE position and parent
+// Record: parent ID, x, y, index in parent's children array
+
+// 8c. CREATE instance in the same parent
+{"type": "createInstance", "payload": {
+  "componentId": "COMPONENT_ID",
+  "parent": "PARENT_ID",
+  "x": ORIGINAL_X, "y": ORIGINAL_Y
+}}
+
+// 8d. APPLY text overrides — for each text node that differs from the master
+{"type": "editInstanceText", "payload": {
+  "instanceId": "INSTANCE_ID",
+  "textNodeName": "Text",
+  "characters": "Enterprise Onboarding"
+}}
+// Repeat for every text node with unique content
+
+// 8e. VERIFY — screenshot and compare (optional but recommended)
+
+// 8f. DELETE original
+{"type": "delete", "target": "ORIGINAL_ID"}
+```
+
+### Text Override Collection Pattern
+
+```python
+def collect_texts(node):
+    """Recursively collect all text nodes and their content"""
+    texts = []
+    if node.get("type") == "TEXT":
+        texts.append({
+            "name": node.get("name"),
+            "characters": node.get("characters"),
+        })
+    for child in node.get("children", []):
+        texts.extend(collect_texts(child))
+    return texts
+
+# Read original's texts BEFORE deleting
+_, deep = send({"type": "query", "target": original_id, "payload": {"queryType": "deep"}})
+original_texts = collect_texts(deep["data"])
+
+# After creating instance, apply each text override
+for text in original_texts:
+    send({"type": "editInstanceText", "payload": {
+        "instanceId": instance_id,
+        "textNodeName": text["name"],
+        "characters": text["characters"]
+    }})
+```
+
+**Key rules:**
+- Process ONE element at a time — do not batch
+- Read content BEFORE creating instance
+- Apply ALL text overrides before deleting original
+- Verify each replacement visually if possible
+- If something looks wrong, `triggerUndo` and investigate
+
+---
+
+## Example: Converting Dashboard Project Cards
 
 ```
-Given: Node 1:805 is a "Button" frame with "Create Mode" text inside 1:804.
-       Components page exists at 2:371.
+Given: 3 project cards (1:663, 1:701, 1:739) in container 1:662.
+       Each has unique: project title, description, client name, persona count, date.
+
+# 0. CHECKPOINT
+{"type": "saveVersion", "payload": {"title": "Pre-component: ProjectCard"}}
 
 # 1. DISCOVER
-#    Query 1:805 deep → molecule (styled frame with text child)
-#    getDesignSystemStatus → ready (4-level system exists)
-#    Parent is 1:804, position x=3, y=0
+#    Query 1:663 deep → organism (card with header, body, footer, button)
+#    All 3 cards share same structure but different text content
 
-# 2. COPY
-{"type": "clone", "target": "1:805"}           → CLONE_ID
-{"type": "reparent", "target": "CLONE_ID", "payload": {"newParent": "2:371"}}
+# 2. COPY (use first card as source)
+{"type": "clone", "target": "1:663"}           → CLONE_ID
+{"type": "reparent", "target": "CLONE_ID", "payload": {"newParent": "COMP_PAGE"}}
 
 # 3. CONVERT
-{"type": "createComponent", "payload": {"nodeId": "CLONE_ID", "name": "state=default"}}
-                                                → COMP_DEFAULT
+{"type": "createComponent", "payload": {"nodeId": "CLONE_ID", "name": "Cards / ProjectCard"}}
 
-# 4. BIND (default)
-{"type": "bindFillVariable", "payload": {
-  "nodeId": "COMP_DEFAULT", "variableId": "VariableID:Theme/Interactive/Default"
-}}
-{"type": "bindFillVariable", "payload": {
-  "nodeId": "TEXT_CHILD", "variableId": "VariableID:Theme/Foreground/On-Brand"
-}}
+# 4. BIND
+#    Bind card background, text colors, border colors to variables
 
-# 5. VARIANTS (clone carries bindings, only rebind what changes)
-clone COMP_DEFAULT → rename "state=hover"    → rebind fill to Interactive/Hover
-clone COMP_DEFAULT → rename "state=active"   → rebind fill to Interactive/Active
-clone COMP_DEFAULT → rename "state=disabled" → set opacity 0.4, rebind to Interactive/Disabled
-clone COMP_DEFAULT → rename "state=focus"    → add focus ring stroke
+# 5-7. VARIANTS, COMBINE, PROPERTIES (as needed)
 
-# 6. COMBINE
-{"type": "createComponentSet", "payload": {
-  "componentIds": ["COMP_DEFAULT", "HOVER", "ACTIVE", "DISABLED", "FOCUS"],
-  "name": "Navigation / CTAButton"
-}}
+# 8. INSTANCE — Replace each card ONE AT A TIME, preserving unique content
 
-# 7. PROPERTIES
-{"type": "editComponentProperties", "payload": {
-  "componentId": "SET_ID", "add": [{"name": "Label", "type": "TEXT", "defaultValue": "Create Mode"}]
-}}
+# 8a. Read card 1's text content
+{"type": "query", "target": "1:663", "payload": {"queryType": "deep"}}
+# Collect: "PGA TOUR Global", "Fan Engagement Re-imagined", "12 Personas", etc.
 
-# 8. INSTANCE
-{"type": "createInstance", "payload": {"componentId": "SET_ID", "parent": "1:804", "x": 3, "y": 0}}
-{"type": "delete", "target": "1:805"}
+# 8b-c. Create instance at card 1's position
+{"type": "createInstance", "payload": {"componentId": "COMP_ID", "parent": "1:662"}}
+
+# 8d. Apply text overrides (content is same as master — skip if identical)
+
+# 8e. Verify, then delete
+{"type": "delete", "target": "1:663"}
+
+# Now card 2 (1:701) — different content!
+# 8a. Read: "Adobe Creative Cloud", "Enterprise Onboarding", "8 Personas", etc.
+{"type": "query", "target": "1:701", "payload": {"queryType": "deep"}}
+
+# 8b-c. Create instance
+{"type": "createInstance", "payload": {"componentId": "COMP_ID", "parent": "1:662"}}
+
+# 8d. Apply ALL text overrides:
+{"type": "editInstanceText", "payload": {"instanceId": "INST_ID", "textNodeName": "ClientName", "characters": "Adobe Creative Cloud"}}
+{"type": "editInstanceText", "payload": {"instanceId": "INST_ID", "textNodeName": "Title", "characters": "Enterprise Onboarding"}}
+# ... repeat for every unique text field
+
+# 8e. Verify, then delete
+{"type": "delete", "target": "1:701"}
+
+# Repeat for card 3 (1:739)
 ```
 
 ---
 
 ## Quality Checklist
 
+- [ ] **Checkpoint**: Version saved BEFORE any modifications
 - [ ] **Copied**: Original frame untouched, copy on Components page
 - [ ] **Converted**: Copy is now a COMPONENT named `state=default`
 - [ ] **Bound**: Variables bound on default BEFORE cloning variants
 - [ ] **Variants**: All states exist (default, hover, active, disabled, focus)
 - [ ] **Combined**: Variants grouped into a named component set
 - [ ] **Properties**: Text, boolean, instance swap properties exposed
-- [ ] **Instanced**: Instance in design frame, original deleted
-- [ ] **Verified**: Instance matches original layout
+- [ ] **Instanced**: Each original replaced ONE AT A TIME
+- [ ] **Overrides**: All unique text content preserved via editInstanceText
+- [ ] **Verified**: Each instance matches its original's content and layout
 - [ ] **Documented**: Description on component set
 
 ---
