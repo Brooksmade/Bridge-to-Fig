@@ -285,8 +285,11 @@ Replace ALL originals with instances, **one at a time**, preserving unique conte
 {"type": "query", "target": "ORIGINAL_ID", "payload": {"queryType": "deep"}}
 // Walk the tree and collect: [{nodeId, name, characters}, ...] for every TEXT node
 
-// 8b. NOTE position and parent
+// 8b. NOTE position and parent (index matters for ordering!)
 // Record: parent ID, x, y, index in parent's children array
+// Use children query to find the index:
+{"type": "query", "target": "PARENT_ID", "payload": {"queryType": "children"}}
+// Find original's position in the array
 
 // 8c. CREATE instance in the same parent
 {"type": "createInstance", "payload": {
@@ -303,39 +306,62 @@ Replace ALL originals with instances, **one at a time**, preserving unique conte
 }}
 // Repeat for every text node with unique content
 
-// 8e. VERIFY — screenshot and compare (optional but recommended)
+// 8e. REORDER — move instance to original's index position
+{"type": "reparent", "target": "INSTANCE_ID", "payload": {
+  "newParent": "PARENT_ID", "index": ORIGINAL_INDEX
+}}
 
-// 8f. DELETE original
+// 8f. VERIFY — screenshot and compare (optional but recommended)
+
+// 8g. DELETE original
 {"type": "delete", "target": "ORIGINAL_ID"}
 ```
 
 ### Text Override Collection Pattern
 
+**CRITICAL: Do NOT use `deep` query for text collection — it has a depth limit of ~3-4 levels and misses deeply nested text. Use recursive `children` queries instead.**
+
 ```python
-def collect_texts(node):
-    """Recursively collect all text nodes and their content"""
+def get_all_texts(node_id):
+    """Recursively walk children to collect ALL text nodes in tree order.
+    Uses children queries at each level — no depth limit."""
     texts = []
-    if node.get("type") == "TEXT":
-        texts.append({
-            "name": node.get("name"),
-            "characters": node.get("characters"),
-        })
-    for child in node.get("children", []):
-        texts.extend(collect_texts(child))
+    _, r = send({"type": "query", "target": node_id, "payload": {"queryType": "children"}})
+    for child in r.get("data", []):
+        cid = child["id"]
+        ctype = child.get("type", "")
+        if ctype == "TEXT":
+            _, dr = send({"type": "query", "target": cid, "payload": {"queryType": "deep"}})
+            chars = dr.get("data", {}).get("characters", "")
+            texts.append({"id": cid, "name": child.get("name",""), "characters": chars})
+        elif ctype in ("FRAME", "GROUP", "COMPONENT", "INSTANCE"):
+            texts.extend(get_all_texts(cid))
     return texts
 
-# Read original's texts BEFORE deleting
-_, deep = send({"type": "query", "target": original_id, "payload": {"queryType": "deep"}})
-original_texts = collect_texts(deep["data"])
+# 1. Read ALL original texts BEFORE any modifications
+original_texts = get_all_texts(original_id)
 
-# After creating instance, apply each text override
-for text in original_texts:
-    send({"type": "editInstanceText", "payload": {
-        "instanceId": instance_id,
-        "textNodeName": text["name"],
-        "characters": text["characters"]
-    }})
+# 2. Create instance
+inst_id = create_instance(comp_id, parent_id)
+
+# 3. Read instance's text nodes (same tree order, but NEW IDs like "I7:195;7:161")
+instance_texts = get_all_texts(inst_id)
+
+# 4. Map by position and apply overrides using textNodeId (NOT textNodeName)
+for orig, inst in zip(original_texts, instance_texts):
+    if orig["characters"] != inst["characters"]:
+        send({"type": "editInstanceText", "payload": {
+            "instanceId": inst_id,
+            "textNodeId": inst["id"],      # Use ID, not name — names are often "Text"
+            "characters": orig["characters"]
+        }})
 ```
+
+**Why this works:**
+- Recursive `children` queries have no depth limit (unlike `deep` which stops at ~3 levels)
+- Instance text nodes have IDs like `I{instanceId};{originalNodeId}` — use `textNodeId` to target precisely
+- Tree order is preserved between original and instance, so `zip()` maps correctly
+- Name-based matching (`textNodeName`) fails when multiple nodes share the name "Text"
 
 **Key rules:**
 - Process ONE element at a time — do not batch
