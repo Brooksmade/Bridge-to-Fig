@@ -298,6 +298,28 @@ Add component properties for consumer customization.
 
 ---
 
+## CRITICAL: No Overlapping Elements
+
+Before creating elements, check for existing content at the target location:
+- **If rebuilding**: Delete old content first, verify it's gone, then create
+- **If new content**: Query the page/parent to find existing bounding box, offset accordingly
+- **Components page**: Always use layout cursor — never place at (0,0)
+
+```python
+# Pre-creation check: find clear space on a page
+def find_clear_position(page_id):
+    """Query page children to find position after existing content"""
+    _, r = send({"type": "query", "target": page_id, "payload": {"queryType": "children"}})
+    max_x_right = 0
+    for child in r.get("data", []):
+        right = child.get("x", 0) + child.get("width", 0)
+        if right > max_x_right:
+            max_x_right = right
+    return max_x_right + 100, 0  # offset right of existing content
+```
+
+---
+
 ## Components Page Layout
 
 When placing masters on the Components page, **never stack at (0,0)**. Track a layout cursor and position each component with spacing.

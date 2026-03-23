@@ -4,6 +4,8 @@ Design and create workflow diagrams in FigJam with native, editable elements.
 
 > **CRITICAL:** ALWAYS use bridge server commands (`createSection`, `createShapeWithText`, `createConnector`, `createSticky`, `createHighlight`, `createStamp`, `createWashiTape`, `createEmbed` at `localhost:4001`) to create FigJam diagrams. NEVER use MCP tools like `generate_diagram` — they create separate files instead of drawing in the user's open FigJam board. Only use MCP Figma tools for FigJam if the user explicitly requests it.
 
+> **CRITICAL: No Overlapping.** Before creating a diagram, check for existing content at the target coordinates. If rebuilding, delete the old diagram first and verify it's gone. If creating new content alongside existing, query the page to find the bounding box of existing sections and offset the new diagram to clear space (typically to the right or below).
+
 ## Chart Type Selection Workflow
 
 **BEFORE creating any diagram, determine the chart type and load the appropriate prompt.**
