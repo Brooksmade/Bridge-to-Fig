@@ -113,20 +113,57 @@ for element_id in all_element_ids:
 - If icons/images differ between instances, flag for instance swap property setup
 - If background colors differ, note that fills CAN be overridden on instances
 
-### Widen Master Text Containers
+### Widen Master Text Containers (Step 3b)
 
-After creating the master component (Step 3), resize text containers to fit the longest content:
+After creating the master component (Step 3), resize text containers to fit the longest content.
+
+**CRITICAL: Resizing the text node alone is NOT enough.** If the text node is inside an auto-layout frame, the parent frame constrains the width. You must:
+1. Measure the actual text width needed (use `measureText` or estimate)
+2. Resize the text node
+3. Resize the text node's PARENT frame if it's narrower
 
 ```python
-# On the master, widen text nodes to prevent wrapping
-for i, max_len in max_lengths.items():
-    # If longest text is significantly longer than master's text,
-    # resize the master's text container
-    master_text_width = master_texts[i]["width"]
-    needed_width = max_len * avg_char_width  # rough estimate
-    if needed_width > master_text_width:
-        send({"type": "resize", "target": master_texts[i]["id"],
+def widen_text_containers(comp_id, max_lengths, all_texts):
+    """Resize text nodes and their parent frames on the master component.
+    max_lengths = {text_index: max_char_count} across all instances
+    all_texts = texts from all instances for comparison"""
+
+    # Get master's text nodes with recursive walk
+    master_texts = get_all_texts(comp_id)
+
+    for i, mt in enumerate(master_texts):
+        if i not in max_lengths:
+            continue
+        max_chars = max_lengths[i]
+        current_chars = len(mt["characters"])
+
+        # Skip if master already has the longest text
+        if max_chars <= current_chars + 2:
+            continue
+
+        # Measure the longest text to get exact pixel width needed
+        longest_text = max(
+            (t[i]["characters"] for t in all_texts if i < len(t)),
+            key=len
+        )
+        _, mr = send({"type": "measureText", "payload": {
+            "text": longest_text, "fontSize": 14  # adjust per element
+        }})
+        needed_width = mr.get("data", {}).get("width", 100) + 20  # padding
+
+        # Resize text node
+        send({"type": "resize", "target": mt["id"],
               "payload": {"width": needed_width}})
+
+        # ALSO resize the parent frame if it constrains the text
+        # Query the text node's parent
+        # (parent ID can be found by querying siblings at the same level)
+```
+
+**Practical shortcut:** If exact measurement is too complex, use the parent container's full width:
+```python
+# Set text node width to match its parent container width
+# This ensures text never wraps within the available space
 ```
 
 **Classify each element by atomic level:**
@@ -462,12 +499,22 @@ Some properties CAN be overridden on instances, others CANNOT:
 | Property | Override Method | Works? |
 |----------|----------------|--------|
 | Text content | `editInstanceText` with `textNodeId` | Yes |
-| Fill color | `overrideInstanceFills` with `nodeNameOrId` | Yes |
+| Fill color | `overrideInstanceFills` with `nodeNameOrId` | Yes — use for background color diffs |
 | Stroke color | `overrideInstanceStrokes` | Yes |
 | Effects | `overrideInstanceEffects` | Yes |
 | Vector/icon swap | Cannot — need instance swap property | No |
 | Image swap | Cannot — need instance swap property | No |
 | Add/remove children | Cannot — instance structure is locked | No |
+
+### Structural Differences
+
+If elements share the same content type but have different STRUCTURE (e.g., active nav link has a bottom border, inactive doesn't), do NOT use the same component for both. Create separate components or use variants:
+
+- **Active nav link** = one variant with border
+- **Inactive nav link** = another variant without border
+- **Use a component set** with `state=active` / `state=default` variants
+
+If you use the active state as the master and create instances for inactive links, they'll ALL show as active. This is a variant problem, not an override problem.
 
 **For icons/images that differ between instances:**
 1. Create each icon as a separate component on the Components page
