@@ -48,40 +48,40 @@ Pauses after each phase for user approval.
 │  - Query design frame structure (describe, children, deep)  │
 │  - Screenshot to visually identify elements                 │
 │  - Classify each element: atom / molecule / organism        │
-│  - Map which frames to convert                              │
+│  - Check: design system exists? Components page exists?     │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  PHASE 2: Convert & Rename (component-creator)              │
-│  - createComponent with nodeId (convert frame in place)     │
-│  - Rename to follow Category / Name convention              │
-│  - Clean up generic layer names inside each component       │
+│  PHASE 2: Copy & Convert (component-creator)                │
+│  - clone element to Components page (original untouched)    │
+│  - createComponent with nodeId on the copy                  │
+│  - Rename to state=default                                  │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  PHASE 3: Variants & Component Sets (component-creator)     │
-│  - addVariant (clone + modify for each state)               │
-│  - createComponentSet to group variants                     │
+│  PHASE 3: Bind Default (figma-binding)                      │
+│  - Bind fills, strokes, text colors on default component    │
+│  - Use Token-level variables (highest semantic level)       │
+│  - Bindings carry over when cloned for variants             │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 4: Variants & Component Sets (component-creator)     │
+│  - Clone default (bindings carry), convert, rename per state│
+│  - Rebind only the fills/strokes that differ per state      │
+│  - createComponentSet to group all variants                 │
 │  - Add component properties (text, boolean, instance swap)  │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  PHASE 4: Organize & Instance (component-creator)           │
-│  - Create Components page (if needed)                       │
-│  - reparent component sets to Components page               │
-│  - createInstance back in original design frames             │
+│  PHASE 5: Instance & Replace (component-creator)            │
+│  - createInstance in original design frame's parent         │
+│  - Delete original frame (replaced by instance)             │
 │  - Verify instances match original layout                   │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  PHASE 5: Bind Variables (figma-binding)                    │
-│  - Bind fills, strokes, text colors on MASTER components    │
-│  - Use Token-level variables (highest semantic level)       │
-│  - Bindings propagate to all instances automatically        │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
