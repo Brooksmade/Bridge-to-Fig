@@ -88,6 +88,47 @@ Before proceeding through the workflow, check:
 {"type": "query", "payload": {"queryType": "pages"}}
 ```
 
+### Content Audit (CRITICAL for repeated elements)
+
+When an element repeats (e.g., 3 project cards), read ALL instances during discovery to identify:
+
+1. **Text differences** — Which text nodes have unique content per instance?
+2. **Non-text differences** — Which icons, images, or colors differ?
+3. **Max text lengths** — What's the longest text for each field across all instances?
+
+```python
+# For each repeated element, collect all text AND note non-text differences
+for element_id in all_element_ids:
+    texts = get_all_texts(element_id)  # recursive children walk
+    # Track max character length per text field position
+    for i, text in enumerate(texts):
+        max_lengths[i] = max(max_lengths.get(i, 0), len(text["characters"]))
+
+# Flag non-text differences (icons, images, colors) — these CANNOT be
+# overridden via editInstanceText and need instance swap properties or manual fixes
+```
+
+**After collecting, check:**
+- If any text field has significantly different lengths across instances, the master's text container must be wide enough for the LONGEST text
+- If icons/images differ between instances, flag for instance swap property setup
+- If background colors differ, note that fills CAN be overridden on instances
+
+### Widen Master Text Containers
+
+After creating the master component (Step 3), resize text containers to fit the longest content:
+
+```python
+# On the master, widen text nodes to prevent wrapping
+for i, max_len in max_lengths.items():
+    # If longest text is significantly longer than master's text,
+    # resize the master's text container
+    master_text_width = master_texts[i]["width"]
+    needed_width = max_len * avg_char_width  # rough estimate
+    if needed_width > master_text_width:
+        send({"type": "resize", "target": master_texts[i]["id"],
+              "payload": {"width": needed_width}})
+```
+
 **Classify each element by atomic level:**
 
 | Level | Type | What to Look For |
@@ -392,6 +433,37 @@ for orig, inst in zip(original_texts, instance_texts):
         }})
 ```
 
+### Non-Text Overrides
+
+Some properties CAN be overridden on instances, others CANNOT:
+
+| Property | Override Method | Works? |
+|----------|----------------|--------|
+| Text content | `editInstanceText` with `textNodeId` | Yes |
+| Fill color | `overrideInstanceFills` with `nodeNameOrId` | Yes |
+| Stroke color | `overrideInstanceStrokes` | Yes |
+| Effects | `overrideInstanceEffects` | Yes |
+| Vector/icon swap | Cannot — need instance swap property | No |
+| Image swap | Cannot — need instance swap property | No |
+| Add/remove children | Cannot — instance structure is locked | No |
+
+**For icons/images that differ between instances:**
+1. Create each icon as a separate component on the Components page
+2. Add an instance swap property to the master: `{"name": "Icon", "type": "INSTANCE_SWAP", "defaultValue": "DEFAULT_ICON_COMP_ID"}`
+3. Link the icon placeholder to the property via `setComponentPropertyReferences`
+4. Then each instance can swap to a different icon component
+
+### Post-Replacement Verification
+
+After replacing EACH element, take a screenshot and compare:
+
+```python
+# After creating instance and applying overrides:
+# 1. Screenshot the instance
+# 2. Compare visually — does text wrap? Are colors right? Icons correct?
+# 3. If something is wrong, triggerUndo and investigate before continuing
+```
+
 **Why this works:**
 - Recursive `children` queries have no depth limit (unlike `deep` which stops at ~3 levels)
 - Instance text nodes have IDs like `I{instanceId};{originalNodeId}` — use `textNodeId` to target precisely
@@ -469,15 +541,18 @@ Given: 3 project cards (1:663, 1:701, 1:739) in container 1:662.
 ## Quality Checklist
 
 - [ ] **Checkpoint**: Version saved BEFORE any modifications
-- [ ] **Copied**: Original frame untouched, copy on Components page
-- [ ] **Converted**: Copy is now a COMPONENT named `state=default`
+- [ ] **Content audit**: All instances read, max text lengths noted, non-text diffs flagged
+- [ ] **Copied**: Original frame untouched, copy on Components page, laid out (not at 0,0)
+- [ ] **Converted**: Copy is now a COMPONENT named appropriately
+- [ ] **Sized**: Master's text containers widened to fit longest content across all instances
 - [ ] **Bound**: Variables bound on default BEFORE cloning variants
 - [ ] **Variants**: All states exist (default, hover, active, disabled, focus)
 - [ ] **Combined**: Variants grouped into a named component set
 - [ ] **Properties**: Text, boolean, instance swap properties exposed
+- [ ] **Non-text**: Icons/images flagged — instance swap properties set up, or documented as manual fix
 - [ ] **Instanced**: Each original replaced ONE AT A TIME
-- [ ] **Overrides**: All unique text content preserved via editInstanceText
-- [ ] **Verified**: Each instance matches its original's content and layout
+- [ ] **Overrides**: All unique text AND fill overrides applied
+- [ ] **Verified**: Each instance screenshotted and compared — no wrapping, no missing content
 - [ ] **Documented**: Description on component set
 
 ---
