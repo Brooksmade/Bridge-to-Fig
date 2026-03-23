@@ -6,6 +6,24 @@ Referenced by: `component-creator`, `component-qa`, `component-library-orchestra
 
 ---
 
+## Primary Workflow: Convert, Don't Rebuild
+
+Components should be **converted from existing design frames**, not built from scratch. Designs come from Figma Make, imports, or designer work — the component workflow preserves them.
+
+```
+1. DISCOVER  — Identify elements to componentize in the design frame
+2. CONVERT   — createComponent with nodeId (converts frame in place)
+3. VARIANT   — addVariant + modify for each state (hover, disabled, focus...)
+4. COMBINE   — createComponentSet to group variants
+5. ORGANIZE  — reparent master to Components page
+6. INSTANCE  — createInstance back in the design frame
+7. BIND      — Bind design system variables on the MASTER component
+```
+
+See `.claude/agents/component-creator.md` for full command details.
+
+---
+
 ## When to Create a Component
 
 Create a component when an element:
