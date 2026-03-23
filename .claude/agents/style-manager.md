@@ -405,19 +405,45 @@ Layout/[Name]               → Layout/Desktop, Layout/Mobile
 
 ---
 
+## Styles vs Variables: Decision Framework
+
+Use **variables** for single values that change across modes (colors, spacing, radius, opacity).
+Use **styles** for composite values (gradients, multi-fill, typography presets, multi-effect shadows).
+
+Styles CAN reference variables — this is the recommended approach:
+
+```
+Variable: Color/Primary/500 = #3366FF          ← single value, supports modes
+Style:    Shadow/MD = 0 4px 8px rgba(0,0,0,0.1) ← composite value
+
+Text Style: Heading/H1
+  ├── fontFamily → bound to variable Font/Sans
+  ├── fontSize → bound to variable Size/H1
+  └── fontWeight → Bold (static)
+```
+
+**Do NOT** create both a variable and a style for the same single-color value. That's double maintenance.
+
+See `prompts/library-best-practices.md` → "Styles vs Variables: Decision Framework" for full details.
+
+---
+
 ## Best Practices
 
 1. **Use consistent naming** - Follow slash-separated hierarchy
 2. **Create complete sets** - Don't leave gaps in scales
-3. **Document style purpose** - Add descriptions where possible
-4. **Prefer variables over styles** - For dynamic theming
+3. **Document style purpose** - Add descriptions to every style
+4. **Variables for tokens, styles for composites** - Don't duplicate
 5. **Keep styles organized** - Group related styles together
 6. **Audit regularly** - Remove unused styles
+7. **Bind styles to variables** - Typography and effect styles should reference variable tokens where possible
 
 ---
 
 ## Knowledge Base
 
 For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
+For library best practices: `prompts/library-best-practices.md`
+For component best practices: `prompts/component-best-practices.md`
 For variable system: `.claude/agents/figma-variables.md`
 For design system: `.claude/agents/design-system-orchestrator.md`

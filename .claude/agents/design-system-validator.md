@@ -362,5 +362,7 @@ This agent is called by:
 ## Knowledge Base
 
 For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
+For library best practices: `prompts/library-best-practices.md`
+For component best practices: `prompts/component-best-practices.md`
 For design system creation: `.claude/agents/figma-variables.md`
 For variable binding: `.claude/agents/figma-binding.md`

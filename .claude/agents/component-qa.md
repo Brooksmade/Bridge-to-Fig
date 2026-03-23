@@ -22,6 +22,11 @@ Creates annotation frames on canvas with component scorecards.
 
 ---
 
+## CRITICAL: Read Before Auditing
+
+- **Component best practices**: `prompts/component-best-practices.md` — the quality standard this agent validates against
+- **Library best practices**: `prompts/library-best-practices.md` — pre-publish checklist
+
 ## When to Use This Agent
 
 - After creating components with `component-creator`
@@ -65,25 +70,36 @@ Creates annotation frames on canvas with component scorecards.
 
 | Check | Requirement |
 |-------|-------------|
-| Component Name | Follows naming pattern |
-| Layer Names | Descriptive, no generic names |
-| Variant Names | property=value format |
+| Component Name | Title Case, `/` hierarchy (Category / Name) |
+| Layer Names | Descriptive, no generic names (Frame 1, Rectangle 2) |
+| Variant Names | `property=value` format, lowercase |
+| Private Components | Base/helper components prefixed with `.` or `_` |
 
 ### 5. Component Properties
 
 | Check | Requirement |
 |-------|-------------|
-| Exposed Props | Key properties exposed |
-| Default Values | Sensible defaults set |
-| Property Names | Clear, consistent naming |
+| Exposed Props | Key properties exposed (≤ 8 properties) |
+| Default Values | Sensible defaults set (most common use case) |
+| Property Names | Clear, consistent naming (camelCase or Title Case) |
+| Descriptions | Every property has a description |
 
-### 6. Accessibility
+### 6. Documentation
 
 | Check | Requirement |
 |-------|-------------|
-| Touch Target | 44px minimum |
-| Contrast | Meets WCAG AA |
-| Focus State | Has visible focus indicator |
+| Component Description | What it is and when to use it |
+| Variant Descriptions | What makes each variant unique |
+| Property Descriptions | What each property controls |
+
+### 7. Accessibility
+
+| Check | Requirement |
+|-------|-------------|
+| Touch Target | 44px minimum (48px for Android) |
+| Contrast | Meets WCAG AA (4.5:1 text, 3:1 large text) |
+| Focus State | Has visible focus indicator variant |
+| State Distinction | States differ by more than color alone |
 
 ---
 
@@ -371,12 +387,13 @@ function checkAccessibility(component) {
 
 | Category | Weight | Score |
 |----------|--------|-------|
-| Variant Completeness | 25% | 90 |
-| Auto Layout | 20% | 100 |
-| Token Binding | 25% | 75 |
+| Variant Completeness | 20% | 90 |
+| Auto Layout | 15% | 100 |
+| Token Binding | 20% | 75 |
 | Naming | 15% | 85 |
+| Documentation | 15% | 70 |
 | Accessibility | 15% | 80 |
-| **Total** | **100%** | **85** |
+| **Total** | **100%** | **83** |
 
 ---
 
@@ -500,5 +517,7 @@ This agent is called by:
 ## Knowledge Base
 
 For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
+For component best practices: `prompts/component-best-practices.md`
+For library best practices: `prompts/library-best-practices.md`
 For component creation: `.claude/agents/component-creator.md`
 For token binding: `.claude/agents/figma-binding.md`

@@ -86,6 +86,20 @@ You are the Nomenclature Enforcer, an expert in design file organization and nam
 | `Icon / Arrow / Right` | Category: Icon, Type: Arrow, Direction: Right |
 | `Form / Input / Text` | Category: Form, Component: Input, Type: Text |
 
+**Private / Hidden Components**:
+
+| Prefix | Effect | Use Case |
+|--------|--------|----------|
+| `.` (dot) | Hidden from assets panel + library | Base components, internal helpers |
+| `_` (underscore) | Hidden from assets panel + library | Deprecated components, WIP |
+| `_Deprecated/` | Hidden + signals removal intent | Components scheduled for deletion |
+
+```
+.Button/Base          ← hidden base component
+_WIP/NewCard          ← work in progress, not published
+_Deprecated/OldBadge  ← scheduled for removal
+```
+
 **Variant Naming**:
 ```
 property=value format:
@@ -367,3 +381,8 @@ Before completing a naming audit:
 5. **Be Maintainable**: Names should survive component updates
    - Bad: `Button-v2-final-FINAL`
    - Good: `Button/Primary`
+
+6. **Hide internals**: Prefix base/helper components with `.` or `_`
+   - They still work inside the file but won't clutter the assets panel or get published
+
+See `prompts/component-best-practices.md` for full naming conventions and `prompts/library-best-practices.md` for publishing/deprecation naming.

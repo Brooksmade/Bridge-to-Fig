@@ -20,6 +20,11 @@ Pauses after each phase for user approval.
 
 ---
 
+## CRITICAL: Read Before Running
+
+- **Component best practices**: `prompts/component-best-practices.md` — naming, variants, properties, accessibility
+- **Library best practices**: `prompts/library-best-practices.md` — publishing, organization, deprecation
+
 ## When to Use This Agent
 
 - Creating a new component library
@@ -319,13 +324,16 @@ curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/jso
 | Tailwind Classes | 8 |
 | Exported Assets | 24 |
 
-### Next Steps
+### Pre-Publish Checklist (see `prompts/library-best-practices.md`)
 
-1. [ ] Review and address 10 warning-level issues
+1. [ ] Review and address all warning-level issues
 2. [ ] Add missing focus state variants
-3. [ ] Test all variants in prototype
-4. [ ] Publish to team library
-5. [ ] Share handoff docs with developers
+3. [ ] Verify all components have descriptions (set, variants, properties)
+4. [ ] Confirm base/helper components are prefixed with `.` or `_`
+5. [ ] Test all variants in light and dark mode
+6. [ ] No raw hex values — all colors bound to variables
+7. [ ] Write a change description for the publish
+8. [ ] Share handoff docs with developers
 ```
 
 ---
@@ -397,6 +405,8 @@ Called by:
 ## Knowledge Base
 
 For API details: `prompts/quick-ref.md` (compact) or `prompts/figma-bridge.md` (full)
+For component best practices: `prompts/component-best-practices.md`
+For library best practices: `prompts/library-best-practices.md`
 For component creation: `.claude/agents/component-creator.md`
 For layout: `.claude/agents/layout-master.md`
 For naming: `.claude/agents/nomenclature-enforcer.md`

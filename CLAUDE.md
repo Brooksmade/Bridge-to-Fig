@@ -251,6 +251,8 @@ pnpm build:plugin
 |------|---------|
 | `prompts/figma-bridge.md` | **Main API reference** - all commands, examples |
 | `prompts/workflows.md` | **Pipeline breakdowns** - all 9 workflows with data flow |
+| `prompts/component-best-practices.md` | **Component discipline** - naming, variants, properties, accessibility |
+| `prompts/library-best-practices.md` | **Library discipline** - publishing, versioning, styles vs variables |
 | `prompts/memory-server.md` | Memory server API for tracking progress/solutions |
 | `prompts/website-design-system.md` | Website extraction workflow |
 | `.claude/agents/*.md` | AI agent definitions |
