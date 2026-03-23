@@ -207,6 +207,8 @@ Convert the copy (on the Components page) into a component.
 
 Name it `state=default` so Figma auto-detects variant properties when combining later.
 
+**IMPORTANT:** You must `setPage` to the Components page BEFORE calling `createComponent` — Figma selects the new component, which fails if you're on a different page.
+
 ---
 
 ## Step 4: BIND (Default)
@@ -256,11 +258,9 @@ Clone the default (bindings carry over), convert each clone to a component, rena
 {"type": "clone", "target": "COMP_DEFAULT"}
 // Returns: nodeIds: ["CLONE_ID"]
 
-// Convert clone to component (clone of component = component, but verify)
-// If it's a FRAME, convert it:
-{"type": "createComponent", "payload": {"nodeId": "CLONE_ID", "name": "state=hover"}}
-
-// Or if already a component, just rename:
+// IMPORTANT: Cloning a COMPONENT produces another COMPONENT (not a FRAME).
+// Do NOT call createComponent on it — it will error "already a component".
+// Just rename it:
 {"type": "renameNode", "target": "CLONE_ID", "payload": {"name": "state=hover"}}
 
 // Modify appearance for this state
@@ -303,6 +303,7 @@ Group all variants into a component set. They're already on the Components page.
 - Need at least 2 component IDs
 - All must be COMPONENT type
 - Naming variants `state=X` causes Figma to auto-create a `state` variant property
+- **Known issue:** `createComponentSet` may return an error from serialization (`componentPropertyDefinitions` error) but the set IS created. If the response has no `nodeId`, query the page to find the set by type.
 
 **Naming convention:**
 ```
@@ -517,10 +518,26 @@ If elements share the same content type but have different STRUCTURE (e.g., acti
 If you use the active state as the master and create instances for inactive links, they'll ALL show as active. This is a variant problem, not an override problem.
 
 **For icons/images that differ between instances:**
-1. Create each icon as a separate component on the Components page
-2. Add an instance swap property to the master: `{"name": "Icon", "type": "INSTANCE_SWAP", "defaultValue": "DEFAULT_ICON_COMP_ID"}`
-3. Link the icon placeholder to the property via `setComponentPropertyReferences`
-4. Then each instance can swap to a different icon component
+1. Create each icon as a separate component on the Components page (use `createFromSvg` for Phosphor icons)
+2. The master's icon slot must be a component INSTANCE (not raw vector) for swap to work
+3. Add instance swap property: `{"name": "Icon", "type": "INSTANCE_SWAP", "defaultValue": "DEFAULT_ICON_COMP_ID"}`
+4. Link via `setComponentPropertyReferences`
+5. If restructuring the master is too complex, create icon components and document for manual swap
+
+**Phosphor Icons** (thin weight, 256x256 viewBox):
+```
+https://raw.githubusercontent.com/phosphor-icons/core/main/assets/thin/{name}-thin.svg
+```
+Common: eye, pencil-simple, plus-circle, upload-simple, squares-four, magnifying-glass, bell, gear
+
+**Icon component creation pattern:**
+```python
+# Create SVG (use temp file for long SVG strings)
+svg_id = create_from_svg(svg_string)  # Returns frame with vector children
+send({"type": "resize", "target": svg_id, "payload": {"width": 20, "height": 20}})
+send({"type": "createComponent", "payload": {"nodeId": svg_id, "name": "Icon / Eye"}})
+# Set vector fills to white for use on colored backgrounds
+```
 
 ### Post-Replacement Verification
 
@@ -538,6 +555,18 @@ After replacing EACH element, take a screenshot and compare:
 - Instance text nodes have IDs like `I{instanceId};{originalNodeId}` — use `textNodeId` to target precisely
 - Tree order is preserved between original and instance, so `zip()` maps correctly
 - Name-based matching (`textNodeName`) fails when multiple nodes share the name "Text"
+
+### Swapping Instance Variants
+
+After placing instances, use `swapInstance` to change a specific instance to a different variant:
+
+```json
+// Swap "Dashboard" link to active variant
+{"type": "swapInstance", "payload": {
+  "instanceId": "INSTANCE_ID",
+  "newComponentId": "ACTIVE_VARIANT_COMPONENT_ID"
+}}
+```
 
 **Key rules:**
 - Process ONE element at a time — do not batch
