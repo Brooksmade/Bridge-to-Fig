@@ -160,11 +160,26 @@ def widen_text_containers(comp_id, max_lengths, all_texts):
         # (parent ID can be found by querying siblings at the same level)
 ```
 
-**Practical shortcut:** If exact measurement is too complex, use the parent container's full width:
+**Practical shortcut (RECOMMENDED):** Set each text node's width to its parent container's width. This always works regardless of font size:
 ```python
-# Set text node width to match its parent container width
-# This ensures text never wraps within the available space
+def widen_texts_to_parent(comp_id):
+    """Set every text node's width to its parent container width"""
+    _, r = send({"type": "query", "target": comp_id, "payload": {"queryType": "children"}})
+    for child in r.get("data", []):
+        ctype = child.get("type", "")
+        cw = child.get("width", 0)
+        if ctype in ("FRAME", "GROUP"):
+            # Check children for TEXT nodes
+            _, cr = send({"type": "query", "target": child["id"], "payload": {"queryType": "children"}})
+            for sub in cr.get("data", []):
+                if sub.get("type") == "TEXT" and sub.get("width", 0) < cw:
+                    send({"type": "resize", "target": sub["id"],
+                          "payload": {"width": cw, "height": sub.get("height", 20)}})
+            # Recurse into nested frames
+            widen_texts_to_parent(child["id"])
 ```
+
+**The `max_len * N` pixel estimate does NOT work** — font sizes vary per text node. Always use parent width or measureText.
 
 **Classify each element by atomic level:**
 
