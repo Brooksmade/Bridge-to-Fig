@@ -544,11 +544,20 @@ If you use the active state as the master and create instances for inactive link
 4. Link via `setComponentPropertyReferences`
 5. If restructuring the master is too complex, create icon components and document for manual swap
 
-**Phosphor Icons** (thin weight, 256x256 viewBox):
-```
-https://raw.githubusercontent.com/phosphor-icons/core/main/assets/thin/{name}-thin.svg
-```
-Common: eye, pencil-simple, plus-circle, upload-simple, squares-four, magnifying-glass, bell, gear
+### Icon Library
+
+**During DISCOVER, ask the user which icon pack they prefer.** Options:
+- Figma community library (e.g., Phosphor Icons, Heroicons, Lucide)
+- SVG import from URL
+- Existing icons in the file
+
+If the user has a Figma community icon library enabled, use `createInstance` with the library component IDs. If not, fall back to SVG import.
+
+**Phosphor Icons** (default for this project):
+- Figma library: `https://www.figma.com/design/hbQPi1YMWSWQ27nDLg0ibZ/Phosphor-Icons--Community-`
+- SVG fallback: `https://raw.githubusercontent.com/phosphor-icons/core/main/assets/thin/{name}-thin.svg`
+- Weight: **Thin** | Size: **16px height, natural width ratio**
+- Common: eye, pencil-simple, plus-circle, upload-simple, squares-four, magnifying-glass, bell, gear
 
 **Icon component creation pattern:**
 ```python
