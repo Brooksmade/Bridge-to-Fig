@@ -269,7 +269,8 @@ function mapExtractedTypography(
   extractedLineHeights: number[],
   extractedFontWeights: number[],
   primaryFont: string,
-  fontSizeNodes?: Record<string, string[]>
+  fontSizeNodes?: Record<string, string[]>,
+  fontFamilyMap?: Record<string, string>
 ): MappedTypographyStyle[] {
   if (!extractedFontSizes || extractedFontSizes.length === 0) {
     return [];
@@ -379,11 +380,14 @@ function mapExtractedTypography(
     const sizeKey = String(Math.round(fontSize));
     const nodeIds = fontSizeNodes?.[sizeKey] || [];
 
+    // Use the font family actually used at this size (from extraction), fall back to primaryFont
+    const sizeFont = fontFamilyMap?.[sizeKey] || primaryFont;
+
     result.push({
       name,
       fontSize,
       fontWeight: weight,
-      fontFamily: primaryFont,
+      fontFamily: sizeFont,
       lineHeight,
       isExtracted: true,
       nodeIds,
@@ -404,7 +408,8 @@ function mapExtractedTypographySpectrum(
   extractedLineHeights: number[],
   extractedFontWeights: number[],
   primaryFont: string,
-  fontSizeNodes?: Record<string, string[]>
+  fontSizeNodes?: Record<string, string[]>,
+  fontFamilyMap?: Record<string, string>
 ): MappedTypographyStyle[] {
   if (!extractedFontSizes || extractedFontSizes.length === 0) {
     return [];
@@ -480,11 +485,14 @@ function mapExtractedTypographySpectrum(
     const sizeKey = String(Math.round(fontSize));
     const nodeIds = fontSizeNodes?.[sizeKey] || [];
 
+    // Use the font family actually used at this size (from extraction), fall back to primaryFont
+    const sizeFont = fontFamilyMap?.[sizeKey] || primaryFont;
+
     result.push({
       name,
       fontSize,
       fontWeight: weight,
-      fontFamily: primaryFont,
+      fontFamily: sizeFont,
       lineHeight,
       isExtracted: true,
       nodeIds,
@@ -869,6 +877,9 @@ interface CreateDesignSystemPayload {
   createGridStyles?: boolean;
   // Primary font family for typography styles (default: from extractedTokens or 'Inter')
   primaryFontFamily?: string;
+  // Override all three font family roles (sans/serif/mono)
+  // Auto-detected from extracted fonts if not provided
+  fontFamilies?: { sans?: string; serif?: string; mono?: string };
   // Organizing principle for variable structure (default: 'four-level')
   organizingPrinciple?: OrganizingPrincipleName;
   // Existing styles from extraction - boilerplate will skip these
@@ -2074,6 +2085,11 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       if (boilerplateSerifFont) fontFamilyOverrides.serif = boilerplateSerifFont;
       if (boilerplateMonoFont) fontFamilyOverrides.mono = boilerplateMonoFont;
 
+      // Explicit payload.fontFamilies takes highest priority
+      if (payload.fontFamilies?.sans) fontFamilyOverrides.sans = payload.fontFamilies.sans;
+      if (payload.fontFamilies?.serif) fontFamilyOverrides.serif = payload.fontFamilies.serif;
+      if (payload.fontFamilies?.mono) fontFamilyOverrides.mono = payload.fontFamilies.mono;
+
       const boilerplateResults = await createBoilerplateInLevel1(
         level1,
         existingLevel1Vars,
@@ -2090,14 +2106,14 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       (results as any).boilerplateCreated = boilerplateResults.categories;
       (results as any).boilerplateSkipped = boilerplateResults.skipped;
 
-      // Report which fonts were used
+      // Report which fonts were used (after all overrides applied)
       const usedFonts: Record<string, string> = {};
-      if (boilerplatePrimaryFont) usedFonts.sans = boilerplatePrimaryFont;
-      if (boilerplateSerifFont) usedFonts.serif = boilerplateSerifFont;
-      if (boilerplateMonoFont) usedFonts.mono = boilerplateMonoFont;
+      if (fontFamilyOverrides.sans) usedFonts.sans = fontFamilyOverrides.sans;
+      if (fontFamilyOverrides.serif) usedFonts.serif = fontFamilyOverrides.serif;
+      if (fontFamilyOverrides.mono) usedFonts.mono = fontFamilyOverrides.mono;
       if (Object.keys(usedFonts).length > 0) {
         (results as any).fontFamilies = usedFonts;
-        (results as any).primaryFontFamily = boilerplatePrimaryFont;
+        (results as any).primaryFontFamily = fontFamilyOverrides.sans || boilerplatePrimaryFont;
       }
     }
 
@@ -2162,7 +2178,8 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
     const shouldCreateTypographyStyles = payload.createTypographyStyles !== false;
     if (shouldCreateTypographyStyles) {
       // Determine primary font family
-      let primaryFont = payload.primaryFontFamily || 'Inter';
+      // fontFamilies.sans takes highest priority for text style creation
+      let primaryFont = payload.fontFamilies?.sans || payload.primaryFontFamily || 'Inter';
       const genericFonts = ['sans-serif', 'serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-sans-serif', 'ui-serif', 'ui-monospace'];
 
       // Priority 1: Use resolved fonts (marketing names from web search)
@@ -2228,8 +2245,17 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
           payload.extractedTokens.typography.lineHeight || [],
           payload.extractedTokens.typography.fontWeight || [],
           primaryFont,
-          payload.extractedTokens.typography.fontSizeNodes // Pass node IDs for binding
+          payload.extractedTokens.typography.fontSizeNodes, // Pass node IDs for binding
+          payload.extractedTokens.typography.fontFamilyMap  // Pass per-size font family map
         );
+        // Log per-size font families if multiple fonts detected
+        const uniqueStyleFonts = new Set(mappedStyles.map(s => s.fontFamily));
+        if (uniqueStyleFonts.size > 1) {
+          console.log(`[DesignSystem] Multi-font text styles: ${[...uniqueStyleFonts].join(', ')}`);
+          for (const style of mappedStyles) {
+            console.log(`  ${style.name}: ${style.fontFamily} ${style.fontWeight} ${style.fontSize}px`);
+          }
+        }
         console.log(`[DesignSystem] Created ${mappedStyles.length} text styles from ${payload.extractedTokens.typography.fontSize.length} extracted font sizes (${isSpectrum ? 'Spectrum naming' : 'standard naming'})`);
       } else if (includeBoilerplate) {
         // No extracted tokens but boilerplate requested - use defaults
@@ -2237,11 +2263,12 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
           : isTailwind ? TAILWIND_DEFAULT_TYPOGRAPHY_STYLES
           : isMaterial ? MATERIAL_DEFAULT_TYPOGRAPHY_STYLES
           : isSpectrum ? SPECTRUM_DEFAULT_TYPOGRAPHY_STYLES : DEFAULT_TYPOGRAPHY_STYLES;
+        const monoFont = payload.fontFamilies?.mono;
         mappedStyles = defaultStyles.map(style => ({
           name: style.name,
           fontSize: style.fontSize,
           fontWeight: style.fontStyle,
-          fontFamily: style.name.startsWith('code-') ? (style.fontFamily || primaryFont) : primaryFont,
+          fontFamily: style.name.startsWith('code-') ? (monoFont || style.fontFamily || primaryFont) : primaryFont,
           lineHeight: typeof style.lineHeight === 'number' ? style.lineHeight : undefined,
           letterSpacing: style.letterSpacing,
           isExtracted: false,
@@ -2683,6 +2710,9 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       // Filter suggested fonts to only available ones for the result
       const availableSuggestedFonts = suggestedFonts.filter(f => availableFontFamilies.has(f));
 
+      // Collect all unique font families used across created styles
+      const allStyleFonts = [...new Set(createdStyles.map((s: any) => s.fontFamily).filter(Boolean))];
+
       (results as any).typographyStyles = {
         created: createdStyles.length,
         fromExtracted: extractedCount,
@@ -2692,6 +2722,7 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         skippedNodesStyled, // Separately report nodes styled from existing styles
         styles: createdStyles,
         primaryFont,
+        fontFamiliesUsed: allStyleFonts, // All font families used across text styles
         // Font availability info for workflow pause/prompt
         unavailableFonts: unavailableFonts.length > 0 ? unavailableFonts : undefined,
         suggestedFonts: unavailableFonts.length > 0 ? availableSuggestedFonts : undefined,

@@ -250,6 +250,7 @@ class TokenExtractor {
   private fontFamilies: Set<string> = new Set();
   private fontSizes: Set<number> = new Set();
   private fontSizeNodes: Map<number, string[]> = new Map(); // Track nodeIds per font size
+  private fontSizeFamilyCount: Map<number, Map<string, number>> = new Map(); // Track font family usage per size
   private fontWeights: Set<number> = new Set();
   private lineHeights: Set<number> = new Set();
   private letterSpacings: Set<number> = new Set();
@@ -322,7 +323,7 @@ class TokenExtractor {
         this.fontFamilies.add(fontName.family);
       }
 
-      // Font size (with nodeId tracking)
+      // Font size (with nodeId tracking and font family association)
       const fontSize = textNode.fontSize;
       if (fontSize !== figma.mixed && typeof fontSize === 'number') {
         this.fontSizes.add(fontSize);
@@ -332,6 +333,15 @@ class TokenExtractor {
           this.fontSizeNodes.set(roundedSize, []);
         }
         this.fontSizeNodes.get(roundedSize)!.push(node.id);
+
+        // Track which font family is used at each font size
+        if (fontName !== figma.mixed) {
+          if (!this.fontSizeFamilyCount.has(roundedSize)) {
+            this.fontSizeFamilyCount.set(roundedSize, new Map());
+          }
+          const familyCount = this.fontSizeFamilyCount.get(roundedSize)!;
+          familyCount.set(fontName.family, (familyCount.get(fontName.family) || 0) + 1);
+        }
       }
 
       // Font weight
@@ -615,6 +625,23 @@ class TokenExtractor {
           Array.from(this.fontSizeNodes.entries())
             .sort(([a], [b]) => a - b)
             .map(([size, nodeIds]) => [size, nodeIds])
+        ),
+        // Map each font size to its most-used font family
+        fontFamilyMap: Object.fromEntries(
+          Array.from(this.fontSizeFamilyCount.entries())
+            .sort(([a], [b]) => a - b)
+            .map(([size, familyMap]) => {
+              // Pick the font family used most at this size
+              let maxCount = 0;
+              let topFamily = '';
+              for (const [family, count] of familyMap) {
+                if (count > maxCount) {
+                  maxCount = count;
+                  topFamily = family;
+                }
+              }
+              return [size, topFamily];
+            })
         ),
       },
       numbers: {

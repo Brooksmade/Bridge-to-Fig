@@ -184,6 +184,7 @@ export interface ExtractedDesignTokens {
     lineHeight: number[];     // Unique line heights (as multipliers)
     letterSpacing: number[];  // Unique letter spacing values
     fontSizeNodes?: Record<number, string[]>; // Node IDs per font size
+    fontFamilyMap?: Record<number, string>;   // Most-used font family per font size
     resolvedFonts?: Array<{   // Resolved font names from web search
       cssName: string;
       marketingName?: string;

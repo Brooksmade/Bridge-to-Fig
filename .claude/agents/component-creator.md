@@ -33,13 +33,14 @@ The original design frame stays intact throughout. Masters live on the Component
 ```
 0. CHECKPOINT   → saveVersion before ANY modifications
 1. DISCOVER     → Identify elements, check design system, check Components page
-2. COPY         → Clone element to Components page (original untouched)
-3. CONVERT      → createComponent on the copy, rename state=default
-4. BIND         → Bind variables on the default component
-5. VARIANTS     → Clone default (bindings carry), convert, rename, rebind per state
-6. COMBINE      → createComponentSet with all variant IDs
-7. PROPERTIES   → Add text, boolean, instance swap properties
-8. INSTANCE     → Replace ALL originals with instances, ONE AT A TIME:
+2. DECOMPOSE    → Break ALL elements into atoms → molecules → organisms (MANDATORY)
+3. COPY         → Clone element to Components page (original untouched)
+4. CONVERT      → createComponent on the copy, rename state=default
+5. BIND         → Bind variables on the default component
+6. VARIANTS     → Clone default (bindings carry), convert, rename, rebind per state
+7. COMBINE      → createComponentSet with all variant IDs
+8. PROPERTIES   → Add text, boolean, instance swap properties
+9. INSTANCE     → Replace ALL originals with instances, ONE AT A TIME:
                   a. Read all text content from original (deep query)
                   b. Note position and index in parent
                   c. Create instance at same position
@@ -49,6 +50,17 @@ The original design frame stays intact throughout. Masters live on the Component
                   g. Repeat for each instance of this element
 ```
 
+### Build Order: Atoms → Molecules → Organisms
+
+**Steps 3-9 are repeated PER COMPONENT, but you MUST build in atomic order:**
+
+1. Create ALL atoms first (Button, IconButton, Avatar, Badge, NavLink, Divider, etc.)
+2. Then create molecules, composing them FROM atom instances
+3. Then create organisms, composing them FROM molecule and atom instances
+
+**A molecule/organism is NOT a flat frame — it contains INSTANCES of its child components.**
+When you create a ProjectCard, its "Open Project" button must be an INSTANCE of the Button component, not a raw frame that looks like a button. Its avatar must be an INSTANCE of the Avatar component. Every reusable piece must be a component instance.
+
 ### Decision Gates
 
 Before proceeding through the workflow, check:
@@ -56,7 +68,8 @@ Before proceeding through the workflow, check:
 | Gate | Check | If No |
 |------|-------|-------|
 | Elements identified? | Query frame with describe/children/deep + screenshot | Re-analyze with MCP get_screenshot |
-| Design system exists? | `getDesignSystemStatus` | Ask user: create one? Run design-system-orchestrator if yes |
+| Design system exists? | `getDesignSystemStatus` | Ask user: create one? Ask which type (see below). Run design-system-orchestrator if yes |
+| **Atomic decomposition done?** | **Build plan exists with atoms → molecules → organisms** | **DO NOT proceed. Run Step 2: DECOMPOSE first.** |
 | Components page exists? | `query` pages | `createPage "Components"` |
 | All states created? | Count variants vs required states | Clone + convert + rename + rebind for next state |
 | Instance matches original? | Visual check | Adjust position/size |
@@ -186,6 +199,25 @@ def widen_texts_to_parent(comp_id):
 
 **The `max_len * N` pixel estimate does NOT work** — font sizes vary per text node. Always use parent width or measureText.
 
+### Design System Type Selection
+
+If no design system exists (`getDesignSystemStatus` returns empty/error), **ask the user which type they want** before proceeding:
+
+| Type | Structure | Best For |
+|------|-----------|----------|
+| **4-level** (default) | Primitive → Semantic → Tokens → Theme | Enterprise apps, multi-brand systems |
+| **3-level** | Primitive → Semantic → Theme | Mid-size apps, single-brand |
+| **2-level** | Primitive → Semantic | Small projects, quick prototypes |
+| **Material Design 3** | Reference → System → Component | Google ecosystem, Material UI projects |
+| **Tailwind CSS** | Colors → Semantic | Tailwind web projects, utility-first CSS |
+
+**Ask:** "No design system found. Which type would you like me to create?"
+- Present the table above
+- If the user isn't sure, recommend **4-level** as the default
+- Pass the chosen type to the design-system-orchestrator agent
+
+If a design system already exists, skip this step and use whatever's in the file.
+
 **Classify each element by atomic level:**
 
 | Level | Type | What to Look For |
@@ -196,7 +228,75 @@ def widen_texts_to_parent(comp_id):
 
 ---
 
-## Step 2: COPY
+## Step 2: DECOMPOSE (MANDATORY — DO NOT SKIP)
+
+Before creating ANY component, you MUST decompose ALL discovered elements into an atomic hierarchy. This step produces the **build plan** — a complete list of every component to create, organized by level.
+
+### How to Decompose
+
+For every element discovered in Step 1, walk its children recursively and identify every reusable sub-element:
+
+```
+Example: ProjectCard (1:663)
+├── ClientAvatar (40x40 image frame)           → Atom: Avatar
+├── ClientName + label                          → (text, not a component)
+├── DotsIcon (4x16 vertical dots)              → Atom: IconButton
+├── Title + Description                         → (text, not a component)
+├── PersonasIcon (18x9) + count                → Atom: Icon
+├── CalendarIcon (14x15) + date                → Atom: Icon
+├── TeamAvatars (3x 24x24 images)              → Atom: Avatar (small variant)
+├── "Open Project" button (307x46)             → Molecule: Button
+└── The card itself                            → Organism: ProjectCard
+```
+
+### Build Plan Format
+
+Output a table with ALL components before proceeding. Group by atomic level:
+
+```markdown
+## Build Plan
+
+### Atoms (create FIRST)
+| Component | Source Element | Size | Variants | Notes |
+|-----------|---------------|------|----------|-------|
+| Avatar | 1:666 (40x40), 1:692 (24x24) | 40x40, 24x24 | size=md, size=sm | Image frame with border radius |
+| IconButton | 1:656 (34x34) | 34x34 | — | Icon inside circle/square bg |
+| Button | 1:699 (307x46) | 307x46 | type=primary, type=secondary | Text + optional icon |
+| NavLink | 1:791 (active), 1:793 (inactive) | varies | state=active, state=default | Text, active has underline/color |
+
+### Molecules (create SECOND, using atom instances)
+| Component | Contains Atoms | Source | Notes |
+|-----------|---------------|--------|-------|
+| SectionHeader | IconButton x2 | 1:652 | Title + optional action buttons |
+| ActionCard | IconButton, Icon | 1:581 | Icon + title + desc + arrow |
+| PersonaCard | Avatar | 1:616 | Avatar + name + role |
+
+### Organisms (create LAST, using atom + molecule instances)
+| Component | Contains | Source | Notes |
+|-----------|----------|--------|-------|
+| ProjectCard | Avatar, Button, Icon, IconButton | 1:663 | Full card with header, body, footer |
+| NavBar | NavLink, IconButton, Button, Avatar | 1:786 | Top navigation |
+```
+
+### Rules
+
+1. **Every sub-element that appears in 2+ places = its own component.** A button inside a card AND a nav bar? That's a Button component.
+2. **Every sub-element with variants = its own component.** Active/inactive nav links? NavLink component set.
+3. **Molecules contain atom INSTANCES, not raw frames.** When you build a ProjectCard, its button slot is an instance of the Button component — not a copy of a button-shaped frame.
+4. **Present the build plan to the user (or caller) before proceeding.** If the decomposition looks wrong, fix it now — not after creating 5 flat components.
+5. **If you cannot decompose** (single element with no reusable children), it's fine to create it as a standalone component. But you must explicitly state "no reusable sub-elements found."
+
+### Decision Gate
+
+| Gate | Check | If No |
+|------|-------|-------|
+| Build plan complete? | Every element decomposed, atoms/molecules/organisms listed | Do NOT proceed to Step 3. Re-analyze. |
+| All shared sub-elements identified? | Cross-check: does the same button/icon/avatar appear in multiple elements? | Add missing atoms to the plan. |
+| Build order correct? | Atoms first, then molecules, then organisms | Reorder the plan. |
+
+---
+
+## Step 3: COPY
 
 Clone the element to the Components page. The original stays untouched.
 
@@ -415,12 +515,12 @@ Call `place_component()` after each `createComponent` on the Components page.
 
 ## Step 0: CHECKPOINT
 
-**ALWAYS save a version before any modifications.** This is your undo safety net.
+**Save ONE version at the start of the entire workflow.** This is your undo safety net. Do NOT save a version before every component — one checkpoint is enough.
 
 ```json
 {"type": "saveVersion", "payload": {
-  "title": "Pre-component: [component name]",
-  "description": "Checkpoint before creating [component name] component"
+  "title": "Pre-component creation",
+  "description": "Checkpoint before component creation workflow"
 }}
 ```
 
@@ -669,6 +769,9 @@ Given: 3 project cards (1:663, 1:701, 1:739) in container 1:662.
 
 - [ ] **Checkpoint**: Version saved BEFORE any modifications
 - [ ] **Content audit**: All instances read, max text lengths noted, non-text diffs flagged
+- [ ] **Decomposed**: Build plan produced with atoms → molecules → organisms. Every reusable sub-element identified. Build order confirmed.
+- [ ] **Atoms built first**: All atoms created as standalone components before any molecule/organism
+- [ ] **Composition verified**: Molecules/organisms contain INSTANCES of atom components, not raw frames
 - [ ] **Copied**: Original frame untouched, copy on Components page, laid out (not at 0,0)
 - [ ] **Converted**: Copy is now a COMPONENT named appropriately
 - [ ] **Sized**: Master's text containers widened to fit longest content across all instances
@@ -690,7 +793,7 @@ These rules are non-negotiable. Every script MUST follow them.
 
 1. **ALWAYS `widen_texts_to_parent()` on every master component immediately after creation.** Set every text node's width to its parent container's full width. The `max_len * N` pixel estimate DOES NOT WORK — font sizes vary. Use parent width.
 
-2. **ALWAYS `saveVersion` before any batch operation.** If something breaks, `triggerUndo` repeatedly to restore.
+2. **ONE `saveVersion` at the start of the entire workflow.** Do NOT save a version before every component — that clutters version history. One checkpoint at the beginning. If something breaks, `triggerUndo` repeatedly to restore.
 
 3. **NEVER stack elements.** Check for existing content before creating. Use layout cursor on Components page. Delete old content before rebuilding.
 
@@ -719,6 +822,12 @@ These rules are non-negotiable. Every script MUST follow them.
 15. **widen_texts_to_parent DOES NOT WORK with auto-layout parents.** Auto-layout parents hug content — setting text width to parent width has no effect. Instead: use `measureText` on the longest text across all instances to get exact pixel width, then resize the text node AND expand parent frames up the chain. Or set the component width explicitly.
 
 16. **Active/inactive states: read the original, don't invent.** Example failure: added an underline to "active" nav links that didn't exist in the original design. The original only used teal color + semibold weight. Screenshot every element before creating variants.
+
+17. **NEVER skip atomic decomposition.** Step 2 (DECOMPOSE) is mandatory. You MUST produce a build plan with atoms → molecules → organisms BEFORE creating any component. Creating flat top-level components without breaking them into reusable atoms is a critical failure. A ProjectCard is NOT one component — it's Button + Avatar + IconButton + text assembled together.
+
+18. **Build atoms FIRST, then compose upward.** Create all atom components before any molecule. Create all molecules before any organism. Molecules and organisms MUST contain INSTANCES of their child components — not raw frames that look like the child component. If a card has a button, that button slot is an instance of the Button component.
+
+19. **Cross-reference sub-elements across ALL discovered elements.** The same button shape in a card AND a nav bar = one Button component used in both. Don't create it twice. Don't skip it because it's "inside" a larger element.
 
 ---
 

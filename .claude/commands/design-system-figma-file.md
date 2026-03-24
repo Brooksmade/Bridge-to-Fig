@@ -10,6 +10,7 @@ Create a complete design system from the connected Figma file following the corr
 TodoWrite with these items:
 1. Ask user for organizing principle
 2. Extract design tokens from file (colors, typography, effects, styles)
+2.5. Review font families (if multi-font file — confirm sans/serif/mono roles)
 3. Confirm brand colors with user
 4. Ask about boilerplate preferences
 5. Ask about clearing existing styles and collections
@@ -40,6 +41,7 @@ Throughout the workflow, you MUST collect and store:
 | `deleteExistingCollections` | Step 5 | Step 7 | ✓ |
 | `deleteExistingStyles` | Step 5 | Step 7 | ✓ |
 | `primaryFontFamily` | Step 2 | Step 7 | ✓ |
+| `fontFamilies` | Step 2.5 | Step 7 | if multi-font |
 
 ---
 
@@ -102,6 +104,31 @@ curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/jso
 - Typography: X font families, Y sizes
 - **Effects: X shadow effects found** ← MUST REPORT THIS
 - Existing styles: X text, Y effect, Z grid
+
+### Step 2.5: Review Font Families (Multi-Font Files)
+
+**Check `tokens.typography.fontFamily` from extraction.** If the file uses **2 or more font families**, present them to the user:
+
+**Your file uses multiple font families:**
+
+| Font | Role (auto-detected) |
+|------|---------------------|
+| Inter | Sans (primary) |
+| Georgia | Serif |
+| SF Mono | Mono |
+
+Auto-detection classifies fonts by name heuristics (e.g., "Mono", "Courier" → mono; "Georgia", "Merriweather" → serif). The `fontFamilyMap` from extraction shows which font is used at each size.
+
+**Ask the user to confirm or reassign roles:**
+1. **Sans (primary)** — Used for headings, body text, labels
+2. **Serif** — Used for the `Font-Serif` primitive variable
+3. **Mono** — Used for `code-*` text styles and `Font-Mono` variable
+
+Store as `fontFamilies: { sans: "...", serif: "...", mono: "..." }` for Step 7.
+
+**If only 1 font family exists**, skip this step — it becomes `primaryFontFamily` automatically.
+
+**IMPORTANT:** The `fontFamilyMap` from extraction maps each font size to its most-used font family. When passed to `createDesignSystem`, text styles will automatically use the correct font per size (e.g., headings in Playfair Display, body in Inter). You do NOT need to manually assign fonts to individual styles.
 
 ### Step 3: Confirm Brand Colors
 
@@ -186,6 +213,8 @@ PRE-FLIGHT CHECKLIST:
 [ ] deleteExistingCollections = true/false (from Step 5)
 [ ] deleteExistingStyles = true/false (from Step 5)
 [ ] primaryFontFamily = "________" (from Step 2 extraction)
+[ ] fontFamilies = { sans: "...", serif: "...", mono: "..." } (from Step 2.5, if multi-font)
+[ ] extractedTokens.typography.fontFamilyMap = present (from Step 2) ← maps each size to its font
 [ ] extractedTokens.typography.fontSizeNodes = X sizes (from Step 2) ← CRITICAL for text style binding
 [ ] extractedTokens.effects.shadows = X items (from Step 2) ← CRITICAL for effect style binding
 [ ] existingStyles collected (from Step 2)
@@ -225,6 +254,11 @@ curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/jso
         }
       },
       "primaryFontFamily": "EXTRACTED_FONT",
+      "fontFamilies": {
+        "sans": "PRIMARY_SANS_FONT",
+        "serif": "SERIF_FONT_OR_OMIT",
+        "mono": "MONO_FONT_OR_OMIT"
+      },
       "createTypographyStyles": true,
       "createEffectStyles": true,
       "createGridStyles": true
