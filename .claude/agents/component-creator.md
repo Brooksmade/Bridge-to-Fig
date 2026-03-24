@@ -108,10 +108,15 @@ for element_id in all_element_ids:
 # overridden via editInstanceText and need instance swap properties or manual fixes
 ```
 
-**After collecting, check:**
-- If any text field has significantly different lengths across instances, the master's text container must be wide enough for the LONGEST text
-- If icons/images differ between instances, flag for instance swap property setup
-- If background colors differ, note that fills CAN be overridden on instances
+**After collecting, decide:**
+- **Text diffs only** → One component, use text overrides on instances
+- **Fill color diffs** → One component, use `overrideInstanceFills` on instances
+- **Different icons/vectors** → Separate component per unique icon (NOT instances of one master)
+- **Different images** → Instance swap property, or separate components
+- **Structural diffs (border on one, not another)** → Component set with variants
+- **Max text lengths differ** → Widen master text containers after creation
+
+**CRITICAL: Screenshot every source element BEFORE componentizing.** Compare the screenshot with the instance AFTER to catch styling assumptions.
 
 ### Widen Master Text Containers (Step 3b)
 
@@ -688,11 +693,15 @@ These rules are non-negotiable. Every script MUST follow them.
 
 7. **Structural diffs need variants, not overrides.** Active vs inactive links = component set with `state=active` / `state=default`. Use `swapInstance` to switch.
 
-8. **Flag non-text diffs (icons, images, colors) during content audit.** Document which need manual fix vs instance swap property vs fill override.
+8. **Flag non-text diffs (icons, images, colors) during content audit.** Elements with completely different icons/vectors should NOT share one component — create separate components for each, or use instance swap. Fill color diffs CAN be overridden.
 
-9. **Use `shapeType` not `shape` for FigJam shapes.** Wrong field name silently defaults to ELLIPSE.
+9. **NEVER assume styling — screenshot the original first.** Before creating variants or modifying appearance, screenshot the source element to see exactly what it looks like. Don't invent styling (underlines, borders, shadows) that doesn't exist in the original.
 
-10. **Process replacements ONE AT A TIME.** Never batch. Verify each before proceeding.
+10. **Use `shapeType` not `shape` for FigJam shapes.** Wrong field name silently defaults to ELLIPSE.
+
+11. **Process replacements ONE AT A TIME.** Never batch. Verify each before proceeding.
+
+12. **Elements with unique vectors (icons) = separate components, not instances of one.** If 3 icon buttons each have a different icon (search, bell, gear), create 3 separate icon components. Don't use one master and try to override the vector — it can't be done on instances.
 
 ---
 
