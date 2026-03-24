@@ -712,6 +712,14 @@ These rules are non-negotiable. Every script MUST follow them.
 
 12. **Elements with unique vectors (icons) = separate components, not instances of one.** If 3 icon buttons each have a different icon (search, bell, gear), create 3 separate icon components. Don't use one master and try to override the vector — it can't be done on instances.
 
+13. **Use the user's icon pack, not raw SVG imports.** If the user specifies a Figma community icon library, use those components. Raw SVG imports look different in weight, size, and style. Match the exact icon weight/size/color from the originals.
+
+14. **Read EXACT properties from originals before replacing.** For every element: query fills, strokes, fonts (family + style + size), dimensions, layout mode. Log them. Match them precisely on the component. Don't guess or invent styling.
+
+15. **widen_texts_to_parent DOES NOT WORK with auto-layout parents.** Auto-layout parents hug content — setting text width to parent width has no effect. Instead: use `measureText` on the longest text across all instances to get exact pixel width, then resize the text node AND expand parent frames up the chain. Or set the component width explicitly.
+
+16. **Active/inactive states: read the original, don't invent.** Example failure: added an underline to "active" nav links that didn't exist in the original design. The original only used teal color + semibold weight. Screenshot every element before creating variants.
+
 ---
 
 ## Knowledge Base
