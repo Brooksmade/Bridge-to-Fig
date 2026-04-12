@@ -1,20 +1,8 @@
 # /accessibility-audit - WCAG Accessibility Audit
 
-Audit designs for WCAG AA/AAA compliance including color contrast ratios, touch target sizes, text sizing minimums, focus state presence, and heading hierarchy. Use when the user wants to check accessibility before handoff, validate designs against WCAG 2.1 guidelines, or generate compliance reports. Produces a scored report (0-100) with specific fix recommendations per failing element. Not for design system creation — use `/design-system` for that.
+Audit designs for WCAG compliance including color contrast, touch targets, text sizing, focus states, and heading hierarchy.
 
 **IMPORTANT:** For full implementation details, also read `.claude/agents/accessibility-auditor.md`
-
-## Prerequisites Gate
-
-Before starting, verify:
-
-| Check | How to Verify | Expected | If Missing |
-|-------|--------------|----------|------------|
-| Bridge server running | `curl localhost:4001/health` | `{"status":"ok"}` | Run `pnpm dev` from bridge-server/ |
-| Plugin connected | Send `ping` command | Response within 15s | Open Figma → Plugins → Bridge to Fig |
-| Frames exist to audit | Query selection or get pages | ≥1 frame with content | Select frames or ensure file has content |
-
-**If no frames exist, STOP.** Accessibility audit requires design content to analyze.
 
 ## Workflow
 
@@ -125,38 +113,8 @@ For each failing element, provide:
 2. Enlarge X touch targets to meet minimum
 3. Manually verify focus states are visible
 
-## Error Recovery
-
-| Failure | Diagnostic | Recovery |
-|---------|-----------|----------|
-| `getNodeColors` returns empty | Frame has no fills or the ID is wrong | Re-query selection, verify frame ID, check nested children |
-| `analyzeColors` fails | No color pairs found for contrast | Frame may contain only images — report as "unable to compute contrast for raster content" |
-| Deep query timeout | Frame has thousands of nested children | Use `describe` query instead of `deep` for structural overview, then deep-query specific sections |
-| Contrast calculation produces NaN | Color values are invalid (transparent, gradient) | Skip transparent fills, flag gradients as "manual review needed" |
-| No text nodes found | Frame contains only shapes | Report "no text content to audit for sizing/hierarchy" — still audit colors and touch targets |
-
-**On partial failure:** Accessibility audits should never fully abort. Report results for checks that succeeded, mark failed checks as "unable to evaluate" with the reason.
-
-## Outcome Tracking
-
-After execution, report:
-
-| Metric | Value |
-|--------|-------|
-| **Status** | success / partial / failed |
-| **WCAG Level** | AA / AAA |
-| **Scope** | selection / page / file |
-| **Overall Score** | X/100 |
-| **Contrast Checks** | X passed, Y failed, Z warnings |
-| **Touch Targets** | X passed, Y failed |
-| **Text Sizing** | X passed, Y failed |
-| **Focus States** | X flagged for manual review |
-| **Heading Hierarchy** | X passed, Y violations |
-| **Critical Failures** | X (must fix before launch) |
-
 ## Reference Files
 
 - `.claude/agents/accessibility-auditor.md` - Full agent instructions
 - `prompts/quick-ref.md` - Compact API reference (~200 lines)
 - `prompts/figma-bridge.md` - Full API reference (detailed examples)
-- `prompts/skill-patterns.md` - Skill patterns reference

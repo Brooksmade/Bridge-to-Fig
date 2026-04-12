@@ -1,21 +1,8 @@
 # /engineering-handoff - Generate Developer Handoff Package
 
-Extract precise specifications, generate CSS/Tailwind code snippets, create design token to CSS variable mappings, and export assets at multiple scales for developer handoff. Use when designs are ready for implementation and developers need spec sheets, code, and assets. Produces a complete handoff package per component. Not for creating designs — use `/component-library` for building components first.
+Extract precise specifications, generate code snippets, and create comprehensive documentation for developer handoff.
 
 **IMPORTANT:** For full implementation details, also read `.claude/agents/engineering-handoff.md`
-
-## Prerequisites Gate
-
-Before starting, verify:
-
-| Check | How to Verify | Expected | If Missing |
-|-------|--------------|----------|------------|
-| Bridge server running | `curl localhost:4001/health` | `{"status":"ok"}` | Run `pnpm dev` from bridge-server/ |
-| Plugin connected | Send `ping` command | Response within 15s | Open Figma → Plugins → Bridge to Fig |
-| Components exist | `getComponents` | ≥1 component in file | Select frames to handoff, or run `/component-library` first |
-| Design system exists | `getDesignSystemStatus` | Variables found | Token mapping requires variables — run `/design-system` first |
-
-**If no components or frames exist, STOP.** Handoff requires content to analyze.
 
 ## Workflow
 
@@ -131,37 +118,8 @@ For each component, provide:
 - Accessibility notes (contrast, touch targets, focus ring)
 - Platform-specific guidelines
 
-## Error Recovery
-
-| Failure | Diagnostic | Recovery |
-|---------|-----------|----------|
-| No selection and no components | `getComponents` returns empty, no selection | Ask user to select specific frames to handoff |
-| `getAutoLayout` fails | Node doesn't have auto layout configured | Report layout as "manual positioning" — still extract dimensions |
-| `getVariables` empty (no design system) | No variable collections | Generate code with hardcoded values instead of tokens; warn about missing design system |
-| `batchExport` fails | Export format not supported or node too complex | Retry with single exports per node; skip failing nodes with report |
-| `analyzeColors` timeout | Complex file with many color instances | Narrow scope to selected components only |
-| Token mapping incomplete | Some properties have no matching variable | Report as "unbound property" with the raw value — developer can decide |
-
-**On partial failure:** Handoff should produce what it can. Missing design system means hardcoded values instead of tokens. Failed exports mean the spec still ships without images. Always report what was generated and what was skipped.
-
-## Outcome Tracking
-
-After execution, report:
-
-| Metric | Value |
-|--------|-------|
-| **Status** | success / partial / failed |
-| **Components Analyzed** | X |
-| **Spec Sheets Generated** | X |
-| **CSS Snippets** | X |
-| **Tailwind Classes** | X |
-| **Token Mappings** | X (Y unmapped properties) |
-| **Assets Exported** | X (PNG: Y, SVG: Z) |
-| **Platforms** | Web / iOS / Android |
-
 ## Reference Files
 
 - `.claude/agents/engineering-handoff.md` - Full agent instructions
 - `prompts/quick-ref.md` - Compact API reference (~200 lines)
 - `prompts/figma-bridge.md` - Full API reference (detailed examples)
-- `prompts/skill-patterns.md` - Skill patterns reference

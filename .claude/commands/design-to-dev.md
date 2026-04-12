@@ -1,20 +1,8 @@
 # /design-to-dev - Complete Design-to-Development Pipeline
 
-Master orchestrator that runs the full design-to-development handoff pipeline in 5 phases: pre-flight analysis, design system creation, component library, accessibility audit, and engineering handoff. Use when the user wants an end-to-end pipeline from raw designs to production-ready developer packages. Produces an overall readiness score (0-100) and a complete handoff package. For individual phases, use the specific skills instead (`/design-system`, `/component-library`, `/accessibility-audit`, `/engineering-handoff`).
+Master orchestrator that runs the full design-to-development handoff pipeline: audit, design system, components, accessibility, and engineering handoff.
 
 **IMPORTANT:** For full implementation details, also read `.claude/agents/design-to-dev-orchestrator.md`
-
-## Prerequisites Gate
-
-Before starting, verify:
-
-| Check | How to Verify | Expected | If Missing |
-|-------|--------------|----------|------------|
-| Bridge server running | `curl localhost:4001/health` | `{"status":"ok"}` | Run `pnpm dev` from bridge-server/ |
-| Plugin connected | Send `ping` command | Response within 15s | Open Figma → Plugins → Bridge to Fig |
-| File has content | `getFileInfo` | ≥1 page with frames | Open a Figma file with design content |
-
-**Note:** Design system and components are NOT prerequisites — this skill creates them if they don't exist.
 
 ## Workflow
 
@@ -163,39 +151,6 @@ Report: X spec sheets, X code snippets, X assets exported.
 | 4 (Accessibility) | Non-Critical | Continue, generate report only |
 | 5 (Handoff) | Non-Critical | Continue, partial handoff possible |
 
-## Error Recovery
-
-| Failure | Diagnostic | Recovery |
-|---------|-----------|----------|
-| Phase 1 (Analysis) fails | Consistency checker crashes or times out | Retry with page scope; if still fails, skip to Phase 2 with warning |
-| Phase 2 (Design System) fails | `createDesignSystem` error | Check if collections already exist; delete and retry, or use existing system |
-| Phase 3 (Components) fails | Component creation errors | Continue — components are non-critical; handoff can proceed with frames |
-| Phase 4 (Accessibility) fails | Color analysis timeout | Generate partial report for what succeeded; mark rest as "needs manual review" |
-| Phase 5 (Handoff) fails | Export errors | Retry exports individually; generate specs without images if exports fail |
-| Sub-skill invocation fails | `/design-system` or `/accessibility-audit` errors | Run the sub-skill independently to diagnose; check its prerequisites |
-| Entire pipeline stalls | No progress for >5 minutes | Check `curl localhost:4001/logs/running` for stuck commands; restart plugin |
-
-**Phase failure strategy** (from Critical vs Non-Critical table above):
-- Phase 1-2 failures are critical — fix before continuing
-- Phase 3-5 failures are non-critical — continue with partial results
-- Always save checkpoint after each successful phase so restart is possible
-
-## Outcome Tracking
-
-After execution, report:
-
-| Metric | Value |
-|--------|-------|
-| **Status** | success / partial / failed |
-| **Overall Readiness** | X/100 |
-| **Phases Completed** | X of 5 |
-| **Phase 1 (Analysis)** | X issues found |
-| **Phase 2 (Design System)** | X/100 — X variables, X bindings |
-| **Phase 3 (Components)** | X/100 — X components, X variants |
-| **Phase 4 (Accessibility)** | X/100 — X failures, X warnings |
-| **Phase 5 (Handoff)** | X specs, X assets |
-| **Duration** | Total time across all phases |
-
 ## Reference Files
 
 - `.claude/agents/design-to-dev-orchestrator.md` - Full orchestrator agent
@@ -206,4 +161,3 @@ After execution, report:
 - `.claude/agents/engineering-handoff.md` - Phase 5
 - `prompts/quick-ref.md` - Compact API reference (~200 lines)
 - `prompts/figma-bridge.md` - Full API reference (detailed examples)
-- `prompts/skill-patterns.md` - Skill patterns reference

@@ -386,42 +386,9 @@ Full report should include:
 | Grid/8px Square | GRID | 8px square grid for alignment |
 | Grid/Baseline Rows | ROWS | Row grid for vertical rhythm (8px gutter) |
 
-## Error Recovery
-
-| Failure | Diagnostic | Recovery |
-|---------|-----------|----------|
-| Bridge server not responding | `curl localhost:4001/health` | Run `pnpm dev` from bridge-server/ |
-| Plugin not connected | `ping` command times out after 15s | Open Figma → Plugins → Development → Bridge to Fig |
-| Extraction timeout (>5 min) | Check `curl localhost:4001/logs/running` | Retry with `scope: "page"` instead of `scope: "file"` |
-| Empty shadows in extraction | `extractedTokens.effects.shadows` is `[]` or missing | Re-extract with `scope: "page"` targeting shadow-heavy pages |
-| Brand color auto-detect fails | `needsUserPrompt: true` with 0 candidates | Ask user for hex codes directly — file may use only neutrals |
-| createDesignSystem partial failure | Some collections created, others missing | Check response for which collections succeeded; delete and retry |
-| Binding returns 0 matches | `autoBindByRole` completes with 0 bindings | Verify design system variables exist with `getVariables`; check color format (hex vs rgb) |
-
-**On partial failure:** Report which steps completed (collections, styles, bindings), offer to:
-1. Retry failed operations only (e.g., re-run binding without recreating variables)
-2. Continue with partial results and note gaps
-3. Delete everything and start over (`deleteExistingCollections: true`)
-
-## Outcome Tracking
-
-After execution, report:
-
-| Metric | Value |
-|--------|-------|
-| **Status** | success / partial / failed |
-| **Duration** | Time from extraction to final binding |
-| **Collections Created** | X (list names) |
-| **Variables Created** | X total (X color, X typography, X spacing, X effects) |
-| **Styles Created** | X text, X effect, X grid |
-| **Nodes Bound** | X color, X text style, X effect style |
-| **Unbound Nodes** | X (with reasons) |
-| **Issues** | X (Y critical, Z warnings) |
-
 ## Reference Files
 
 - `.claude/agents/figma-variables.md` - Full agent instructions
 - `prompts/figma-variables.md` - Quick reference
 - `prompts/quick-ref.md` - Compact API reference (~200 lines)
 - `prompts/figma-bridge.md` - Full API reference (detailed examples)
-- `prompts/skill-patterns.md` - Skill patterns reference

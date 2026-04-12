@@ -1,18 +1,6 @@
 # /replace-design-system - Replace Design System Variables
 
-Delete all existing variable collections and recreate them with a different organizing principle (4-Level, 3-Level, Material Design, Tailwind, Spectrum, Apple HIG). Use when the user wants to restructure their design system without losing color/token values. Simple 3-question flow then fully automated with 3-pass binding strategy (exact match, semantic role detection, manual sweep). Not for creating a design system from scratch — use `/design-system` for that.
-
-## Prerequisites Gate
-
-Before starting, verify:
-
-| Check | How to Verify | Expected | If Missing |
-|-------|--------------|----------|------------|
-| Bridge server running | `curl localhost:4001/health` | `{"status":"ok"}` | Run `pnpm dev` from bridge-server/ |
-| Plugin connected | Send `ping` command | Response within 15s | Open Figma → Plugins → Bridge to Fig |
-| Existing collections | `getVariables` | ≥1 variable collection | Nothing to replace — use `/design-system` to create from scratch |
-
-**Note:** This skill DELETES all existing collections before recreating. Warn the user this is destructive.
+Replace the variable collections in the current Figma file with a new organizing principle. Simple 3-question flow, then fully automated.
 
 ## Flow
 
@@ -203,34 +191,3 @@ Binding results:
 - **Always verify with dry run** — the job isn't done until `skipped: 0`
 - **Use `timeout=300000`** for extractDesignTokens and createDesignSystem result polls
 - **bindFillVariable format**: `{"type": "bindFillVariable", "payload": {"nodeId": "...", "variableId": "...", "fillIndex": 0}}` — nodeId goes in PAYLOAD, not as target
-
-## Error Recovery
-
-| Failure | Diagnostic | Recovery |
-|---------|-----------|----------|
-| `deleteVariableCollection` fails | Collection ID invalid or already deleted | Re-query collections with `getVariables`, retry with fresh IDs |
-| `createDesignSystem` fails after deletion | Collections were deleted but new ones didn't create | Retry createDesignSystem — no data was lost (colors are still on nodes) |
-| Extraction timeout (Fill gaps mode) | File too large for file scope | Use `scope: "page"` on the most token-rich page |
-| Pass 1 binding low (<50%) | Color tolerance 30 too strict | Expected — Pass 2 and 3 will catch remaining nodes |
-| Pass 2 (autoBindByRole) binds wrong colors | Semantic role detection mismatched | Use manual pass 3 to correct; check dry-run output for mismatches |
-| Pass 3 dry-run still shows skipped | Truly orphan colors with no variable match | Ask user to create new variables or accept as unbound |
-| All bindings lost after replacement | Old bindings reference deleted variable IDs | Expected — 3-pass binding strategy restores bindings to new variables |
-
-**On partial failure:** Collections and variables are the critical output. If binding fails, the design system structure is still valid. Binding can be retried independently with `/bind-variables`.
-
-## Outcome Tracking
-
-After execution, report:
-
-| Metric | Value |
-|--------|-------|
-| **Status** | success / partial / failed |
-| **Structure** | Organizing principle name |
-| **Collections Created** | X (list names) |
-| **Variables Created** | X total |
-| **Typography Styles** | X |
-| **Effect Styles** | X |
-| **Pass 1 Bindings** | X nodes (exact + near match) |
-| **Pass 2 Bindings** | X nodes (semantic role) |
-| **Pass 3 Bindings** | X nodes (manual) |
-| **Unbound Remaining** | X (should be 0) |

@@ -1,21 +1,8 @@
 # /component-library - Create a Component Library
 
-Build a production-ready component library with variant matrices (Size x Type x State), auto layout configuration, naming convention enforcement, quality scoring (0-100), and developer handoff deliverables. Use when the user has design frames that need to become reusable components, or wants to create components from scratch with requirements. Runs 5 phases: Create, Layout, Name, QA, Handoff. For individual component creation without the full pipeline, manipulate components directly via the bridge API.
+Build a production-ready component library with variants, auto layout, naming conventions, quality checks, and developer handoff.
 
 **IMPORTANT:** For full implementation details, also read `.claude/agents/component-library-orchestrator.md`
-
-## Prerequisites Gate
-
-Before starting, verify:
-
-| Check | How to Verify | Expected | If Missing |
-|-------|--------------|----------|------------|
-| Bridge server running | `curl localhost:4001/health` | `{"status":"ok"}` | Run `pnpm dev` from bridge-server/ |
-| Plugin connected | Send `ping` command | Response within 15s | Open Figma → Plugins → Bridge to Fig |
-| Design system exists | `getDesignSystemStatus` | Variables found | Suggest `/design-system` first — components need tokens for binding |
-| Source frames or requirements | Query selection or user describes needs | Frames selected OR user describes components | Ask user to select frames or describe what to build |
-
-**If no design system exists:** Warn that Phase 4 (QA) binding checks will fail, but offer to proceed without.
 
 ## Workflow
 
@@ -160,35 +147,6 @@ Generate: Spec sheets, CSS snippets, Tailwind utilities, token mapping.
 | **Naming Compliance** | X% |
 | **Assets Exported** | X |
 
-## Error Recovery
-
-| Failure | Diagnostic | Recovery |
-|---------|-----------|----------|
-| `createComponent` fails | Node creation error | Check if the name conflicts with existing component; rename and retry |
-| `createComponentSet` fails | Variant naming invalid | Verify format `property=value` with no special characters; fix names and retry |
-| `setAutoLayout` silently ignored | Properties not applied | Follow 3-step rule: create → setAutoLayout → modify. Check that node exists before layout |
-| Naming enforcement conflicts | Component with same name exists | Add numeric suffix or ask user for disambiguation |
-| QA score low (<50) | Missing variants, no token binding | Expected for initial creation — report issues, offer to fix top 3 |
-| Phase fails mid-pipeline | Error during one of 5 phases | Save completed phase results, offer to resume from failed phase |
-| Large file timeout | >100 components to process | Process in batches of 20; use page scope instead of file scope |
-
-**On partial failure:** Each phase is independent. If Phase 3 (naming) fails, Phases 1-2 results are preserved. Offer to skip the failing phase and continue.
-
-## Outcome Tracking
-
-After execution, report:
-
-| Metric | Value |
-|--------|-------|
-| **Status** | success / partial / failed |
-| **Phases Completed** | X of 5 |
-| **Components Created** | X |
-| **Total Variants** | X |
-| **Quality Score** | X/100 |
-| **Naming Compliance** | X% |
-| **Assets Exported** | X |
-| **Duration** | Total time |
-
 ## Reference Files
 
 - `.claude/agents/component-library-orchestrator.md` - Full orchestrator agent
@@ -199,4 +157,3 @@ After execution, report:
 - `.claude/agents/engineering-handoff.md` - Dev handoff
 - `prompts/quick-ref.md` - Compact API reference (~200 lines)
 - `prompts/figma-bridge.md` - Full API reference (detailed examples)
-- `prompts/skill-patterns.md` - Skill patterns reference
