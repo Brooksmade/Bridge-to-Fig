@@ -1,10 +1,22 @@
 # /figjam-workflow - Create FigJam Workflow Diagrams
 
-Create workflow diagrams, flowcharts, and process maps in FigJam using native, editable shapes.
+Create workflow diagrams, flowcharts, comparison tables, hub-and-spoke diagrams, swimlanes, decision trees, and timelines in FigJam using native editable shapes, sections, and connectors. Use when the user wants to visualize a process, user flow, CI/CD pipeline, approval workflow, or any diagram in their open FigJam board. Auto-detects chart type from the user's description. Not for Figma design files — this creates FigJam elements only.
 
 > **CRITICAL:** ALWAYS use bridge server commands (`createSection`, `createShapeWithText`, `createConnector` at `localhost:4001`) to create FigJam diagrams. NEVER use MCP tools like `generate_diagram` — they create separate files instead of drawing in the user's open FigJam board. Only use MCP Figma tools for FigJam if the user explicitly requests it.
 
 **IMPORTANT:** For full implementation details, also read `.claude/agents/figjam-workflow-design.md`
+
+## Prerequisites Gate
+
+Before starting, verify:
+
+| Check | How to Verify | Expected | If Missing |
+|-------|--------------|----------|------------|
+| Bridge server running | `curl localhost:4001/health` | `{"status":"ok"}` | Run `pnpm dev` from bridge-server/ |
+| Plugin connected | Send `ping` command | Response within 15s | Open FigJam file → Plugins → Bridge to Fig |
+| FigJam file open | User confirms FigJam (not Figma design file) | FigJam board active | Open a FigJam file — FigJam shapes don't work in design files |
+
+**If a Figma design file is open instead of FigJam, STOP.** FigJam shapes (`createSection`, `createShapeWithText`, `createConnector`) only work in FigJam files.
 
 ## Workflow
 
@@ -145,6 +157,33 @@ Show what was created:
 - Shapes: X
 - Connectors: X
 
+## Error Recovery
+
+| Failure | Diagnostic | Recovery |
+|---------|-----------|----------|
+| `createSection` fails | "Cannot create section" error | Verify FigJam file is open (not Figma design file); sections are FigJam-only |
+| `createShapeWithText` fails | Shape type not supported | Check supported shapes: ROUNDED_RECTANGLE, DIAMOND, ELLIPSE, TRIANGLE_UP, TRIANGLE_DOWN |
+| `createConnector` fails: "Node not found" | Source or target shape ID is wrong | Verify shape IDs from creation responses; shapes must exist before connectors |
+| `measureText` returns unexpected dimensions | Font or fontSize not available | Default to estimated width (text.length * fontSize * 0.6); proceed with approximation |
+| Elements not inside sections | Section created AFTER children | Create parent section FIRST, then add children — FigJam only adopts elements created after the section |
+| Overlapping elements | Position calculations wrong | Review spacing constants (80px horizontal, 100px vertical, 250px between sections) |
+| Too many elements for one diagram | >50 shapes makes layout unwieldy | Split into multiple linked diagrams; use sections as visual grouping |
+
+**On partial failure:** Diagrams are additive. If some shapes created but connectors fail, the shapes are still usable. Report what was created and offer to retry connectors.
+
+## Outcome Tracking
+
+After execution, report:
+
+| Metric | Value |
+|--------|-------|
+| **Status** | success / partial / failed |
+| **Chart Type** | Flowchart / Swimlane / Hub-Spoke / etc. |
+| **Sections Created** | X |
+| **Shapes Created** | X |
+| **Connectors Created** | X |
+| **Color Scheme** | Professional / Warm / Minimal / Custom |
+
 ## Reference Files
 
 - `.claude/agents/figjam-workflow-design.md` - Full agent instructions
@@ -152,3 +191,4 @@ Show what was created:
 - `.claude/prompts/charts/*.md` - Chart-specific prompts
 - `prompts/quick-ref.md` - Compact API reference (~200 lines)
 - `prompts/figma-bridge.md` - Full API reference (detailed examples)
+- `prompts/skill-patterns.md` - Skill patterns reference

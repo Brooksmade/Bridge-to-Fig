@@ -1,8 +1,22 @@
 # /design-system-website - Create a Design System from a Website
 
-Extract CSS from a live website using Puppeteer and create a complete design system in Figma.
+Extract CSS from a live website using headless Chrome (Puppeteer), then create a complete Figma design system with color scales, typography styles, effect styles, and variable bindings. Use when the user wants to reverse-engineer a website's design tokens into Figma variables. Captures computed colors with usage context (background/text/border), typography, spacing, shadows, and border radii. Not for capturing the website layout into Figma — use `/website-to-figma` for that.
 
 **IMPORTANT:** For full implementation details, also read `.claude/agents/website-design-system-extractor.md`
+
+## Prerequisites Gate
+
+Before starting, verify:
+
+| Check | How to Verify | Expected | If Missing |
+|-------|--------------|----------|------------|
+| Bridge server running | `curl localhost:4001/health` | `{"status":"ok"}` | Run `pnpm dev` from bridge-server/ |
+| Plugin connected | Send `ping` command | Response within 15s | Open Figma → Plugins → Bridge to Fig |
+| Chrome installed | Puppeteer auto-detects | Chrome available for headless extraction | Install Google Chrome |
+| Internet connection | Website URL accessible | HTTP 200 from target URL | Check network connectivity |
+| Target URL valid | User provides URL | Starts with http:// or https:// | Ask for corrected URL |
+
+**If Chrome is missing, STOP.** Website extraction requires headless Chrome via Puppeteer.
 
 ## Workflow
 
@@ -253,8 +267,44 @@ Show a summary of what was extracted, created, and bound:
 - Use `deleteExistingCollections` to start fresh (recommended for new design systems)
 - Screenshots can help verify color relationships visually
 
+## Error Recovery
+
+| Failure | Diagnostic | Recovery |
+|---------|-----------|----------|
+| `extractWebsiteCSS` timeout | Website too complex or slow to load | Retry with simpler URL (homepage vs deep page); check if site blocks headless browsers |
+| Puppeteer crashes | "Failed to launch Chrome" | Verify Chrome is installed; check if another Chrome process is hogging resources |
+| Website returns 403/blocked | Site blocks headless browsers | Some sites detect Puppeteer — try with a different URL or report as unsupported |
+| 0 colors extracted | Website uses only CSS variables or images | Check `cssVariables` field in response; may need to map CSS custom properties manually |
+| Brand color detection fails | All colors are low saturation (neutrals) | Ask user for primary color hex directly — auto-detect only works with chromatic colors |
+| `createDesignSystem` partial failure | Some collections failed | Check which collections were created, delete incomplete ones, retry |
+| `bindByExtractedUsage` low binding count | Colors in file don't match extracted colors | Verify color format consistency; may need to run website extraction again with `captureScreenshot: true` for visual verification |
+| Screenshot not captured | `captureScreenshot` returned empty | Non-critical — proceed without screenshot; site may block canvas capture |
+
+**On partial failure:** Website extraction is inherently imperfect — not every site yields clean tokens. Report what was extracted, note gaps, and let the user decide whether to fill with boilerplate or manual values.
+
+## Outcome Tracking
+
+After execution, report:
+
+| Metric | Value |
+|--------|-------|
+| **Status** | success / partial / failed |
+| **Source URL** | The extracted website |
+| **Elements Scanned** | X |
+| **Colors Extracted** | X (background: Y, text: Z, border: W) |
+| **Font Families** | List |
+| **Font Sizes** | X unique sizes |
+| **Spacing Values** | X |
+| **Border Radii** | X |
+| **Shadows** | X |
+| **Collections Created** | X |
+| **Variables Created** | X |
+| **Styles Created** | X text, X effect |
+| **Nodes Bound** | X |
+
 ## Reference Files
 
 - `.claude/agents/website-design-system-extractor.md` - Full agent instructions
 - `prompts/website-design-system.md` - Website extraction workflow
 - `bridge-server/src/services/websiteExtractor.ts` - Puppeteer extraction logic
+- `prompts/skill-patterns.md` - Skill patterns reference

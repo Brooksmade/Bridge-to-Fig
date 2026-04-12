@@ -1,8 +1,22 @@
 # /website-to-figma - Capture a Website into Figma
 
-Capture a live website into a Figma file using Figma MCP, with an optional follow-up to create design system variables and styles.
+Capture a live website's visual layout into a Figma file using Figma MCP and Playwright browser automation, then optionally create design system variables and styles from the captured content. Use when the user wants to import a website's actual design (not just CSS tokens) into Figma for redesign, documentation, or analysis. For extracting only design tokens/CSS without capturing the layout, use `/design-system-website` instead.
 
 **IMPORTANT:** For full implementation details, also read `.claude/agents/website-to-figma.md`
+
+## Prerequisites Gate
+
+Before starting, verify:
+
+| Check | How to Verify | Expected | If Missing |
+|-------|--------------|----------|------------|
+| Bridge server running | `curl localhost:4001/health` | `{"status":"ok"}` | Run `pnpm dev` from bridge-server/ |
+| Plugin connected | Send `ping` command | Response within 15s | Open Figma → Plugins → Bridge to Fig |
+| Figma MCP available | Check MCP tool list | `generate_figma_design` tool exists | Configure Figma MCP server |
+| Playwright MCP available | Check MCP tool list | `browser_navigate` tool exists | Configure Playwright MCP server |
+| Internet connection | Website URL accessible | HTTP 200 from target URL | Check network connectivity |
+
+**If Figma MCP or Playwright MCP is missing, STOP.** This skill requires both MCP servers to capture websites.
 
 ## Workflow
 
@@ -165,9 +179,39 @@ Kill the background bridge server process.
 - Playwright MCP available (for browser automation)
 - Internet connection
 
+## Error Recovery
+
+| Failure | Diagnostic | Recovery |
+|---------|-----------|----------|
+| Bridge server won't start | Port 4001 in use | Kill existing process on port 4001: `lsof -i :4001` then retry |
+| Plugin not responding to ping | Plugin closed or Figma not open | Open Figma desktop app, then open plugin |
+| `getFileInfo` fails | Plugin not connected to file | Ensure a Figma file is open (not just the app) |
+| Figma MCP `generate_figma_design` fails | MCP server not configured | Check MCP server configuration in Claude settings |
+| Playwright `browser_navigate` fails | MCP not available or site blocks automation | Verify Playwright MCP is configured; try alternative URL |
+| Capture JS snippet fails | Website has strict CSP headers | Site may block injected scripts — report as incompatible |
+| `extractWebsiteCSS` timeout (design system step) | Complex website | Retry with homepage only; reduce scope |
+| Design system creation fails after capture | Variable creation error | Capture succeeded — the website is in Figma. Design system can be created separately with `/design-system` |
+
+**On partial failure:** Website capture and design system creation are independent phases. If capture succeeds but design system fails, the captured website is still in the Figma file. Offer to retry design system creation separately.
+
+## Outcome Tracking
+
+After execution, report:
+
+| Metric | Value |
+|--------|-------|
+| **Status** | success / partial / failed |
+| **Source URL** | Captured website |
+| **Figma File Key** | Target file |
+| **Capture** | Completed / Failed |
+| **Design System** | Created / Skipped / Failed |
+| **Variables Created** | X (if design system created) |
+| **Text Styles Applied** | X matched, Y snapped |
+
 ## Reference Files
 
 - `.claude/agents/website-to-figma.md` — Full agent instructions
 - `prompts/quick-ref.md` — Compact API reference (~200 lines)
 - `prompts/figma-bridge.md` — Full API reference (detailed examples)
 - `bridge-server/src/services/websiteExtractor.ts` — CSS extraction logic (for design system)
+- `prompts/skill-patterns.md` — Skill patterns reference
