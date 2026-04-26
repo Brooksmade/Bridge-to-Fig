@@ -24,23 +24,25 @@ Claude Code ← HTTP GET ← Bridge Server
 
 ## Prerequisites
 
-- Node.js 16+
-- pnpm (or npm)
+- **Node.js 18+** ([download](https://nodejs.org/) or `brew install node`)
+- **pnpm** (`corepack enable && corepack prepare pnpm@latest --activate`, or `brew install pnpm`)
 - Figma desktop or web app
 - [Figma MCP server](https://www.npmjs.com/package/@anthropic-ai/claude-code-figma-mcp) (used by website-to-figma capture, screenshots in QA/audit workflows, and design implementation)
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Verify Prerequisites
+
+```bash
+bash scripts/check-prereqs.sh
+```
+
+This checks for Node.js 18+ and pnpm and prints install instructions if either is missing. Run it first — `pnpm install` will fail with a generic "command not found" if Node isn't installed.
+
+### 2. Install Dependencies
 
 ```bash
 pnpm install
-```
-
-### 2. Build All Packages
-
-```bash
-pnpm build
 ```
 
 ### 3. Start the Bridge Server
@@ -49,11 +51,21 @@ pnpm build
 pnpm dev
 ```
 
-The server will start at `http://localhost:4001`.
+The server starts at `http://localhost:4001`. The `dev` script runs the prerequisite check and builds the shared types package automatically before starting.
+
+To build all packages for production: `pnpm build`.
 
 ### 4. Install the Figma Plugin
 
-1. In Figma, go to **Plugins → Development → Import plugin from manifest**
+First build the plugin bundle (only needed once, or after plugin code changes):
+
+```bash
+pnpm build:plugin
+```
+
+Then in Figma:
+
+1. Go to **Plugins → Development → Import plugin from manifest**
 2. Select `figma-plugin/dist/manifest.json`
 3. Open the plugin from **Plugins → Development → Bridge to Fig**
 
