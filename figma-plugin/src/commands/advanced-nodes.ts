@@ -113,6 +113,86 @@ export async function handleCreateSection(command: FigmaCommand): Promise<Comman
   }
 }
 
+// Wrap existing nodes in a Section — mirrors Figma's "Section from selection".
+// Creates a section, reparents the given node IDs into it, and lets Figma
+// auto-fit the section bounds to enclose the children.
+export async function handleWrapInSection(command: FigmaCommand): Promise<CommandResult> {
+  var payload = command.payload as {
+    nodeIds?: string[];
+    name?: string;
+    fillColor?: string;
+  };
+
+  if (!payload || !payload.nodeIds || !Array.isArray(payload.nodeIds) || payload.nodeIds.length === 0) {
+    return errorResult(command.id, 'wrapInSection requires payload.nodeIds: string[] (one or more node IDs)');
+  }
+
+  try {
+    // Resolve all nodes up front; bail if any are missing so we never create
+    // a half-empty section. Must use the async API — manifest declares
+    // documentAccess: dynamic-page, where sync getNodeById throws.
+    var nodes: SceneNode[] = [];
+    var missing: string[] = [];
+    for (var i = 0; i < payload.nodeIds.length; i++) {
+      var n = await figma.getNodeByIdAsync(payload.nodeIds[i]);
+      if (n && 'parent' in n) {
+        nodes.push(n as SceneNode);
+      } else {
+        missing.push(payload.nodeIds[i]);
+      }
+    }
+    if (missing.length > 0) {
+      return errorResult(command.id, 'wrapInSection: node(s) not found: ' + missing.join(', '));
+    }
+
+    // Sections must live on a page — find the page that owns the first node
+    // and create the section there. Children that live on a different page
+    // would be invalid input; reject early rather than silently moving them.
+    var firstParent = nodes[0].parent;
+    while (firstParent && firstParent.type !== 'PAGE') {
+      firstParent = (firstParent as BaseNode & ChildrenMixin).parent;
+    }
+    if (!firstParent || firstParent.type !== 'PAGE') {
+      return errorResult(command.id, 'wrapInSection: could not resolve a page for the given nodes');
+    }
+    var page = firstParent as PageNode;
+
+    var section = figma.createSection();
+    if (typeof payload.name === 'string') section.name = payload.name;
+
+    // Place the section on the page first so appendChild reparents correctly.
+    page.appendChild(section);
+
+    // Reparent each node — Figma auto-resizes the section to contain children.
+    for (var j = 0; j < nodes.length; j++) {
+      section.appendChild(nodes[j]);
+    }
+
+    if (payload.fillColor) {
+      var hex = payload.fillColor.replace('#', '');
+      var r = parseInt(hex.substring(0, 2), 16) / 255;
+      var g = parseInt(hex.substring(2, 4), 16) / 255;
+      var b = parseInt(hex.substring(4, 6), 16) / 255;
+      section.fills = [{ type: 'SOLID', color: { r: r, g: g, b: b } }];
+    }
+
+    return successResult(command.id, {
+      data: {
+        id: section.id,
+        name: section.name,
+        x: section.x,
+        y: section.y,
+        width: section.width,
+        height: section.height,
+        wrappedNodeIds: payload.nodeIds,
+      },
+    });
+  } catch (err) {
+    var message = err instanceof Error ? err.message : String(err);
+    return errorResult(command.id, 'Failed to wrap in section: ' + message);
+  }
+}
+
 // Create a slice (for exports)
 export async function handleCreateSlice(command: FigmaCommand): Promise<CommandResult> {
   var payload = command.payload as {

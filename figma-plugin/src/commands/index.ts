@@ -149,6 +149,7 @@ export {
 export {
   handleCreateFromSvg,
   handleCreateSection,
+  handleWrapInSection,
   handleCreateSlice,
   handleCreateTable,
   handleSetTableCell,
@@ -461,6 +462,7 @@ import {
 import {
   handleCreateFromSvg,
   handleCreateSection,
+  handleWrapInSection,
   handleCreateSlice,
   handleCreateTable,
   handleSetTableCell,
@@ -1007,6 +1009,9 @@ export async function executeCommand(command: FigmaCommand): Promise<CommandResu
 
       case 'createSection':
         return handleCreateSection(command);
+
+      case 'wrapInSection':
+        return handleWrapInSection(command);
 
       case 'createSlice':
         return handleCreateSlice(command);

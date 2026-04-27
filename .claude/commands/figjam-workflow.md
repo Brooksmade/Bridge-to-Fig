@@ -128,15 +128,27 @@ curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/jso
 - Arrow at END only (`connectorEndStrokeCap: "ARROW_LINES"`)
 - Create ALL shapes first, THEN connectors
 
-### Step 8a: Create Parent Wrapper Section FIRST
+### Step 8a: Wrap Existing Content in a Section — Build First, Wrap After
 
-**BEFORE creating any child elements**, create the parent wrapper section:
-1. Calculate full bounding box from planned positions (Step 6)
-2. Add 60px padding on all sides
-3. Create the parent section with the workflow name (e.g., "WF1: Design System from Figma File")
-4. THEN proceed to create child sections, shapes, and connectors inside it
+**Mirror Figma's native "Section from selection" behavior**: build all the shapes and connectors FIRST, then call `wrapInSection` to enclose them. Figma auto-fits the section bounds — you don't need to compute anything.
 
-**FigJam sections only capture elements created AFTER the section exists.** If you create the parent last, it floats on top and children are not adopted.
+1. Create every shape and connector for the workflow at its final coordinates (Steps 6–8). **Capture the returned `id` of every node.**
+2. Call `wrapInSection`:
+   ```bash
+   curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" -d '{
+     "type": "wrapInSection",
+     "payload": {
+       "nodeIds": ["1:23", "1:24", "1:25", "..."],
+       "name": "WF1: Design System from Figma File",
+       "fillColor": "#ffffff"
+     }
+   }'
+   ```
+3. Verify the response (`data.id`, `data.x/y/width/height`) — the section should enclose every node you passed in.
+
+**Why this is better than computing the bbox manually:** Figma's `section.appendChild(node)` reparents the node and the section auto-resizes to fit. You don't risk off-by-pixel errors, you don't have to track padding, and shapes that nudged during connector creation are still enclosed correctly.
+
+**When to use `createSection` instead:** only when you genuinely need an empty section at fixed coordinates that you'll fill in later — rare in workflow diagrams.
 
 ### Step 10: Report
 

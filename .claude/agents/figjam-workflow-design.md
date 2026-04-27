@@ -313,6 +313,32 @@ Ask: **"Does this element ONLY belong to one section, or does it connect multipl
 
 ## Key Patterns
 
+### 0. Section Creation Order — Wrap, Don't Pre-allocate
+
+**Rule:** When you need a section around a set of objects, create the objects FIRST, then call `wrapInSection` to wrap them. This mirrors Figma's native "Section from selection" — Figma auto-fits the section bounds to enclose the children, so you never have to compute a bounding box yourself.
+
+**Why this matters:** Pre-allocating a section at calculated coordinates is fragile — it relies on perfect bounding-box math, shapes that get nudged later end up outside the section, and padding has to be added by hand. `wrapInSection` reparents the nodes via the Figma API (`section.appendChild(node)`) and lets Figma size the section to fit.
+
+**Build order:**
+
+1. **Create all shapes and connectors** at their final coordinates. Capture the returned `id` of every node.
+2. **Call `wrapInSection`** with those IDs and a section name:
+   ```json
+   {
+     "type": "wrapInSection",
+     "payload": {
+       "nodeIds": ["1:23", "1:24", "1:25", "..."],
+       "name": "01. Onboarding Flow",
+       "fillColor": "#ffffff"
+     }
+   }
+   ```
+3. **Verify** the response — `data` returns `{ id, name, x, y, width, height, wrappedNodeIds }` so you can confirm the bounds make sense.
+
+**For multi-section workflows** (e.g., one section per actor): build each actor's shapes, call `wrapInSection` for that actor, then move on to the next. Don't lay out empty sections first.
+
+**When to use `createSection` instead:** only when you genuinely want an empty section at fixed coordinates that you'll fill later (rare in workflow diagrams).
+
 ### 1. Use Nameless Sections for Grouping
 
 Every logical group (header + content) must be inside a Section with `name: ""` (empty string):

@@ -56,14 +56,32 @@ async function buildUI() {
   fs.writeFileSync('dist/ui.html', htmlDist);
 }
 
-// Copy manifest with version injected into name, and icon
-function copyManifest() {
-  // Read APP_VERSION from version.ts
+// Plugin manifest. Config lives here (not in a sibling manifest.json) so there
+// is exactly ONE manifest file in the repo — dist/manifest.json — and no chance
+// of accidentally importing an unbuilt source manifest into Figma.
+const MANIFEST = {
+  name: 'Bridge to Fig',
+  id: 'bridge-to-fig',
+  api: '1.0.0',
+  main: 'code.js',
+  ui: 'ui.html',
+  documentAccess: 'dynamic-page',
+  editorType: ['figma', 'figjam'],
+  permissions: ['teamlibrary'],
+  enablePrivatePluginApi: true,
+  networkAccess: {
+    allowedDomains: ['http://localhost:4001'],
+    reasoning: 'Required to communicate with the local Bridge to Fig server for real-time design manipulation',
+  },
+};
+
+function writeManifest() {
+  // Inject APP_VERSION from version.ts into the displayed plugin name.
   const versionSrc = fs.readFileSync('src/version.ts', 'utf-8');
   const match = versionSrc.match(/APP_VERSION\s*=\s*'([^']+)'/);
   const version = match ? match[1] : null;
 
-  const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf-8'));
+  const manifest = { ...MANIFEST };
   if (version) {
     manifest.name = `Bridge to Fig v${version}`;
   }
@@ -80,7 +98,7 @@ if (!fs.existsSync('dist')) {
 try {
   await buildCode();
   await buildUI();
-  copyManifest();
+  writeManifest();
   console.log('Build complete!');
 
   if (isWatch) {
