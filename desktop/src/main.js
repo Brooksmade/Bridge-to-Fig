@@ -10,6 +10,14 @@ const MAX_LOG_DISPLAY = 50;
 let lastHealthData = null;
 let lastLogTimestamp = 0;
 
+// ── Bridge Server Error Modal state ──────────────────────────────────────
+// Show the modal when EITHER the Rust side reports a spawn failure (event)
+// OR health polling fails N times in a row (server crashed or never bound).
+const HEALTH_FAIL_THRESHOLD = 3; // ~6s at POLL_INTERVAL=2s
+let healthFailCount = 0;
+let lastSpawnError = null; // { message, hint } from Rust, or null
+let errorModalDismissed = false; // user clicked Dismiss on current failure
+
 // ── Setup Wizard ──────────────────────────────────────────────────────────
 
 const wizard = {
@@ -313,12 +321,23 @@ async function pollHealth() {
       updateStatus.className = 'update-text available';
       btnCheckUpdate.style.display = '';
     }
+
+    // Server is healthy — clear any stale error state.
+    healthFailCount = 0;
+    lastSpawnError = null;
+    errorModalDismissed = false;
+    hideServerErrorModal();
   } catch (err) {
     setServerStatus('stopped');
     setPluginStatus('');
     serverVersion.textContent = '--';
     protocolVersion.textContent = '--';
     lastHealthData = null;
+
+    healthFailCount += 1;
+    if (healthFailCount >= HEALTH_FAIL_THRESHOLD && !errorModalDismissed) {
+      showServerErrorModal();
+    }
   }
 }
 
@@ -454,6 +473,60 @@ function scrollToClaudeSetup() {
   showSetupWizard();
 }
 
+// ── Bridge Server Error Modal ────────────────────────────────────────────
+
+const errorOverlay = document.getElementById('server-error-overlay');
+const errorTitle = document.getElementById('server-error-title');
+const errorMessage = document.getElementById('server-error-message');
+const errorHint = document.getElementById('server-error-hint');
+const btnErrorRetry = document.getElementById('btn-server-error-retry');
+const btnErrorDismiss = document.getElementById('btn-server-error-dismiss');
+
+function showServerErrorModal() {
+  if (!errorOverlay) return;
+  if (lastSpawnError) {
+    errorTitle.textContent = 'Bridge Server Failed to Start';
+    errorMessage.textContent = lastSpawnError.message || 'The bridge server could not start.';
+    errorHint.textContent = lastSpawnError.hint || '';
+  } else {
+    errorTitle.textContent = 'Bridge Server Stopped';
+    errorMessage.textContent = `The bridge server is not responding on port 4001 after ${HEALTH_FAIL_THRESHOLD * (POLL_INTERVAL / 1000)}s.`;
+    errorHint.textContent = 'It may have crashed or another process may be holding the port.';
+  }
+  errorOverlay.style.display = '';
+}
+
+function hideServerErrorModal() {
+  if (errorOverlay) errorOverlay.style.display = 'none';
+}
+
+if (btnErrorRetry) {
+  btnErrorRetry.addEventListener('click', async () => {
+    btnErrorRetry.disabled = true;
+    btnErrorRetry.textContent = 'Retrying...';
+    try {
+      if (window.__TAURI__) {
+        await window.__TAURI__.core.invoke('respawn_bridge_server');
+      }
+      // Modal stays up; pollHealth will hide it once /health succeeds.
+    } catch (err) {
+      // Surface the new error from the respawn attempt.
+      lastSpawnError = { message: String(err), hint: 'The respawn attempt also failed.' };
+      showServerErrorModal();
+    } finally {
+      btnErrorRetry.disabled = false;
+      btnErrorRetry.textContent = 'Retry';
+    }
+  });
+}
+
+if (btnErrorDismiss) {
+  btnErrorDismiss.addEventListener('click', () => {
+    errorModalDismissed = true;
+    hideServerErrorModal();
+  });
+}
+
 // ── App Init ──────────────────────────────────────────────────────────────
 
 async function initApp() {
@@ -462,6 +535,19 @@ async function initApp() {
   pollLogs();
   setInterval(pollHealth, POLL_INTERVAL);
   setInterval(pollLogs, LOG_POLL_INTERVAL);
+
+  // Listen for bridge-server lifecycle events from Rust.
+  if (window.__TAURI__ && window.__TAURI__.event) {
+    window.__TAURI__.event.listen('bridge-server-error', (event) => {
+      lastSpawnError = event.payload || null;
+      errorModalDismissed = false; // a new failure overrides a prior dismiss
+      showServerErrorModal();
+    });
+    window.__TAURI__.event.listen('bridge-server-spawned', () => {
+      // Spawn succeeded; final clearing happens on next successful health poll.
+      lastSpawnError = null;
+    });
+  }
 
   if (!window.__TAURI__) {
     showDashboard();

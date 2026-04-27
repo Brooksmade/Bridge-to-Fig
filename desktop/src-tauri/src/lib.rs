@@ -10,7 +10,7 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{
     image::Image,
     menu::{CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder},
-    Manager, RunEvent, WindowEvent,
+    AppHandle, Emitter, Manager, RunEvent, WindowEvent,
 };
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_autostart::ManagerExt;
@@ -77,6 +77,76 @@ enum ServerState {
 }
 
 // ── Helper functions ──────────────────────────────────────────────────────
+
+// Newtype wrapper so we can store the sidecar handle in Tauri's managed state
+// and access it from the `respawn_bridge_server` command.
+struct SidecarHandle(Arc<Mutex<Option<CommandChild>>>);
+
+fn spawn_bridge_server(
+    app: &AppHandle,
+    sidecar_state: Arc<Mutex<Option<CommandChild>>>,
+) -> Result<(), String> {
+    // If a previous child is alive (respawn case), terminate it first.
+    if let Ok(mut guard) = sidecar_state.lock() {
+        if let Some(existing) = guard.take() {
+            let _ = existing.kill();
+        }
+    }
+
+    let result: Result<(), String> = match app.shell().sidecar("bridge-server") {
+        Ok(command) => match command.spawn() {
+            Ok((_, child)) => {
+                if let Ok(mut guard) = sidecar_state.lock() {
+                    *guard = Some(child);
+                }
+                println!("[Tauri] Bridge server sidecar started");
+                Ok(())
+            }
+            Err(e) => Err(format!("Failed to spawn sidecar process: {}", e)),
+        },
+        Err(e) => Err(format!("Failed to create sidecar command: {}", e)),
+    };
+
+    match &result {
+        Ok(_) => {
+            // Tell the UI to clear any stale error modal.
+            let _ = app.emit("bridge-server-spawned", ());
+        }
+        Err(msg) => {
+            eprintln!("[Tauri] Bridge server spawn failed: {}", msg);
+            let _ = app.emit(
+                "bridge-server-error",
+                serde_json::json!({
+                    "message": msg,
+                    "hint": classify_spawn_hint(msg),
+                }),
+            );
+        }
+    }
+
+    result
+}
+
+fn classify_spawn_hint(err: &str) -> &'static str {
+    let lower = err.to_lowercase();
+    if lower.contains("address already in use") || lower.contains("eaddrinuse") {
+        "Port 4001 is already in use. Quit any other process bound to port 4001, then click Retry."
+    } else if lower.contains("permission denied") || lower.contains("eacces") {
+        "Permission denied. The bundled bridge-server binary may have lost execute permission — reinstalling the app should fix this."
+    } else if lower.contains("no such file") || lower.contains("not found") || lower.contains("enoent") {
+        "The bundled bridge-server binary appears to be missing. Reinstalling the app should fix this."
+    } else {
+        "The bridge server failed to start. Click Retry, or restart the app if it keeps failing."
+    }
+}
+
+#[tauri::command]
+fn respawn_bridge_server(
+    app: AppHandle,
+    state: tauri::State<'_, SidecarHandle>,
+) -> Result<(), String> {
+    spawn_bridge_server(&app, state.0.clone())
+}
 
 fn check_health() -> Option<HealthResponse> {
     let agent = ureq::AgentBuilder::new()
@@ -530,6 +600,7 @@ pub fn run() {
             check_claude_setup,
             install_claude_files,
             pick_folder,
+            respawn_bridge_server,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -652,25 +723,13 @@ pub fn run() {
             }
 
             // === Spawn sidecar ===
-            let sidecar_for_spawn = sidecar_child_clone.clone();
-            let shell_handle = handle.clone();
+            // Register the sidecar handle in Tauri's managed state so the
+            // `respawn_bridge_server` command can reach it from JS.
+            app.manage(SidecarHandle(sidecar_child_clone.clone()));
 
-            match shell_handle.shell().sidecar("bridge-server") {
-                Ok(command) => match command.spawn() {
-                    Ok((_, child)) => {
-                        if let Ok(mut guard) = sidecar_for_spawn.lock() {
-                            *guard = Some(child);
-                        }
-                        println!("[Tauri] Bridge server sidecar started");
-                    }
-                    Err(e) => {
-                        eprintln!("[Tauri] Failed to spawn sidecar: {}", e);
-                    }
-                },
-                Err(e) => {
-                    eprintln!("[Tauri] Failed to create sidecar command: {}", e);
-                }
-            }
+            // Initial spawn — errors are surfaced via the `bridge-server-error`
+            // event that the dashboard listens for.
+            let _ = spawn_bridge_server(&handle, sidecar_child_clone.clone());
 
             // === Health polling thread ===
             let tray_handle = tray.clone();

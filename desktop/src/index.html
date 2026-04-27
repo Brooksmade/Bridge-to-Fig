@@ -203,6 +203,26 @@
     </footer>
   </div>
 
+  <!-- ── Bridge Server Error Modal ── -->
+  <div id="server-error-overlay" class="modal-overlay" style="display:none" role="alertdialog" aria-labelledby="server-error-title" aria-describedby="server-error-message">
+    <div class="modal">
+      <div class="modal-icon">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="14" stroke="var(--accent-red)" stroke-width="2" fill="var(--accent-red)" fill-opacity="0.12"/>
+          <path d="M16 9v8" stroke="var(--accent-red)" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="16" cy="22" r="1.4" fill="var(--accent-red)"/>
+        </svg>
+      </div>
+      <h2 id="server-error-title" class="modal-title">Bridge Server Stopped</h2>
+      <p id="server-error-message" class="modal-message">The bridge server is not running.</p>
+      <p id="server-error-hint" class="modal-hint"></p>
+      <div class="modal-actions">
+        <button class="wizard-btn secondary" id="btn-server-error-dismiss">Dismiss</button>
+        <button class="wizard-btn primary" id="btn-server-error-retry">Retry</button>
+      </div>
+    </div>
+  </div>
+
   <script src="main.js"></script>
 </body>
 </html>
