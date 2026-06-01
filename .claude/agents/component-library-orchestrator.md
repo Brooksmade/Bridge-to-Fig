@@ -44,11 +44,22 @@ Pauses after each phase for user approval.
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
+│  PHASE 0: File Discovery (inspect before acting)             │
+│  - Query all pages, existing components, variable collections│
+│  - Check: design system exists? Components page exists?      │
+│  - Screenshot design frames for visual reference             │
+│  - Generate run_id for state recovery tagging                │
+│  - Build discovery report: what exists, what's missing       │
+│  OUTPUT: Discovery report + run_id + existing component list │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
 │  PHASE 1: Discover & Classify (component-creator)           │
 │  - Query design frame structure (describe, children, deep)  │
 │  - Screenshot to visually identify elements                 │
 │  - Classify each element: atom / molecule / organism        │
-│  - Check: design system exists? Components page exists?     │
+│  - Cross-reference with Phase 0 existing component list     │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼

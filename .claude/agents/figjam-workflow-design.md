@@ -512,12 +512,16 @@ Use `startMagnet` and `endMagnet` to control where connectors attach to shapes:
 - `DIAMOND_FILLED` - Diamond shape
 - `CIRCLE_FILLED` - Circle shape
 
-### 6. Parent Wrapper Section (MUST Be Created FIRST)
+### 6. Parent Wrapper Section / Frame
 
-Every workflow diagram must be wrapped in a named parent section. **The parent section MUST be created BEFORE any child elements** — FigJam sections only capture elements created after the section exists. If you create the section last, it will float on top and not adopt the children.
+There are two valid creation orders. Pick based on whether you know the bounding box up front.
+
+#### 6a. Section-first (you know the bounding box)
+
+When you can compute the full bounding box ahead of time, create the parent section FIRST so it captures children automatically as they are created inside its bounds.
 
 **Creation order:**
-1. Calculate all positions and the full bounding box FIRST
+1. Calculate all positions and the full bounding box
 2. Create the parent wrapper section (bounding box + 60px padding on all sides)
 3. THEN create child sections, shapes, and connectors inside it
 
@@ -534,7 +538,22 @@ Every workflow diagram must be wrapped in a named parent section. **The parent s
 }
 ```
 
-**NEVER create the parent section after the child elements** — it will not capture them.
+#### 6b. Select-then-frame (preferred when wrapping existing objects)
+
+When you are wrapping objects that already exist (or just got created without precomputed bounds), do NOT try to draw a section over them after the fact — a section created last will float on top and will NOT adopt children. Instead:
+
+1. Collect every child node ID as you create them (or query for existing IDs).
+2. Call `select` with those IDs.
+3. Call `createSection` (or the equivalent frame creation) so it derives its bounds from the selection and auto-groups them.
+
+```json
+{ "type": "select", "payload": { "nodeIds": ["id1", "id2", "id3"] } }
+{ "type": "createSection", "payload": { "name": "Wrapper" } }
+```
+
+This is the safer pattern any time the bounding box is uncertain or the children are heterogeneous in size.
+
+**Either way: NEVER create a parent section last without selecting children first** — it will not capture them.
 
 ### 7. Text Width Reference
 

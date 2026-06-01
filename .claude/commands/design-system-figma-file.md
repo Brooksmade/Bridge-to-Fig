@@ -73,6 +73,14 @@ Present these options to the user:
    - Collections: Colors → Semantic
    - Best for: Web projects using Tailwind, developer-first workflows
 
+6. **Adobe Spectrum Style** - Enterprise design system
+   - Collections: Global → Alias → Component → System
+   - Best for: Enterprise design systems, component libraries, multi-brand/multi-theme projects
+
+7. **Apple Human Interface Guidelines** - Apple platform design
+   - Collections: System Palette → Dynamic Colors → Component Tokens
+   - Best for: iOS/macOS apps, SwiftUI projects, Apple platform design
+
 Store the user's selection for Step 7.
 
 ### Step 2: Extract Design Tokens
@@ -130,6 +138,9 @@ Store as `fontFamilies: { sans: "...", serif: "...", mono: "..." }` for Step 7.
 
 **IMPORTANT:** The `fontFamilyMap` from extraction maps each font size to its most-used font family. When passed to `createDesignSystem`, text styles will automatically use the correct font per size (e.g., headings in Playfair Display, body in Inter). You do NOT need to manually assign fonts to individual styles.
 
+**MANDATORY — Typography styles must match the file:**
+Typography styles MUST be created based on the actual font family + size combinations found in `fontSizeNodes` and `fontFamilyMap`. This ensures `applyMatchingTextStyles` can bind them correctly to existing text nodes. Do NOT create generic size-only styles — always pair each size with the font family actually used at that size in the file. If multiple font families are used at the same size, create a style for each combination. Pass `fontFamilyMap` and all font families to `createDesignSystem` so it generates the correct pairings.
+
 ### Step 3: Confirm Brand Colors
 
 Check the `summary.brandColorAnalysis` from the extraction:
@@ -152,11 +163,14 @@ The design system will generate 11-shade color scales for each:
 
 Check what was found in the extraction and ask:
 
+**MANDATORY — Effects auto-inclusion:**
+Effects/shadows found in the file are ALWAYS included in the design system — this is not optional. Report to the user how many were found (e.g., "10 drop shadows extracted from file — these will be included automatically"). Then ask about boilerplate only for filling remaining elevation levels and other gaps.
+
 **Should we include boilerplate tokens for gaps in your design system?**
 
 Show what was found vs what's missing:
 - Text styles: Found X, boilerplate would add Y
-- Effect styles: Found X, boilerplate would add Y
+- Effect styles: Found X from file (auto-included), boilerplate would add remaining elevation levels
 - Grid styles: Found X, boilerplate would add 5 (12-col, 8-col, 4-col, 8px square, baseline rows)
 - Typography variables: Found X, boilerplate would add Y
 - Spacing variables: Found X, boilerplate would add Y
@@ -223,6 +237,18 @@ PRE-FLIGHT CHECKLIST:
 **If any required field is missing, GO BACK to that step.**
 
 If `extractedTokens.effects.shadows` is empty or missing, the extraction may have timed out. Re-run extraction with `scope: "page"` on pages that contain shadows (e.g., "Shadows & blurs" page).
+
+---
+
+### Step 5.75: TAKE BASELINE SCREENSHOT (MANDATORY)
+
+**BEFORE any creation or binding, take a screenshot of every top-level frame using MCP `get_screenshot`.** These are your BEFORE images. You will compare them to AFTER screenshots in Step 8 to catch regressions (fonts overwritten, wrong shadows applied, layout broken).
+
+For each frame returned by `getFrames`:
+1. Call `mcp__plugin_figma_figma__get_screenshot` with the frame's node ID and file key
+2. Store/display each screenshot as the baseline
+
+This step is NOT optional. Without it, there is no way to verify the design system didn't break existing designs.
 
 ---
 
@@ -329,6 +355,20 @@ This matches nodes with shadows to the corresponding effect styles created.
 - `colorBindings`: Number of nodes with color variables bound
 - `textStyleBindings`: Number of text nodes with text styles applied
 - `effectStyleBindings`: Number of nodes with effect styles applied
+
+### Step 7.5: TAKE AFTER SCREENSHOTS & COMPARE (MANDATORY)
+
+**After ALL binding is complete, take screenshots of every top-level frame again using MCP `get_screenshot`.** Compare each AFTER screenshot to its BEFORE screenshot from Step 5.75.
+
+Look for:
+- **Font changes** — text that was in one font now appearing in another
+- **Shadow changes** — wrong shadow effects applied or existing shadows removed
+- **Layout shifts** — elements moved or resized unexpectedly
+- **Color changes** — fills or strokes that look wrong
+
+If ANY regressions are found, report them to the user BEFORE marking the task complete. Do NOT silently proceed.
+
+---
 
 ### Step 8: Report Results
 

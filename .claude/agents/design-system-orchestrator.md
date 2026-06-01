@@ -38,6 +38,18 @@ Pauses after each phase for user approval. Best for complex or new designs.
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
+│  PHASE 0: Discovery (inspect before acting)                  │
+│  - Query all pages, variable collections, styles, components │
+│  - Check if design system already exists (skip/recreate?)    │
+│  - Identify current selection and its structure (describe)   │
+│  - Screenshot selection for visual reference                 │
+│  - Generate run_id for state recovery tagging                │
+│  - Build discovery report: what exists, what's missing       │
+│  OUTPUT: Discovery report + run_id + go/no-go decision       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
 │  PHASE 1: Extract & Create (figma-variables)                │
 │  - Extract colors, fonts, sizes from frames                 │
 │  - Auto-detect brand color                                  │
@@ -93,20 +105,59 @@ Pauses after each phase for user approval. Best for complex or new designs.
 
 ## Process
 
-### Pre-Flight Check
+### Phase 0: Discovery
+
+**Goal:** Understand the file state before making any changes. Prevents wasted work and duplicate creation.
+
+Use `scripts/inspect-file-structure.json` as the template, or run these commands:
 
 ```bash
-# Verify frame is selected
+# 1. Generate a unique run_id for this operation
+RUN_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
+
+# 2. Get all pages
+curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "query", "payload": {"queryType": "pages"}}'
+
+# 3. Get all variable collections
+curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "getVariables", "payload": {"includeValues": false}}'
+
+# 4. Check design system status
+curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "getDesignSystemStatus"}'
+
+# 5. Get current selection
 curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
   -d '{"type": "query", "payload": {"queryType": "selection"}}'
 
-# Check if design system already exists
+# 6. Describe selection structure
 curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
-  -d '{"type": "getDesignSystemStatus"}'
+  -d '{"type": "query", "payload": {"queryType": "describe"}, "target": "SELECTION_ID"}'
+
+# 7. Get all styles
+curl -s -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "getStyles", "payload": {}}'
+```
+
+**Discovery Report:**
+```
+- Pages: [list]
+- Existing collections: [list with variable counts]
+- Existing styles: [paint/text/effect counts]
+- Selected frame: [name, dimensions, child count]
+- Design system exists: yes/no
+- Run ID: {RUN_ID}
+- Decision: proceed / skip to binding / abort
 ```
 
 **If design system exists:**
 - Prompt user: "Design system already exists. Options: (1) Skip to binding, (2) Recreate, (3) Cancel"
+
+**Confirmation Point (if confirmSteps=true):**
+> Phase 0 Complete: Discovery report generated.
+> [Summary of what exists and what will be created]
+> Proceed with Phase 1? [Y/n]
 
 ### Phase 1: Extract & Create Design System
 

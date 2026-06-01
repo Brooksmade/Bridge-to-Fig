@@ -27,7 +27,10 @@ This returns available organizing principles:
     {"value": "three-level", "label": "3-Level Simplified", "description": "Streamlined structure without semantic layer", "bestFor": "Mid-size projects, faster setup"},
     {"value": "two-level", "label": "2-Level Flat", "description": "Minimal structure with just primitives and tokens", "bestFor": "Small projects, prototypes"},
     {"value": "material-design", "label": "Material Design 3", "description": "Google Material Design 3 token architecture", "bestFor": "Android apps, Google ecosystem"},
-    {"value": "tailwind", "label": "Tailwind CSS Style", "description": "Utility-first approach matching Tailwind conventions", "bestFor": "Tailwind web projects"}
+    {"value": "tailwind", "label": "Tailwind CSS Style", "description": "Utility-first approach matching Tailwind conventions", "bestFor": "Tailwind web projects"},
+    {"value": "spectrum", "label": "Adobe Spectrum (S1)", "description": "Global/Alias/Component/System with flat naming and 3-theme support", "bestFor": "Enterprise design systems, multi-brand/multi-theme"},
+    {"value": "spectrum-2", "label": "Adobe Spectrum 2", "description": "Six-collection alias-heavy structure mirroring the live Spectrum 2 library (2,919 vars, Light/Dark/Wireframe modes)", "bestFor": "Adobe products, multi-platform systems"},
+    {"value": "apple-hig", "label": "Apple HIG", "description": "System Palette + Dynamic Colors + Component Tokens", "bestFor": "iOS/macOS apps, SwiftUI"}
   ],
   "default": "four-level"
 }
@@ -57,7 +60,19 @@ Which organizing principle would you like for your design system?
    Collections: Colors → Semantic
    Best for: Web projects using Tailwind, developer-first workflows
 
-Enter choice (1-5) or press Enter for default [4-Level]:
+6. **Adobe Spectrum (S1)** - Flat naming with 3-theme support
+   Collections: Global → Alias → Component → System
+   Best for: Enterprise design systems, multi-brand projects
+
+7. **Adobe Spectrum 2** - Live Spectrum 2 library mirror (2,919 vars)
+   Collections: S2.Color-theme + .Platform scale + Iconography + Typography + Layout + .Color theme (Light/Dark/Wireframe)
+   Best for: Adobe products, multi-platform systems. No brand color needed — retheme via `.Color theme`.
+
+8. **Apple HIG** - iOS/macOS dynamic colors
+   Collections: System Palette → Dynamic Colors → Component Tokens
+   Best for: iOS/macOS apps, SwiftUI
+
+Enter choice (1-8) or press Enter for default [4-Level]:
 ```
 
 **Store the selection** for use in Step 3:
@@ -66,6 +81,9 @@ Enter choice (1-5) or press Enter for default [4-Level]:
 - If user selects 3 → `organizingPrinciple: "two-level"`
 - If user selects 4 → `organizingPrinciple: "material-design"`
 - If user selects 5 → `organizingPrinciple: "tailwind"`
+- If user selects 6 → `organizingPrinciple: "spectrum"`
+- If user selects 7 → `organizingPrinciple: "spectrum-2"` (note: brandColors is optional for this one)
+- If user selects 8 → `organizingPrinciple: "apple-hig"`
 
 ---
 

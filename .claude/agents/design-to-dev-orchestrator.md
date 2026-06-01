@@ -38,6 +38,18 @@ Pauses after each phase for user approval. Best for first-time or complex projec
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
+│  PHASE 0: File Discovery (inspect before acting)             │
+│  - Query all pages, variables, components, styles            │
+│  - Assess file maturity: raw design vs partial system        │
+│  - Check for existing design system, component library       │
+│  - Screenshot key frames for visual reference                │
+│  - Generate run_id for state recovery tagging                │
+│  - Build discovery report + recommend which phases to skip   │
+│  OUTPUT: Discovery report + recommended pipeline config      │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
 │  PHASE 1: Pre-Flight Check (consistency-checker)            │
 │  - Analyze current design state                             │
 │  - Identify inconsistencies                                 │
