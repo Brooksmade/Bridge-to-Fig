@@ -1,0 +1,3 @@
+# Normalize line endings: store as LF in the repo and check out as LF everywhere.
+# Prevents editors/tools that save CRLF from creating phantom whole-file diffs and conflicts.
+* text=auto eol=lf
