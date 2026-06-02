@@ -31,6 +31,11 @@ const NEW_COMMANDS = [
   'setImageHash',
   'exportSelection',
   'getAnnotations',
+  'addTableRow',
+  'addTableColumn',
+  'removeTableRow',
+  'removeTableColumn',
+  'styleTableColumn',
 ];
 
 describe('previously-missing commands route through the dispatcher', () => {

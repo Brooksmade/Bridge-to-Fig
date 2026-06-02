@@ -272,7 +272,7 @@ curl http://localhost:4001/logs/running
 | `getSharedPluginData` | `{nodeId, namespace, key}` |
 | `setDocumentPluginData` | `{key, value}` |
 | `setExportSettings` | `{nodeId, settings: [{format, scale, suffix?}]}` |
-| `getCodeSnippets` | `{nodeId, format: "css\|ios\|android"}` |
+| `getCodeSnippets` | `{nodeId, format: "css\|ios\|android"}` | ⚠️ not implemented (Dev Mode codegen only) |
 
 **Clickable link on a node (e.g. link a frame back to a user-story card):** `setDevResources` adds links that are clickable in Dev Mode — the supported mechanism for a "jump to" / back-link. For an in-file jump use the target node's Figma URL (`...?node-id=4409-25320`) as the `url`. Annotation `labelMarkdown` links render as plain, non-clickable text, so do **not** use annotations for clickable links. `replace: true` clears existing resources first; re-adding the same `url` updates its name (idempotent). Round-trip with `getDevResources`.
 

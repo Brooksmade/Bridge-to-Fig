@@ -630,6 +630,11 @@ import {
   handleSetImageHash,
   handleExportSelection,
   handleGetAnnotations,
+  handleAddTableRow,
+  handleAddTableColumn,
+  handleRemoveTableRow,
+  handleRemoveTableColumn,
+  handleStyleTableColumn,
 } from './missing-commands';
 import {
   handleGetRangeFontWeight,
@@ -1542,6 +1547,16 @@ export async function executeCommand(command: FigmaCommand): Promise<CommandResu
         return handleExportSelection(command);
       case 'getAnnotations':
         return handleGetAnnotations(command);
+      case 'addTableRow':
+        return handleAddTableRow(command);
+      case 'addTableColumn':
+        return handleAddTableColumn(command);
+      case 'removeTableRow':
+        return handleRemoveTableRow(command);
+      case 'removeTableColumn':
+        return handleRemoveTableColumn(command);
+      case 'styleTableColumn':
+        return handleStyleTableColumn(command);
 
       default:
         return errorResult(command.id, `Unknown command type: ${commandType}`);

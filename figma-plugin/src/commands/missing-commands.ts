@@ -605,3 +605,110 @@ export async function handleGetAnnotations(command: FigmaCommand): Promise<Comma
     return errorResult(command.id, 'Failed to get annotations: ' + String(err));
   }
 }
+
+// ===========================================================================
+// FIGJAM TABLES  (TABLE nodes only exist in FigJam files)
+// ===========================================================================
+async function getTableNode(command: FigmaCommand, tableId?: string): Promise<any | CommandResult> {
+  var id = tableId || command.target;
+  if (!id) return errorResult(command.id, 'tableId is required');
+  var node: any = await figma.getNodeByIdAsync(id);
+  if (!node) return errorResult(command.id, 'Node not found: ' + id);
+  if (node.type !== 'TABLE') return errorResult(command.id, 'Node is not a TABLE (tables exist only in FigJam)');
+  return node;
+}
+function isCommandResult(x: any): x is CommandResult {
+  return x && typeof x === 'object' && 'success' in x;
+}
+
+// addTableRow {tableId, position}
+export async function handleAddTableRow(command: FigmaCommand): Promise<CommandResult> {
+  var p = (command.payload || {}) as { tableId?: string; position?: number };
+  try {
+    var table = await getTableNode(command, p.tableId);
+    if (isCommandResult(table)) return table;
+    var pos = typeof p.position === 'number' ? p.position : table.numRows;
+    table.insertRow(pos);
+    return successResult(command.id, { data: { tableId: table.id, insertedAt: pos, numRows: table.numRows, numColumns: table.numColumns } });
+  } catch (err) {
+    return errorResult(command.id, 'Failed to add table row: ' + String(err));
+  }
+}
+
+// addTableColumn {tableId, position}
+export async function handleAddTableColumn(command: FigmaCommand): Promise<CommandResult> {
+  var p = (command.payload || {}) as { tableId?: string; position?: number };
+  try {
+    var table = await getTableNode(command, p.tableId);
+    if (isCommandResult(table)) return table;
+    var pos = typeof p.position === 'number' ? p.position : table.numColumns;
+    table.insertColumn(pos);
+    return successResult(command.id, { data: { tableId: table.id, insertedAt: pos, numRows: table.numRows, numColumns: table.numColumns } });
+  } catch (err) {
+    return errorResult(command.id, 'Failed to add table column: ' + String(err));
+  }
+}
+
+// removeTableRow {tableId, row}
+export async function handleRemoveTableRow(command: FigmaCommand): Promise<CommandResult> {
+  var p = (command.payload || {}) as { tableId?: string; row?: number };
+  if (typeof p.row !== 'number') return errorResult(command.id, 'row is required');
+  try {
+    var table = await getTableNode(command, p.tableId);
+    if (isCommandResult(table)) return table;
+    table.removeRow(p.row);
+    return successResult(command.id, { data: { tableId: table.id, removedRow: p.row, numRows: table.numRows, numColumns: table.numColumns } });
+  } catch (err) {
+    return errorResult(command.id, 'Failed to remove table row: ' + String(err));
+  }
+}
+
+// removeTableColumn {tableId, column}
+export async function handleRemoveTableColumn(command: FigmaCommand): Promise<CommandResult> {
+  var p = (command.payload || {}) as { tableId?: string; column?: number };
+  if (typeof p.column !== 'number') return errorResult(command.id, 'column is required');
+  try {
+    var table = await getTableNode(command, p.tableId);
+    if (isCommandResult(table)) return table;
+    table.removeColumn(p.column);
+    return successResult(command.id, { data: { tableId: table.id, removedColumn: p.column, numRows: table.numRows, numColumns: table.numColumns } });
+  } catch (err) {
+    return errorResult(command.id, 'Failed to remove table column: ' + String(err));
+  }
+}
+
+// styleTableColumn {tableId, column, width?, textAlignHorizontal?}
+// Best-effort: applies whatever the FigJam cell API exposes; reports what stuck.
+export async function handleStyleTableColumn(command: FigmaCommand): Promise<CommandResult> {
+  var p = (command.payload || {}) as { tableId?: string; column?: number; width?: number; textAlignHorizontal?: string };
+  if (typeof p.column !== 'number') return errorResult(command.id, 'column is required');
+  try {
+    var table = await getTableNode(command, p.tableId);
+    if (isCommandResult(table)) return table;
+    var alignApplied = 0;
+    var widthApplied = 0;
+    for (var r = 0; r < table.numRows; r++) {
+      var cell: any = null;
+      try { cell = table.cellAt(r, p.column); } catch (e) { cell = null; }
+      if (!cell) continue;
+      if (p.textAlignHorizontal) {
+        try { cell.text.textAlignHorizontal = p.textAlignHorizontal; alignApplied++; } catch (e) {}
+      }
+      if (typeof p.width === 'number') {
+        try { cell.width = p.width; widthApplied++; } catch (e) {}
+      }
+    }
+    return successResult(command.id, {
+      data: {
+        tableId: table.id,
+        column: p.column,
+        rows: table.numRows,
+        textAlignAppliedToCells: alignApplied,
+        widthAppliedToCells: widthApplied,
+        note: (p.width != null && widthApplied === 0) ? 'Per-cell width not settable via the FigJam API on this build.' : undefined,
+      },
+    });
+  } catch (err) {
+    return errorResult(command.id, 'Failed to style table column: ' + String(err));
+  }
+}

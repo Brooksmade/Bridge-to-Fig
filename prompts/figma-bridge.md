@@ -1530,6 +1530,8 @@ Import a style from a shared library:
 
 ### getTeamComponents
 
+> ⚠️ **Not implemented in the plugin build.** Team-library enumeration needs the async library API and isn't wired up. For local components use `getComponents`.
+
 Get components available from team libraries:
 
 ```json
@@ -1540,6 +1542,8 @@ Get components available from team libraries:
 ```
 
 ### getTeamStyles
+
+> ⚠️ **Not implemented in the plugin build.** Team-library enumeration needs the async library API and isn't wired up. For local styles use `getStyles`.
 
 Get styles available from team libraries:
 
@@ -2020,19 +2024,6 @@ Store custom data on a node:
 }
 ```
 
-### getNodeHistory
-
-Get version history of a node (if available):
-
-```json
-{
-  "type": "getNodeHistory",
-  "payload": {
-    "nodeId": "123:456"
-  }
-}
-```
-
 ---
 
 ## Text Extended Operations
@@ -2421,6 +2412,8 @@ Get smart measurements relative to other elements:
 
 ### getCodeSnippets
 
+> ⚠️ **Not implemented in the plugin build.** Codegen output is only available to a plugin running in Dev Mode codegen context, not via this bridge.
+
 Get code snippets for a node (if Dev Mode enabled):
 
 ```json
@@ -2436,6 +2429,8 @@ Get code snippets for a node (if Dev Mode enabled):
 **Formats:** `css`, `ios`, `android`
 
 ### setCodegenResultRaw
+
+> ⚠️ **Not implemented in the plugin build.** Codegen results can only be returned from a Dev Mode codegen plugin handler, not via this bridge.
 
 Set raw codegen result:
 
@@ -2774,21 +2769,6 @@ Configure export settings for a node:
       {"format": "PNG", "scale": 2, "suffix": "@2x"},
       {"format": "SVG", "scale": 1, "suffix": ""}
     ]
-  }
-}
-```
-
-### createWidgetNode
-
-Create a widget node (for FigJam widgets):
-
-```json
-{
-  "type": "createWidgetNode",
-  "payload": {
-    "widgetId": "widget-id",
-    "x": 100,
-    "y": 100
   }
 }
 ```
