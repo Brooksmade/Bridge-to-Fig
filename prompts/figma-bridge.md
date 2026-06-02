@@ -338,7 +338,7 @@ Grid patterns:
 
 ### VARIABLE Operations
 
-**Design System Structure**: Choose from 5 organizing principles. The default is a 4-level hierarchy:
+**Design System Structure**: Choose from 8 organizing principles. The default is a 4-level hierarchy:
 
 **Default 4-Level Structure** (configurable via `organizingPrinciple`):
 
@@ -367,7 +367,10 @@ Before creating a design system, query available organizing principles:
       {"value": "three-level", "label": "3-Level Simplified", "description": "Streamlined structure", "bestFor": "Mid-size projects"},
       {"value": "two-level", "label": "2-Level Flat", "description": "Minimal structure", "bestFor": "Small projects, prototypes"},
       {"value": "material-design", "label": "Material Design 3", "description": "Google M3 architecture", "bestFor": "Android apps"},
-      {"value": "tailwind", "label": "Tailwind CSS Style", "description": "Utility-first approach", "bestFor": "Tailwind web projects"}
+      {"value": "tailwind", "label": "Tailwind CSS Style", "description": "Utility-first approach", "bestFor": "Tailwind web projects"},
+      {"value": "spectrum", "label": "Adobe Spectrum (S1)", "description": "Global/Alias/Component/System with flat naming", "bestFor": "Enterprise design systems, multi-brand/theme projects"},
+      {"value": "spectrum-2", "label": "Adobe Spectrum 2", "description": "Six-collection alias-heavy structure mirroring the live Spectrum 2 library — 2,919 variables, Light/Dark/Wireframe modes, isolated platform scale", "bestFor": "Adobe products, large multi-platform design systems"},
+      {"value": "apple-hig", "label": "Apple HIG", "description": "System Palette + Dynamic Colors + Component Tokens", "bestFor": "iOS/macOS apps, SwiftUI projects"}
     ],
     "default": "four-level"
   }
@@ -415,7 +418,7 @@ Use `createDesignSystem` to create all collections with proper variables in a si
 - `brandColors.primary` (required): Main brand color hex
 - `brandColors.secondary` (optional): Accent color hex
 - `brandColors.tertiary` (optional): Third brand color hex
-- `organizingPrinciple`: `"four-level"` | `"three-level"` | `"two-level"` | `"material-design"` | `"tailwind"` (default: four-level)
+- `organizingPrinciple`: `"four-level"` | `"three-level"` | `"two-level"` | `"material-design"` | `"tailwind"` | `"spectrum"` | `"spectrum-2"` | `"apple-hig"` (default: four-level). **Note:** `spectrum-2` doesn't require `brandColors.primary` — it ships with Adobe's full token set; customize by editing values in the `.Color theme` collection after creation.
 - `grayBase`: `"neutral"` | `"warm"` | `"cool"` (default: neutral)
 - `projectType`: `"web"` | `"mobile"` | `"dashboard"`
 - `includeBoilerplate`: `true` | `false` (default: true) - Includes typography, spacing, borders, shadows, transitions, and opacity tokens
@@ -435,6 +438,9 @@ Use `createDesignSystem` to create all collections with proper variables in a si
 | `two-level` | Primitives → Tokens |
 | `material-design` | Reference → System → Component |
 | `tailwind` | Colors → Semantic |
+| `spectrum` | Global → Alias → Component → System (3 modes: Light/Dark/Darkest) |
+| `spectrum-2` | S2.Color-theme + .Platform scale + Iconography + Typography + Layout + .Color theme (Light/Dark/Wireframe). 2,919 variables mirrored from the live Adobe Spectrum 2 library. `.Color theme` is the source-of-truth; edit it to retheme everything. |
+| `apple-hig` | System Palette → Dynamic Colors → Component Tokens |
 
 **Boilerplate Categories Created** (when `includeBoilerplate: true`):
 - Typography (font families, sizes, weights, line heights, letter spacing)

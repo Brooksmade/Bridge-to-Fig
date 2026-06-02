@@ -28,10 +28,13 @@ Ask the user:
 6. **Adobe Spectrum** — Global → Alias → Component → System
    _Best for: Enterprise, multi-brand, accessibility_
 
-7. **Apple Human Interface Guidelines** — System Palette → Dynamic Colors → Component Tokens
+7. **Adobe Spectrum 2** — S2.Color-theme + .Platform scale + Iconography + Typography + Layout + .Color theme (Light/Dark/Wireframe)
+   _Best for: Adobe products, multi-platform systems; 2,919-variable mirror of the live S2 library, no brand color needed_
+
+8. **Apple Human Interface Guidelines** — System Palette → Dynamic Colors → Component Tokens
    _Best for: iOS/macOS apps, SwiftUI_
 
-Map selection to: `four-level`, `three-level`, `two-level`, `material-design`, `tailwind`, `spectrum`, or `apple-hig`
+Map selection to: `four-level`, `three-level`, `two-level`, `material-design`, `tailwind`, `spectrum`, `spectrum-2`, or `apple-hig`
 
 ### Question 2: Pick a Brand Color
 

@@ -90,7 +90,7 @@ curl http://localhost:4001/logs/running
 
 | Command | Payload | Notes |
 |---------|---------|-------|
-| `createDesignSystem` | `{brandColors: {primary}, organizingPrinciple?, grayBase?, includeBoilerplate?, extractedTokens?}` | One-command full system. Principles: four-level, three-level, two-level, material-design, tailwind |
+| `createDesignSystem` | `{brandColors: {primary}, organizingPrinciple?, grayBase?, includeBoilerplate?, extractedTokens?}` | One-command full system. Principles: `four-level`, `three-level`, `two-level`, `material-design`, `tailwind`, `spectrum`, `spectrum-2`, `apple-hig`. `spectrum-2` mirrors Adobe's 2,919-variable library (Light/Dark/Wireframe modes) and doesn't need `brandColors` — retheme by editing `.Color theme`. |
 | `validateDesignSystem` | (none) | Check structure/completeness |
 | `getDesignSystemStatus` | (none) | Quick check |
 | `getOrganizingPrinciples` | (none) | List available structures |
