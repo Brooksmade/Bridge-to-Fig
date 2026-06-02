@@ -1,0 +1,64 @@
+{
+  "_doc": "Binds design system variables to a component's visual properties. Covers fills, strokes, text, corner radius, spacing, and effects. Use after component creation to connect it to the design system.",
+  "_usage": "Get component children first, then bind each property to the appropriate variable.",
+  "_pattern": [
+    "1. Describe the component to get child structure",
+    "2. Get available variables from the design system",
+    "3. Match: fill colors → color variables, font sizes → typography variables, etc.",
+    "4. Bind each property using the appropriate bind command",
+    "5. Validate bindings with inspectFills"
+  ],
+  "commands": {
+    "1_get_structure": {
+      "type": "query",
+      "payload": { "queryType": "describe" },
+      "target": "{{COMPONENT_ID}}"
+    },
+    "2_get_variables": {
+      "type": "getVariables",
+      "payload": { "collectionName": "Tokens [ Level 3 ]", "includeValues": true }
+    },
+    "3_bind_fill": {
+      "_doc": "Bind a fill color — nodeId in PAYLOAD, not target",
+      "type": "bindFillVariable",
+      "payload": {
+        "nodeId": "{{CHILD_NODE_ID}}",
+        "variableId": "{{COLOR_VARIABLE_ID}}",
+        "fillIndex": 0
+      }
+    },
+    "4_bind_stroke": {
+      "type": "bindStrokeVariable",
+      "payload": {
+        "nodeId": "{{CHILD_NODE_ID}}",
+        "variableId": "{{BORDER_VARIABLE_ID}}",
+        "strokeIndex": 0
+      }
+    },
+    "5_bind_corner_radius": {
+      "type": "bindVariable",
+      "payload": {
+        "nodeId": "{{CHILD_NODE_ID}}",
+        "variableId": "{{RADIUS_VARIABLE_ID}}",
+        "field": "topLeftRadius"
+      }
+    },
+    "6_bind_spacing": {
+      "type": "bindVariable",
+      "payload": {
+        "nodeId": "{{CHILD_NODE_ID}}",
+        "variableId": "{{SPACING_VARIABLE_ID}}",
+        "field": "itemSpacing"
+      }
+    },
+    "7_validate": {
+      "type": "inspectFills",
+      "payload": { "nodeId": "{{CHILD_NODE_ID}}" }
+    }
+  },
+  "_binding_priority": {
+    "1": "Token [ Level 3 ] variables — most specific",
+    "2": "Semantic [ Level 2 ] — for role-based binding",
+    "3": "Primitive [ Level 1 ] — only as fallback"
+  }
+}

@@ -88,6 +88,96 @@ export async function handleSetDevResourcePreview(command: FigmaCommand): Promis
   }
 }
 
+// Add (or replace) dev resource links on a node.
+// Dev resources are the supported way to attach clickable links to a node in
+// Dev Mode — including in-file navigation links (e.g. a frame linking back to a
+// user-story card). Annotation markdown links are NOT clickable, so this is the
+// correct mechanism for a clickable "link back".
+export async function handleSetDevResources(command: FigmaCommand): Promise<CommandResult> {
+  var payload = command.payload as {
+    nodeId?: string;
+    resources?: Array<{ name?: string; url: string }>;
+    replace?: boolean; // delete existing dev resources first
+  };
+
+  // The node id may arrive via the standard `target` field or in the payload.
+  var targetId = command.target || (payload && payload.nodeId);
+
+  if (!targetId) {
+    return errorResult(command.id, 'Target node ID is required');
+  }
+
+  if (!payload || !Array.isArray(payload.resources) || payload.resources.length === 0) {
+    return errorResult(command.id, 'resources array is required (each item needs a url)');
+  }
+
+  try {
+    var node = await figma.getNodeByIdAsync(targetId);
+
+    if (!node) {
+      return errorResult(command.id, 'Node not found: ' + targetId);
+    }
+
+    if (!('addDevResourceAsync' in node)) {
+      return errorResult(command.id, 'Node does not support dev resources (addDevResourceAsync)');
+    }
+
+    var devNode = node as any;
+
+    // Optionally clear existing dev resources first.
+    if (payload.replace && 'getDevResourcesAsync' in node) {
+      var existing = await devNode.getDevResourcesAsync();
+      for (var d = 0; d < existing.length; d++) {
+        try {
+          await devNode.deleteDevResourceAsync(existing[d].url);
+        } catch (delErr) {
+          // Inherited resources (from components) cannot be deleted — skip them.
+        }
+      }
+    }
+
+    var added: Array<{ name?: string; url: string; updated?: boolean }> = [];
+    var errors: Array<{ url: string; error: string }> = [];
+
+    for (var i = 0; i < payload.resources.length; i++) {
+      var resource = payload.resources[i];
+      if (!resource || !resource.url) {
+        errors.push({ url: String(resource && resource.url), error: 'url is required' });
+        continue;
+      }
+
+      try {
+        await devNode.addDevResourceAsync(resource.url, resource.name);
+        added.push({ name: resource.name, url: resource.url });
+      } catch (addErr) {
+        // addDevResourceAsync fails when a resource with the same url already
+        // exists — fall back to editing so repeated calls are idempotent.
+        try {
+          if (resource.name) {
+            await devNode.editDevResourceAsync(resource.url, { name: resource.name });
+          }
+          added.push({ name: resource.name, url: resource.url, updated: true });
+        } catch (editErr) {
+          var em = editErr instanceof Error ? editErr.message : String(editErr);
+          errors.push({ url: resource.url, error: em });
+        }
+      }
+    }
+
+    return successResult(command.id, {
+      data: {
+        nodeId: node.id,
+        added: added.length,
+        resources: added,
+        errors: errors,
+      },
+    });
+  } catch (err) {
+    var message = err instanceof Error ? err.message : String(err);
+    return errorResult(command.id, 'Failed to set dev resources: ' + message);
+  }
+}
+
 // Get shared plugin data
 export async function handleGetSharedPluginData(command: FigmaCommand): Promise<CommandResult> {
   var targetId = command.target;

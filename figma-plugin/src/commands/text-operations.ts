@@ -418,7 +418,11 @@ export async function handleGetRangeStyles(command: FigmaCommand): Promise<Comma
   });
 }
 
-// Set hyperlink on text range
+// Set a hyperlink on a text range.
+// The destination can be an external URL (payload.url) OR another node in the
+// same file (payload.nodeId), which makes it an in-file navigation link. The
+// text node to operate on comes from command.target. Dispatched as both
+// `setTextHyperlink` and `setRangeHyperlink`.
 export async function handleSetTextHyperlink(command: FigmaCommand): Promise<CommandResult> {
   var payload = command.payload as {
     start?: number;
@@ -436,6 +440,10 @@ export async function handleSetTextHyperlink(command: FigmaCommand): Promise<Com
     return errorResult(command.id, 'Node must be a TEXT node');
   }
 
+  if (!payload || (!payload.url && !payload.nodeId)) {
+    return errorResult(command.id, 'Either url or nodeId (link destination) is required');
+  }
+
   var textNode = node as TextNode;
   var start = payload.start || 0;
   var end = payload.end !== undefined ? payload.end : textNode.characters.length;
@@ -448,7 +456,19 @@ export async function handleSetTextHyperlink(command: FigmaCommand): Promise<Com
     hyperlink = { type: 'NODE', value: payload.nodeId };
   }
 
-  textNode.setRangeHyperlink(start, end, hyperlink);
+  try {
+    // Setting a hyperlink writes to the range's styling, so every font used in
+    // the range must be loaded first or Figma throws "font is not loaded".
+    var fonts = textNode.getRangeAllFontNames(start, end);
+    for (var i = 0; i < fonts.length; i++) {
+      await figma.loadFontAsync(fonts[i]);
+    }
+
+    textNode.setRangeHyperlink(start, end, hyperlink);
+  } catch (err) {
+    var message = err instanceof Error ? err.message : String(err);
+    return errorResult(command.id, 'Failed to set hyperlink: ' + message);
+  }
 
   return successResult(command.id, {
     data: {

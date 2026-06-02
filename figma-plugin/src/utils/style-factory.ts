@@ -141,12 +141,14 @@ export function createDropShadow(
   offsetX: number,
   offsetY: number,
   radius: number,
-  spread?: number
+  spread?: number,
+  opacity?: number
 ): DropShadowEffect {
   var parsed = parseColor(color);
+  var alpha = opacity !== undefined ? opacity : parsed.a;
   return {
     type: 'DROP_SHADOW',
-    color: { r: parsed.r, g: parsed.g, b: parsed.b, a: parsed.a },
+    color: { r: parsed.r, g: parsed.g, b: parsed.b, a: alpha },
     offset: { x: offsetX, y: offsetY },
     radius: radius,
     spread: spread !== undefined ? spread : 0,
@@ -161,12 +163,14 @@ export function createInnerShadow(
   offsetX: number,
   offsetY: number,
   radius: number,
-  spread?: number
+  spread?: number,
+  opacity?: number
 ): InnerShadowEffect {
   var parsed = parseColor(color);
+  var alpha = opacity !== undefined ? opacity : parsed.a;
   return {
     type: 'INNER_SHADOW',
-    color: { r: parsed.r, g: parsed.g, b: parsed.b, a: parsed.a },
+    color: { r: parsed.r, g: parsed.g, b: parsed.b, a: alpha },
     offset: { x: offsetX, y: offsetY },
     radius: radius,
     spread: spread !== undefined ? spread : 0,

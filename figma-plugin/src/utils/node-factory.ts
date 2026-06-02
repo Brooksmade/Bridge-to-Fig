@@ -216,10 +216,15 @@ function applyCornerRadius(node: SceneNode, properties: NodeProperties): void {
 
 // Apply text-specific properties
 async function applyTextProperties(node: TextNode, properties: NodeProperties): Promise<void> {
-  // Load font first
-  const fontName = properties.fontName || { family: 'Inter', style: 'Regular' };
-  await loadFont(fontName);
-  node.fontName = fontName;
+  // Load font — only change fontName if explicitly provided
+  if (properties.fontName) {
+    await loadFont(properties.fontName);
+    node.fontName = properties.fontName;
+  } else if (properties.characters !== undefined || properties.fontSize !== undefined) {
+    // Need to load the existing font before modifying characters or fontSize
+    const existingFont = node.fontName as FontName;
+    await loadFont(existingFont);
+  }
 
   // Set characters
   if (properties.characters !== undefined) {

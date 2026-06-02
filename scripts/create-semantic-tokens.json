@@ -1,0 +1,75 @@
+{
+  "_doc": "Batch creates semantic/token variables with alias values and scopes. Each variable references a Primitive variable by ID. Supports setting code syntax and scopes for developer handoff.",
+  "_usage": "Build the array of variables, then send as batchEditVariable or loop createVariable calls.",
+  "_pattern": [
+    "1. Get Primitive collection variables: getVariables with collectionName filter",
+    "2. Build alias map: variable name → VariableID",
+    "3. Create each semantic variable with alias values per mode",
+    "4. Set scopes to control where variables appear in Figma UI"
+  ],
+  "variables": [
+    {
+      "_doc": "Example: Surface/Page aliases to different primitives per mode",
+      "type": "createVariable",
+      "payload": {
+        "name": "Surface/Page",
+        "type": "COLOR",
+        "collectionId": "{{COLLECTION_ID}}",
+        "values": {
+          "Light Mode": { "type": "VARIABLE_ALIAS", "id": "{{PRIMITIVE_WHITE_ID}}" },
+          "Dark Mode": { "type": "VARIABLE_ALIAS", "id": "{{PRIMITIVE_GRAY_950_ID}}" }
+        },
+        "scopes": ["FRAME_FILL", "SHAPE_FILL"],
+        "description": "Default page background"
+      }
+    },
+    {
+      "_doc": "Example: Text/Primary",
+      "type": "createVariable",
+      "payload": {
+        "name": "Text/Primary",
+        "type": "COLOR",
+        "collectionId": "{{COLLECTION_ID}}",
+        "values": {
+          "Light Mode": { "type": "VARIABLE_ALIAS", "id": "{{PRIMITIVE_GRAY_950_ID}}" },
+          "Dark Mode": { "type": "VARIABLE_ALIAS", "id": "{{PRIMITIVE_WHITE_ID}}" }
+        },
+        "scopes": ["TEXT_FILL"],
+        "description": "Primary text color"
+      }
+    },
+    {
+      "_doc": "Example: Border/Default",
+      "type": "createVariable",
+      "payload": {
+        "name": "Border/Default",
+        "type": "COLOR",
+        "collectionId": "{{COLLECTION_ID}}",
+        "values": {
+          "Light Mode": { "type": "VARIABLE_ALIAS", "id": "{{PRIMITIVE_GRAY_200_ID}}" },
+          "Dark Mode": { "type": "VARIABLE_ALIAS", "id": "{{PRIMITIVE_GRAY_800_ID}}" }
+        },
+        "scopes": ["STROKE_COLOR"],
+        "description": "Default border color"
+      }
+    }
+  ],
+  "_scopes_reference": {
+    "ALL_SCOPES": "Show everywhere",
+    "TEXT_FILL": "Text color picker",
+    "FRAME_FILL": "Frame fill picker",
+    "SHAPE_FILL": "Shape fill picker",
+    "STROKE_COLOR": "Stroke color picker",
+    "EFFECT_COLOR": "Effect color picker",
+    "CORNER_RADIUS": "Corner radius field",
+    "WIDTH_HEIGHT": "Width/height fields",
+    "GAP": "Auto layout gap field",
+    "ALL_FILLS": "All fill pickers",
+    "FONT_FAMILY": "Font family picker",
+    "FONT_SIZE": "Font size field",
+    "FONT_WEIGHT": "Font weight picker",
+    "LINE_HEIGHT": "Line height field",
+    "LETTER_SPACING": "Letter spacing field",
+    "OPACITY": "Opacity field"
+  }
+}

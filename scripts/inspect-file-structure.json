@@ -1,0 +1,44 @@
+{
+  "_doc": "Phase 0 Discovery — Inspects the current Figma file structure. Returns pages, variable collections, components, and styles. Use this BEFORE any creation operation to understand what already exists.",
+  "_usage": "Send each command sequentially. Combine results into a discovery report.",
+  "commands": [
+    {
+      "_step": "1. Get all pages",
+      "type": "query",
+      "payload": { "queryType": "pages" }
+    },
+    {
+      "_step": "2. Get all variable collections and counts",
+      "type": "getVariables",
+      "payload": { "includeValues": false }
+    },
+    {
+      "_step": "3. Get all components in the file",
+      "type": "getComponents",
+      "payload": {}
+    },
+    {
+      "_step": "4. Get all styles",
+      "type": "getStyles",
+      "payload": {}
+    },
+    {
+      "_step": "5. Get current selection for context",
+      "type": "query",
+      "payload": { "queryType": "selection" }
+    },
+    {
+      "_step": "6. Check design system status",
+      "type": "getDesignSystemStatus",
+      "payload": {}
+    }
+  ],
+  "_output": {
+    "pages": "Array of page names and IDs",
+    "collections": "Variable collections with mode names and variable counts",
+    "components": "Component names, variants, and property definitions",
+    "styles": "Paint, text, effect, and grid styles",
+    "selection": "Currently selected nodes",
+    "designSystem": "Whether a design system already exists"
+  }
+}

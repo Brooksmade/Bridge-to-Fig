@@ -1,0 +1,41 @@
+{
+  "_doc": "Scans the Figma file for nodes tagged with a run_id to reconstruct operation state after interruption. Enables resuming multi-step operations from where they left off.",
+  "_usage": "Replace {{RUN_ID}}. Returns all nodes with their step metadata so you can determine which steps completed.",
+  "_pattern": [
+    "1. Find all nodes tagged with the run_id",
+    "2. Read each node's pluginData for step info (btf_step, btf_phase, btf_status)",
+    "3. Build a state map: which steps completed, which are pending",
+    "4. Return resume point and existing node IDs"
+  ],
+  "commands": [
+    {
+      "_step": "1. Find all nodes from this run",
+      "type": "findByPluginData",
+      "payload": {
+        "key": "btf_run_id",
+        "value": "{{RUN_ID}}"
+      }
+    },
+    {
+      "_step": "2. For each found node, read its metadata",
+      "type": "getPluginData",
+      "target": "{{NODE_ID}}",
+      "payload": {
+        "keys": ["btf_run_id", "btf_step", "btf_phase", "btf_status", "btf_created_at"]
+      }
+    }
+  ],
+  "_state_schema": {
+    "btf_run_id": "Unique operation ID (UUID)",
+    "btf_step": "Step number within the phase (e.g., '3')",
+    "btf_phase": "Phase name (e.g., 'create-variables', 'bind-tokens')",
+    "btf_status": "completed | in_progress | failed",
+    "btf_created_at": "ISO timestamp of creation"
+  },
+  "_resume_logic": {
+    "all_completed": "Operation finished successfully — no resume needed",
+    "some_in_progress": "Resume from the first in_progress step",
+    "some_failed": "Inspect failed step, fix issue, resume from that step",
+    "none_found": "Run ID not found — operation either never started or was fully cleaned up"
+  }
+}

@@ -144,6 +144,7 @@ Agents are AI instructions for complex multi-step workflows. Key agents:
 | `engineering-handoff` | Generates dev specs, CSS, token maps |
 | `figjam-workflow-design` | Creates FigJam diagrams for workflows, processes, and user journeys |
 | `website-to-figma` | Captures a website into Figma via MCP, optionally creates design system variables |
+| `code-connect-mapper` | Maintains bidirectional Figma ↔ code component mappings |
 
 Full list in `prompts/figma-bridge.md` → Related Agents section.
 
@@ -174,7 +175,7 @@ MCP tools expose individual operations (create a variable, resize a node). This 
 - **Color classification** — Automatic primary/secondary/tertiary detection by saturation × frequency (no manual picking)
 - **Color scale generation** — 50-950 scales (11 steps) from any base color
 - **Conditional boilerplate** — Only fills gaps; extracted values take priority over defaults
-- **5 organizing principles** — 4-level, 3-level, 2-level, Material Design 3, Tailwind
+- **8 organizing principles** — 4-level, 3-level, 2-level, Material Design 3, Tailwind, Adobe Spectrum (S1), **Adobe Spectrum 2** (full 2,919-variable mirror with .Color theme Light/Dark/Wireframe modes), Apple HIG
 - **27 text range operations** — Character-level formatting (bold one word, color another)
 - **FigJam native diagrams** — Sections, shapes, connectors with text measurement
 - **31 agent workflows** — Pre-built multi-step pipelines
@@ -255,9 +256,14 @@ pnpm build:plugin
 | `prompts/library-best-practices.md` | **Library discipline** - publishing, versioning, styles vs variables |
 | `prompts/memory-server.md` | Memory server API for tracking progress/solutions |
 | `prompts/website-design-system.md` | Website extraction workflow |
-| `.claude/agents/*.md` | AI agent definitions |
+| `prompts/gotchas.md` | **Gotchas reference** - every known pitfall with WRONG/CORRECT examples |
+| `prompts/code-connect.md` | **Code Connect** - Figma ↔ code component mapping system |
+| `scripts/` | **Reusable script templates** - JSON payload templates for common operations |
+| `.claude/agents/*.md` | AI agent definitions (32 agents) |
+| `.figma/code-connect.json` | Component mapping file (Figma ↔ code) |
 | `bridge-server/src/services/websiteExtractor.ts` | Puppeteer extraction logic |
 | `figma-plugin/src/commands/` | Command implementations |
+| `figma-plugin/src/commands/state-recovery.ts` | State recovery: run_id tagging, orphan cleanup, validation |
 | `figma-plugin/src/data/boilerplate.ts` | Default design token values |
 
 ## Architecture

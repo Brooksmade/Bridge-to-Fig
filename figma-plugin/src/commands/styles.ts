@@ -995,47 +995,83 @@ export async function handleApplyMatchingTextStyles(command: FigmaCommand): Prom
     // Performance optimization: skip invisible instance children
     figma.skipInvisibleInstanceChildren = true;
 
-    // Step 1: Get all text styles and build a sorted list by font size
+    // Step 1: Get all text styles and build a sorted list by font size + font family + font style
     const textStyles = await figma.getLocalTextStylesAsync();
-    const styleList: Array<{ size: number; style: TextStyle }> = [];
+    const styleList: Array<{ size: number; fontFamily: string; fontStyle: string; style: TextStyle }> = [];
 
-    // Prioritize styles: prefer non-"Small" variants for base sizes
-    const seenSizes = new Set<number>();
+    // Track by size+fontFamily+fontStyle key to allow multiple weights at the same size
+    const seenKeys = new Set<string>();
     for (const style of textStyles) {
       const size = Math.round(style.fontSize);
+      const fontFamily = style.fontName.family;
+      const fontStyle = style.fontName.style;
+      const key = `${fontFamily}:${fontStyle}:${size}`;
 
-      // Skip duplicates, prefer non-Small variants
-      if (seenSizes.has(size)) {
-        const existing = styleList.find(s => s.size === size);
-        if (existing && style.name.includes('Small') && !existing.style.name.includes('Small')) continue;
-        if (existing && !style.name.includes('Small') && existing.style.name.includes('Small')) {
-          // Replace with non-Small variant
-          existing.style = style;
-        }
-        continue;
-      }
+      // Skip exact duplicates (same font+style+size)
+      if (seenKeys.has(key)) continue;
 
-      seenSizes.add(size);
-      styleList.push({ size, style });
+      seenKeys.add(key);
+      styleList.push({ size, fontFamily, fontStyle, style });
     }
 
     // Sort by size for nearest-match finding
     styleList.sort((a, b) => a.size - b.size);
 
     // Helper to find nearest matching style
-    // If snapToNearest is true, always returns closest style (no tolerance limit)
-    // If false, only returns style within 2px tolerance
-    function findNearestStyle(targetSize: number, snapToNearest: boolean): { style: TextStyle; diff: number } | null {
-      let bestMatch: TextStyle | null = null;
-      let bestDiff = snapToNearest ? Infinity : 3; // No limit if snapping, else 2px tolerance
+    // Matches by font family + font style + font size
+    // Priority: 1) exact family+style+size, 2) exact family+style nearest size, 3) exact family nearest size, 4) any font nearest size
+    // Normalize font style for comparison: "Extra Bold" -> "extrabold", "Regular Italic" -> "regularitalic"
+    const normalizeStyle = (s: string) => s.replace(/\s+/g, '').toLowerCase();
 
-      for (const { size, style } of styleList) {
-        const diff = Math.abs(size - targetSize);
-        if (diff < bestDiff) {
-          bestDiff = diff;
-          bestMatch = style;
+    function findNearestStyle(targetSize: number, targetFontFamily: string, snapToNearest: boolean, targetFontStyle?: string): { style: TextStyle; diff: number } | null {
+      let bestMatch: TextStyle | null = null;
+      let bestDiff = snapToNearest ? Infinity : 3;
+      const targetStyleNorm = targetFontStyle ? normalizeStyle(targetFontStyle) : undefined;
+
+      // First pass: match by font family + font style + size (exact combo)
+      if (targetStyleNorm) {
+        for (const { size, fontFamily, fontStyle, style } of styleList) {
+          if (fontFamily !== targetFontFamily || normalizeStyle(fontStyle) !== targetStyleNorm) continue;
+          const diff = Math.abs(size - targetSize);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestMatch = style;
+          }
+        }
+        if (bestMatch && bestDiff === 0) return { style: bestMatch, diff: bestDiff };
+      }
+
+      // Second pass: match by font family + size (any style within same family)
+      if (!bestMatch || bestDiff > 0) {
+        let familyBest: TextStyle | null = null;
+        let familyBestDiff = snapToNearest ? Infinity : 3;
+        for (const { size, fontFamily, style } of styleList) {
+          if (fontFamily !== targetFontFamily) continue;
+          const diff = Math.abs(size - targetSize);
+          if (diff < familyBestDiff) {
+            familyBestDiff = diff;
+            familyBest = style;
+          }
+        }
+        // Only use family match if it's better than style match, or no style match found
+        if (!bestMatch || (familyBest && familyBestDiff < bestDiff)) {
+          bestMatch = familyBest;
+          bestDiff = familyBestDiff;
         }
       }
+
+      // Third pass: fall back to any font if no family match found
+      if (!bestMatch) {
+        bestDiff = snapToNearest ? Infinity : 3;
+        for (const { size, style } of styleList) {
+          const diff = Math.abs(size - targetSize);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestMatch = style;
+          }
+        }
+      }
+
       return bestMatch ? { style: bestMatch, diff: bestDiff } : null;
     }
 
@@ -1122,7 +1158,13 @@ export async function handleApplyMatchingTextStyles(command: FigmaCommand): Prom
     const applyErrors: Array<{ nodeId: string; nodeName: string; fontSize: number; error: string }> = [];
     const snappedBindings = new Map<string, number>(); // "40px→36px" -> count
 
+    let _yieldCounter = 0;
     for (const node of textNodes) {
+      // Yield every 200 nodes so the plugin thread stays cooperative on large files
+      if ((++_yieldCounter % 200) === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+
       // Skip if already has a text style that actually exists AND is in valid set
       // Skip this check entirely if forceRestyle is true
       if (!forceRestyle && node.textStyleId && typeof node.textStyleId === 'string' && node.textStyleId !== '') {
@@ -1144,18 +1186,25 @@ export async function handleApplyMatchingTextStyles(command: FigmaCommand): Prom
         }
       }
 
-      // Get font size (handle mixed fonts by using first character)
+      // Get font size, font family, and font style (handle mixed fonts by using first character)
       let fontSize: number;
+      let fontFamily: string;
+      let fontStyle: string | undefined;
       try {
         fontSize = typeof node.fontSize === 'number'
           ? Math.round(node.fontSize)
           : Math.round(node.getRangeFontSize(0, 1) as number);
+        const nodeFontName = typeof node.fontName === 'object' && 'family' in node.fontName
+          ? node.fontName
+          : node.getRangeFontName(0, 1) as FontName;
+        fontFamily = nodeFontName.family;
+        fontStyle = nodeFontName.style;
       } catch {
         skippedMixedFontSize++;
         continue;
       }
 
-      const match = findNearestStyle(fontSize, snapToNearest);
+      const match = findNearestStyle(fontSize, fontFamily, snapToNearest, fontStyle);
 
       if (!match) {
         skippedNoMatchingStyle++;
@@ -1378,7 +1427,13 @@ export async function handleApplyMatchingEffectStyles(command: FigmaCommand): Pr
     let skipped = 0;
     let alreadyStyled = 0;
 
+    let _yieldCounter = 0;
     for (const node of effectNodes) {
+      // Yield every 200 nodes so the plugin thread stays cooperative on large files
+      if ((++_yieldCounter % 200) === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+
       const blendNode = node as BlendMixin;
 
       // Skip if already has an effect style that actually exists AND is in valid set

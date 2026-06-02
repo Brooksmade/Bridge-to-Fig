@@ -637,9 +637,14 @@ Transition types: DISSOLVE, SMART_ANIMATE, MOVE_IN, MOVE_OUT, PUSH, SLIDE_IN, SL
 ### ANNOTATION Operations
 
 #### addAnnotation - Add annotation to a node
+Payload: `{label?, labelMarkdown?, categoryId?}` — provide **either** `label` or `labelMarkdown` (not both). There is no `description` field. Annotation `labelMarkdown` links render as plain, non-clickable text — for a clickable "link back" use [setDevResources](#setdevresources) instead.
 ```bash
 curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
-  -d '{"type": "addAnnotation", "target": "NODE_ID", "payload": {"label": "Spacing", "description": "Use 16px padding"}}'
+  -d '{"type": "addAnnotation", "target": "NODE_ID", "payload": {"label": "Spacing", "categoryId": "CATEGORY_ID"}}'
+
+# Markdown label (renders formatted; links are NOT clickable):
+curl -X POST http://localhost:4001/commands -H "Content-Type: application/json" \
+  -d '{"type": "addAnnotation", "target": "NODE_ID", "payload": {"labelMarkdown": "Use **16px** padding"}}'
 ```
 
 #### editAnnotation - Edit existing annotation
@@ -2147,18 +2152,34 @@ Set line height for a range:
 }
 ```
 
-### setRangeHyperlink
+### setRangeHyperlink / setTextHyperlink
 
-Add a hyperlink to text:
+Add a hyperlink to a text range. `setRangeHyperlink` and `setTextHyperlink` are aliases for the same command. The text node is the top-level `target`; the destination is either an external `url` **or** another node in the same file (`nodeId`), which creates an in-file navigation link. Fonts in the range are loaded automatically.
+
+External URL:
 
 ```json
 {
   "type": "setRangeHyperlink",
+  "target": "123:456",
   "payload": {
-    "nodeId": "123:456",
     "start": 0,
     "end": 10,
     "url": "https://example.com"
+  }
+}
+```
+
+Jump to another node in the same file (in-file link):
+
+```json
+{
+  "type": "setRangeHyperlink",
+  "target": "123:456",
+  "payload": {
+    "start": 0,
+    "end": 10,
+    "nodeId": "4409:25320"
   }
 }
 ```
@@ -2243,20 +2264,19 @@ Commands for managing developer resources and shared data.
 
 ### getDevResources
 
-Get developer resources attached to a node:
+Get developer resources (Dev Mode links) attached to a node. The node is the top-level `target`:
 
 ```json
 {
   "type": "getDevResources",
-  "payload": {
-    "nodeId": "123:456"
-  }
+  "target": "123:456",
+  "payload": {}
 }
 ```
 
 ### setDevResources
 
-Attach developer resources to a node:
+Attach clickable links to a node, shown in **Dev Mode**. This is the supported way to add a "jump to" / back-link to a frame (e.g. link a frame back to its user-story card) — annotation markdown links are NOT clickable, so use this instead. The node id may be the top-level `target` or `payload.nodeId`. Set `replace: true` to clear existing resources first; re-adding the same `url` updates its name (idempotent). Returns `{nodeId, added, resources, errors}` — verify with a `getDevResources` round-trip.
 
 ```json
 {
@@ -2266,6 +2286,20 @@ Attach developer resources to a node:
     "resources": [
       {"name": "Storybook", "url": "https://storybook.example.com/button"},
       {"name": "GitHub", "url": "https://github.com/org/repo/src/Button.tsx"}
+    ]
+  }
+}
+```
+
+For an in-file back-link, use the destination node's Figma URL (`...?node-id=4409-25320`) as the `url`:
+
+```json
+{
+  "type": "setDevResources",
+  "payload": {
+    "nodeId": "1727:115646",
+    "resources": [
+      {"name": "US-NEW-7", "url": "https://www.figma.com/design/FILE_KEY/Name?node-id=4409-25320"}
     ]
   }
 }
@@ -2370,34 +2404,7 @@ Get annotations on a node:
 }
 ```
 
-### addAnnotation
-
-Add an annotation to a node:
-
-```json
-{
-  "type": "addAnnotation",
-  "payload": {
-    "nodeId": "123:456",
-    "label": "Note",
-    "content": "This component needs accessibility review"
-  }
-}
-```
-
-### removeAnnotation
-
-Remove an annotation:
-
-```json
-{
-  "type": "removeAnnotation",
-  "payload": {
-    "nodeId": "123:456",
-    "annotationId": "annotation123"
-  }
-}
-```
+> **Annotations:** see [ANNOTATION Operations](#annotation-operations) above for `addAnnotation` (`label` / `labelMarkdown` / `categoryId`), `editAnnotation`, and `deleteAnnotation`. The previously-listed `content`, `removeAnnotation`, and `annotationId` shapes were never implemented — `deleteAnnotation` with `annotationIndex` removes an annotation. Annotation markdown links are NOT clickable; use [setDevResources](#setdevresources) for a clickable link.
 
 ### getMeasurementsForNode
 

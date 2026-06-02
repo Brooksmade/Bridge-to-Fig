@@ -1,0 +1,83 @@
+{
+  "_doc": "Creates a standardized documentation page with sections for colors, typography, spacing, and effects. Each section is a frame with auto-layout containing labeled swatches/samples.",
+  "_usage": "Send commands sequentially. Each step creates one documentation section.",
+  "_pattern": [
+    "1. Create or navigate to documentation page",
+    "2. Create section frames with auto-layout",
+    "3. Populate each section with swatches/samples",
+    "4. Bind documentation elements to variables"
+  ],
+  "commands": {
+    "1_create_page": {
+      "type": "createPage",
+      "payload": { "name": "Documentation" }
+    },
+    "2_create_color_section": {
+      "_doc": "Container for color swatches",
+      "type": "create",
+      "payload": {
+        "nodeType": "FRAME",
+        "properties": {
+          "name": "Colors",
+          "width": 1200,
+          "height": 800,
+          "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1 } }]
+        }
+      }
+    },
+    "3_set_color_section_layout": {
+      "type": "setAutoLayout",
+      "target": "{{COLOR_SECTION_ID}}",
+      "payload": {
+        "direction": "VERTICAL",
+        "spacing": 24,
+        "paddingLeft": 32,
+        "paddingRight": 32,
+        "paddingTop": 32,
+        "paddingBottom": 32,
+        "primaryAxisSizingMode": "AUTO",
+        "counterAxisSizingMode": "AUTO"
+      }
+    },
+    "4_create_swatch_row": {
+      "_doc": "Horizontal row of color swatches — create one per color group",
+      "type": "create",
+      "payload": {
+        "nodeType": "FRAME",
+        "parent": "{{COLOR_SECTION_ID}}",
+        "properties": { "name": "Primary Scale" },
+        "children": [
+          {
+            "nodeType": "FRAME",
+            "properties": {
+              "name": "Primary/50",
+              "width": 80,
+              "height": 80,
+              "cornerRadius": 8,
+              "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 0.95, "b": 0.9 } }]
+            }
+          }
+        ]
+      }
+    },
+    "5_create_typography_section": {
+      "type": "create",
+      "payload": {
+        "nodeType": "FRAME",
+        "properties": {
+          "name": "Typography",
+          "width": 1200,
+          "height": 600,
+          "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1 } }]
+        }
+      }
+    }
+  },
+  "_section_template": {
+    "colors": "Swatch grid — 80x80 rounded rects, labeled below, grouped by scale",
+    "typography": "Text samples — one per style, showing font name + size + weight",
+    "spacing": "Spacing bars — horizontal rects showing each spacing value",
+    "effects": "Shadow cards — white rects with each shadow effect applied",
+    "radius": "Radius demo — rects with each corner radius value"
+  }
+}

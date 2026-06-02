@@ -14,7 +14,7 @@ describe('handleAddAnnotation', () => {
     registerNode(node);
 
     const result = await handleAddAnnotation(makeCommand('addAnnotation', {}, 'node-1'));
-    expectError(result, 'label is required');
+    expectError(result, 'label or labelMarkdown is required');
   });
 
   it('returns error when node not found', async () => {
@@ -62,6 +62,68 @@ describe('handleAddAnnotation', () => {
     expect(data.annotationIndex).toBe(1);
     expect(data.totalAnnotations).toBe(2);
   });
+
+  it('forwards labelMarkdown to the stored annotation', async () => {
+    const node = createMockNode({ id: 'node-1', annotations: [] });
+    registerNode(node);
+
+    const result = await handleAddAnnotation(
+      makeCommand('addAnnotation', { labelMarkdown: '[US-NEW-7](https://figma.com/?node-id=4409-25320)' }, 'node-1'),
+    );
+    expectSuccess(result);
+    expect(node.annotations[0].labelMarkdown).toBe('[US-NEW-7](https://figma.com/?node-id=4409-25320)');
+    expect((result.data as any).labelMarkdown).toBe('[US-NEW-7](https://figma.com/?node-id=4409-25320)');
+  });
+
+  it('accepts labelMarkdown without a plain label', async () => {
+    const node = createMockNode({ id: 'node-1', annotations: [] });
+    registerNode(node);
+
+    const result = await handleAddAnnotation(makeCommand('addAnnotation', { labelMarkdown: '**bold**' }, 'node-1'));
+    expectSuccess(result);
+  });
+
+  it('never forwards an unsupported description key to Figma', async () => {
+    const node = createMockNode({ id: 'node-1', annotations: [] });
+    registerNode(node);
+
+    const result = await handleAddAnnotation(
+      makeCommand('addAnnotation', { label: 'Spacing', description: 'should be dropped' } as any, 'node-1'),
+    );
+    expectSuccess(result);
+    expect('description' in node.annotations[0]).toBe(false);
+  });
+
+  it('normalizes existing markdown annotations so re-assignment does not fail', async () => {
+    // Figma returns BOTH label and labelMarkdown for a markdown annotation.
+    // Appending must not leave the existing annotation with both fields, or
+    // Figma rejects the whole array ("Only one of label or labelMarkdown").
+    const node = createMockNode({
+      id: 'node-1',
+      annotations: [{ label: 'US-NEW-7', labelMarkdown: '[US-NEW-7](https://x)' }],
+    });
+    registerNode(node);
+
+    const result = await handleAddAnnotation(makeCommand('addAnnotation', { label: 'New plain' }, 'node-1'));
+    expectSuccess(result);
+    // Existing markdown annotation keeps labelMarkdown only.
+    expect(node.annotations[0].labelMarkdown).toBe('[US-NEW-7](https://x)');
+    expect('label' in node.annotations[0]).toBe(false);
+    // New annotation appended.
+    expect(node.annotations[1].label).toBe('New plain');
+  });
+
+  it('maps categoryId to the categoryId annotation field (not annotationCategoryId)', async () => {
+    const node = createMockNode({ id: 'node-1', annotations: [] });
+    registerNode(node);
+
+    const result = await handleAddAnnotation(
+      makeCommand('addAnnotation', { label: 'Color', categoryId: 'cat-1' }, 'node-1'),
+    );
+    expectSuccess(result);
+    expect(node.annotations[0].categoryId).toBe('cat-1');
+    expect('annotationCategoryId' in node.annotations[0]).toBe(false);
+  });
 });
 
 describe('handleEditAnnotation', () => {
@@ -102,20 +164,31 @@ describe('handleEditAnnotation', () => {
     expect(data.label).toBe('New Label');
   });
 
-  it('updates description only (partial update)', async () => {
+  it('updates labelMarkdown and clears the plain label', async () => {
     const node = createMockNode({
       id: 'node-1',
-      annotations: [{ label: 'Keep This', description: 'Old' }],
+      annotations: [{ label: 'Old Label' }],
     });
     registerNode(node);
 
     const result = await handleEditAnnotation(makeCommand('editAnnotation', {
       annotationIndex: 0,
-      description: 'New Description',
+      labelMarkdown: '[link](https://x)',
     }, 'node-1'));
     expectSuccess(result);
-    const data = result.data as any;
-    expect(data.label).toBe('Keep This');
+    expect(node.annotations[0].labelMarkdown).toBe('[link](https://x)');
+    expect('label' in node.annotations[0]).toBe(false);
+  });
+
+  it('always returns a result for an out-of-range index (never hangs)', async () => {
+    const node = createMockNode({ id: 'node-1', annotations: [{ label: 'Only' }] });
+    registerNode(node);
+
+    const result = await handleEditAnnotation(makeCommand('editAnnotation', {
+      annotationIndex: 99,
+      label: 'X',
+    }, 'node-1'));
+    expectError(result, 'out of range');
   });
 });
 

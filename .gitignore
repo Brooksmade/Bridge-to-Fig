@@ -29,6 +29,8 @@ nul
 
 # Claude Code local settings (machine-specific)
 .claude/settings.local.json
+# Claude Code per-project memory/session data (machine-specific)
+.claude/projects/
 
 # Plans (local planning docs)
 plans/

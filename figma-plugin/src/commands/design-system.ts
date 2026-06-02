@@ -40,6 +40,7 @@ import {
   getPrincipleDisplayOptions,
   isValidPrincipleName,
 } from '../data/organizing-principles';
+import { createSpectrum2DesignSystem } from './design-system-spectrum-2';
 import {
   typographyTokens,
   spacingTokens,
@@ -106,6 +107,7 @@ import {
 interface NormalizedShadow {
   type: 'DROP_SHADOW' | 'INNER_SHADOW';
   color: string;
+  opacity: number; // Color opacity (0-1)
   offsetX: number;
   offsetY: number;
   blur: number;
@@ -171,6 +173,7 @@ function processExtractedShadows(shadows: ExtractedShadow[]): GroupedShadow[] {
     const normalized: NormalizedShadow = {
       type: shadow.type,
       color: shadow.color,
+      opacity: shadow.opacity !== undefined ? shadow.opacity : 1,
       offsetX: roundShadowValue(shadow.offsetX),
       offsetY: roundShadowValue(shadow.offsetY),
       blur: roundShadowValue(shadow.blur),
@@ -270,8 +273,15 @@ function mapExtractedTypography(
   extractedFontWeights: number[],
   primaryFont: string,
   fontSizeNodes?: Record<string, string[]>,
-  fontFamilyMap?: Record<string, string>
+  fontFamilyMap?: Record<string, string>,
+  fontCombos?: Array<{ fontFamily: string; fontStyle: string; fontSize: number; fontWeight: number; lineHeight: number | null; letterSpacing: number; nodeIds: string[] }>
 ): MappedTypographyStyle[] {
+  // If fontCombos is available, create one style per unique combo
+  if (fontCombos && fontCombos.length > 0) {
+    return mapFromFontCombos(fontCombos);
+  }
+
+  // Legacy path: one style per font size (kept for backward compatibility)
   if (!extractedFontSizes || extractedFontSizes.length === 0) {
     return [];
   }
@@ -380,20 +390,94 @@ function mapExtractedTypography(
     const sizeKey = String(Math.round(fontSize));
     const nodeIds = fontSizeNodes?.[sizeKey] || [];
 
-    // Use the font family actually used at this size (from extraction), fall back to primaryFont
-    const sizeFont = fontFamilyMap?.[sizeKey] || primaryFont;
+    // Use fontFamilyMap to determine the correct font for this size
+    const fontFamily = fontFamilyMap?.[sizeKey] || primaryFont;
 
     result.push({
       name,
       fontSize,
       fontWeight: weight,
-      fontFamily: sizeFont,
+      fontFamily,
       lineHeight,
       isExtracted: true,
       nodeIds,
     });
   }
 
+  return result;
+}
+
+/**
+ * Map font combos (family + style + size + weight) to text styles.
+ * Creates one style per unique combo found in the file.
+ * Names are grouped by font family with semantic size categories.
+ */
+function mapFromFontCombos(
+  fontCombos: Array<{ fontFamily: string; fontStyle: string; fontSize: number; fontWeight: number; lineHeight: number | null; letterSpacing: number; nodeIds: string[] }>
+): MappedTypographyStyle[] {
+  const weightMap: Record<number, string> = {
+    100: 'Thin', 200: 'Extra Light', 300: 'Light', 400: 'Regular',
+    500: 'Medium', 600: 'Semi Bold', 700: 'Bold', 800: 'Extra Bold', 900: 'Black',
+  };
+
+  // Sort combos: by family, then size descending, then weight
+  const sorted = [...fontCombos].sort((a, b) =>
+    a.fontFamily.localeCompare(b.fontFamily) || b.fontSize - a.fontSize || a.fontWeight - b.fontWeight
+  );
+
+  // Get all unique sizes across all fonts for semantic naming
+  const allSizes = [...new Set(sorted.map(c => c.fontSize))].sort((a, b) => b - a);
+
+  const result: MappedTypographyStyle[] = [];
+  const usedNames = new Set<string>();
+
+  for (const combo of sorted) {
+    const { fontFamily, fontStyle, fontSize, fontWeight, lineHeight, letterSpacing, nodeIds } = combo;
+
+    // Determine semantic category based on absolute size
+    let category: string;
+    if (fontSize >= 48) {
+      category = 'Display';
+    } else if (fontSize >= 24) {
+      category = 'Heading';
+    } else if (fontSize >= 18) {
+      category = 'Title';
+    } else if (fontSize >= 14) {
+      category = 'Body';
+    } else if (fontSize >= 11) {
+      category = 'Label';
+    } else {
+      category = 'Caption';
+    }
+
+    // Build name: Family/Category Style Size
+    // e.g., "Inter/Body Medium 14", "Newsreader/Heading Bold 24"
+    const weightName = weightMap[fontWeight] || fontStyle;
+    let name = `${fontFamily}/${category} ${weightName} ${fontSize}`;
+
+    // Ensure unique names
+    if (usedNames.has(name)) {
+      // Append font style for disambiguation (e.g., Regular vs Regular Italic)
+      name = `${fontFamily}/${category} ${fontStyle} ${fontSize}`;
+    }
+    if (usedNames.has(name)) {
+      name = `${name} (${nodeIds.length} nodes)`;
+    }
+    usedNames.add(name);
+
+    result.push({
+      name,
+      fontSize,
+      fontWeight: fontStyle,  // Use the actual Figma style name (e.g., "Semi Bold", "Regular Italic")
+      fontFamily,
+      lineHeight: lineHeight !== null ? Math.round(lineHeight) : Math.round(fontSize * 1.5),
+      letterSpacing: (letterSpacing && fontSize > 0) ? (letterSpacing / fontSize * 100) : undefined,  // Convert px to percent
+      isExtracted: true,
+      nodeIds,
+    });
+  }
+
+  console.log(`[DesignSystem] mapFromFontCombos: Created ${result.length} text styles from ${fontCombos.length} unique font combos`);
   return result;
 }
 
@@ -485,14 +569,14 @@ function mapExtractedTypographySpectrum(
     const sizeKey = String(Math.round(fontSize));
     const nodeIds = fontSizeNodes?.[sizeKey] || [];
 
-    // Use the font family actually used at this size (from extraction), fall back to primaryFont
-    const sizeFont = fontFamilyMap?.[sizeKey] || primaryFont;
+    // Use fontFamilyMap to determine the correct font for this size
+    const fontFamily = fontFamilyMap?.[sizeKey] || primaryFont;
 
     result.push({
       name,
       fontSize,
       fontWeight: weight,
-      fontFamily: sizeFont,
+      fontFamily,
       lineHeight,
       isExtracted: true,
       nodeIds,
@@ -653,6 +737,7 @@ interface MappedEffectStyle {
   effects: Array<{
     type: 'DROP_SHADOW' | 'INNER_SHADOW';
     color: string;
+    opacity: number; // Color opacity (0-1)
     offsetX: number;
     offsetY: number;
     blur: number;
@@ -719,6 +804,7 @@ function mapExtractedShadowsToStructure(
         effects: [{
           type: shadow.type,
           color: shadow.color,
+          opacity: shadow.opacity,
           offsetX: shadow.offsetX,
           offsetY: shadow.offsetY,
           blur: shadow.blur,
@@ -747,6 +833,7 @@ function mapExtractedShadowsToStructure(
         effects: [{
           type: shadow.type,
           color: shadow.color,
+          opacity: shadow.opacity,
           offsetX: shadow.offsetX,
           offsetY: shadow.offsetY,
           blur: shadow.blur,
@@ -770,6 +857,7 @@ function mapExtractedShadowsToStructure(
       effects: [{
         type: shadow.type,
         color: shadow.color,
+        opacity: shadow.opacity,
         offsetX: shadow.offsetX,
         offsetY: shadow.offsetY,
         blur: shadow.blur,
@@ -1427,13 +1515,15 @@ async function buildVariableMap(collection: VariableCollection): Promise<Map<str
 export async function handleCreateDesignSystem(command: FigmaCommand): Promise<CommandResult> {
   const payload = command.payload as CreateDesignSystemPayload;
 
-  if (!payload.brandColors || !payload.brandColors.primary) {
-    return errorResult(command.id, 'brandColors.primary is required');
-  }
-
   // Get organizing principle (default: four-level for backward compatibility)
   const principleName = payload.organizingPrinciple || 'four-level';
   const principle = getOrganizingPrinciple(principleName);
+
+  // Spectrum 2 ships with Adobe's full token set — brand color is optional.
+  // Every other principle generates color scales from brandColors.primary, so it's required.
+  if (principleName !== 'spectrum-2' && (!payload.brandColors || !payload.brandColors.primary)) {
+    return errorResult(command.id, 'brandColors.primary is required');
+  }
 
   const results = {
     organizingPrinciple: principleName,
@@ -1503,6 +1593,26 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         style.remove();
         results.cleanup.gridStylesDeleted++;
       }
+    }
+
+    // === Spectrum 2 dispatch ===
+    // Spectrum 2 has a 6-collection alias-heavy shape that doesn't fit the
+    // "primitives → semantic → tokens → theme" pattern the rest of this function assumes.
+    // Hand off to the dedicated handler, which mirrors Adobe's published Spectrum 2 library.
+    if (principleName === 'spectrum-2') {
+      const s2Result = await createSpectrum2DesignSystem();
+      results.collections = s2Result.collections;
+      results.totalVariables = s2Result.totalVariables;
+      return successResult(command.id, {
+        data: {
+          ...results,
+          spectrum2: {
+            totalAliases: s2Result.totalAliases,
+            totalAliasesResolved: s2Result.totalAliasesResolved,
+            unresolvedAliases: s2Result.unresolvedAliases,
+          },
+        },
+      });
     }
 
     // === STEP 1: Create/Get Primitives Collection ===
@@ -2080,6 +2190,28 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         console.log(`[DesignSystem] No sans font detected, using "${boilerplatePrimaryFont}" for Font-Sans`);
       }
 
+      // Override serif font from fontFamilyMap if it provides a better match
+      // The fontFamilyMap knows which font is actually used at each size — if headings
+      // use a different font than body text, that should be the serif font
+      const boilerplateFontFamilyMap = payload.extractedTokens?.typography?.fontFamilyMap;
+      if (boilerplateFontFamilyMap) {
+        const primaryFontForBoilerplate = boilerplatePrimaryFont || payload.primaryFontFamily || 'Inter';
+        const uniqueFamilies = new Set(Object.values(boilerplateFontFamilyMap));
+        for (const family of uniqueFamilies) {
+          if (family !== primaryFontForBoilerplate && family !== 'Inter') {
+            const sizesUsingFont = Object.entries(boilerplateFontFamilyMap)
+              .filter(([_, f]) => f === family)
+              .map(([size]) => Number(size));
+            const avgSize = sizesUsingFont.reduce((a, b) => a + b, 0) / sizesUsingFont.length;
+            if (avgSize >= 16) {
+              boilerplateSerifFont = family;
+              console.log(`[DesignSystem] Overriding serif font from fontFamilyMap: "${family}" (avg size ${avgSize.toFixed(0)}px)`);
+              break;
+            }
+          }
+        }
+      }
+
       const fontFamilyOverrides: FontFamilyOverrides = {};
       if (boilerplatePrimaryFont) fontFamilyOverrides.sans = boilerplatePrimaryFont;
       if (boilerplateSerifFont) fontFamilyOverrides.serif = boilerplateSerifFont;
@@ -2182,6 +2314,37 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
       let primaryFont = payload.fontFamilies?.sans || payload.primaryFontFamily || 'Inter';
       const genericFonts = ['sans-serif', 'serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-sans-serif', 'ui-serif', 'ui-monospace'];
 
+      // Auto-detect serif/mono fonts from fontFamilyMap when not explicitly provided
+      // The fontFamilyMap tells us which font is used at each size — if headings use a different
+      // font than body text, that's the serif font
+      let detectedSerifFont: string | undefined = payload.fontFamilies?.serif;
+      let detectedMonoFont: string | undefined = payload.fontFamilies?.mono;
+      const fontFamilyMap = payload.extractedTokens?.typography?.fontFamilyMap;
+      if (!detectedSerifFont && fontFamilyMap) {
+        const uniqueFamilies = new Set(Object.values(fontFamilyMap));
+        for (const family of uniqueFamilies) {
+          if (family !== primaryFont && family !== 'Inter') {
+            // Check if this font is used for larger (heading) sizes — serif indicator
+            const sizesUsingFont = Object.entries(fontFamilyMap)
+              .filter(([_, f]) => f === family)
+              .map(([size]) => Number(size));
+            const avgSize = sizesUsingFont.reduce((a, b) => a + b, 0) / sizesUsingFont.length;
+            if (avgSize >= 16) {
+              detectedSerifFont = family;
+              console.log(`[DesignSystem] Auto-detected serif font from fontFamilyMap: "${family}" (avg size ${avgSize.toFixed(0)}px)`);
+              break;
+            }
+          }
+        }
+      }
+
+      // Font family role mapping for variable binding (sans/serif/mono)
+      const fontFamilyOverridesForBinding: FontFamilyOverrides = {
+        sans: payload.fontFamilies?.sans || payload.primaryFontFamily,
+        serif: detectedSerifFont,
+        mono: detectedMonoFont,
+      };
+
       // Priority 1: Use resolved fonts (marketing names from web search)
       const resolvedFonts = payload.extractedTokens?.typography?.resolvedFonts;
       if (!payload.primaryFontFamily && resolvedFonts?.length) {
@@ -2246,15 +2409,15 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
           payload.extractedTokens.typography.fontWeight || [],
           primaryFont,
           payload.extractedTokens.typography.fontSizeNodes, // Pass node IDs for binding
-          payload.extractedTokens.typography.fontFamilyMap  // Pass per-size font family map
+          payload.extractedTokens.typography.fontFamilyMap,  // Pass per-size font family map
+          payload.extractedTokens.typography.fontCombos      // Pass per-combo font data (new)
         );
-        // Log per-size font families if multiple fonts detected
+        // Log per-size font families
         const uniqueStyleFonts = new Set(mappedStyles.map(s => s.fontFamily));
-        if (uniqueStyleFonts.size > 1) {
-          console.log(`[DesignSystem] Multi-font text styles: ${[...uniqueStyleFonts].join(', ')}`);
-          for (const style of mappedStyles) {
-            console.log(`  ${style.name}: ${style.fontFamily} ${style.fontWeight} ${style.fontSize}px`);
-          }
+        console.log(`[DesignSystem] Font families in mapped styles: ${[...uniqueStyleFonts].join(', ')}`);
+        console.log(`[DesignSystem] fontFamilyMap received: ${JSON.stringify(payload.extractedTokens.typography.fontFamilyMap || 'MISSING')}`);
+        for (const style of mappedStyles) {
+          console.log(`  ${style.name}: ${style.fontFamily} ${style.fontWeight} ${style.fontSize}px`);
         }
         console.log(`[DesignSystem] Created ${mappedStyles.length} text styles from ${payload.extractedTokens.typography.fontSize.length} extracted font sizes (${isSpectrum ? 'Spectrum naming' : 'standard naming'})`);
       } else if (includeBoilerplate) {
@@ -2391,12 +2554,20 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
           ? (weightVarMap[mapped.fontWeight] || 'font-weight-regular')
           : (weightVarMap[mapped.fontWeight] || 'Weight-Regular');
 
-        // Determine font family variable — code styles use mono font
-        // Spectrum uses flat naming (font-family-mono); standard uses grouped (Font-Mono)
+        // Determine font family variable — match the actual font role (sans/serif/mono)
+        // Compare mapped.fontFamily against the configured font families to pick the right variable
         const isCodeStyle = mapped.name.startsWith('code-');
+        const serifFont = detectedSerifFont;
+        const monoFont = detectedMonoFont;
+        const isSerifStyle = serifFont && mapped.fontFamily === serifFont;
+        const isMonoStyle = isCodeStyle || (monoFont && mapped.fontFamily === monoFont);
         const fontFamilyVarName = (isSpectrum || isAppleHIG || isTailwind || isMaterial)
-          ? (isCodeStyle ? 'Typography/Font Family/font-family-mono' : 'Typography/Font Family/font-family-sans')
-          : (isCodeStyle ? 'Typography/Font Family/Font-Mono' : 'Typography/Font Family/Font-Sans');
+          ? (isMonoStyle ? 'Typography/Font Family/font-family-mono'
+            : isSerifStyle ? 'Typography/Font Family/font-family-serif'
+            : 'Typography/Font Family/font-family-sans')
+          : (isMonoStyle ? 'Typography/Font Family/Font-Mono'
+            : isSerifStyle ? 'Typography/Font Family/Font-Serif'
+            : 'Typography/Font Family/Font-Sans');
 
         return {
           name: mapped.name,
@@ -2442,6 +2613,7 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
         name: string;
         styleId: string;
         fontSize?: number;
+        fontFamily?: string;
         isExtracted?: boolean;
         fontFamilyBound?: boolean;
         fontSizeBound?: boolean;
@@ -2472,18 +2644,42 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
           uniqueFonts.add(`${styleDef.fontFamily}|${styleDef.fontStyle}`);
         }
       }
-      const fontLoadResults = await Promise.allSettled(
-        [...uniqueFonts].map(font => {
-          const [family, style] = font.split('|');
-          return figma.loadFontAsync({ family, style });
-        })
-      );
+      // Try loading fonts with fallback style names
+      // Figma nodes store "Extra Bold" / "Regular Italic" but loadFontAsync may need "ExtraBold" / "Italic"
+      const fontStyleFallbacks = (style: string): string[] => {
+        const fallbacks: string[] = [style];
+        // Remove spaces: "Extra Bold" -> "ExtraBold", "Semi Bold" -> "SemiBold"
+        const noSpaces = style.replace(/\s+/g, '');
+        if (noSpaces !== style) fallbacks.push(noSpaces);
+        // Remove "Regular " prefix: "Regular Italic" -> "Italic"
+        if (style.startsWith('Regular ')) fallbacks.push(style.slice(8));
+        return fallbacks;
+      };
+
       const loadedFonts = new Set<string>();
-      [...uniqueFonts].forEach((font, i) => {
-        if (fontLoadResults[i].status === 'fulfilled') {
-          loadedFonts.add(font);
+      const fontStyleMapping = new Map<string, string>(); // original key -> actual loaded style name
+
+      for (const font of uniqueFonts) {
+        const [family, style] = font.split('|');
+        let loaded = false;
+        for (const tryStyle of fontStyleFallbacks(style)) {
+          try {
+            await figma.loadFontAsync({ family, style: tryStyle });
+            loadedFonts.add(font);
+            if (tryStyle !== style) {
+              fontStyleMapping.set(font, tryStyle);
+              console.log(`[Typography] Font "${family} ${style}" loaded as "${tryStyle}"`);
+            }
+            loaded = true;
+            break;
+          } catch {
+            // Try next fallback
+          }
         }
-      });
+        if (!loaded) {
+          console.warn(`[Typography] Font not loadable: ${family} ${style}`);
+        }
+      }
       console.log(`[Typography] Pre-loaded ${loadedFonts.size}/${uniqueFonts.size} fonts`);
 
       // PERFORMANCE: Batch fetch all nodes from all styleDefs
@@ -2564,10 +2760,13 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
           continue;
         }
 
+        // Use the actual loaded style name (may differ from node's stored name)
+        const actualFontStyle = fontStyleMapping.get(fontKey) || styleDef.fontStyle;
+
         // Create text style
         const style = figma.createTextStyle();
         style.name = styleDef.name;
-        style.fontName = { family: styleDef.fontFamily, style: styleDef.fontStyle };
+        style.fontName = { family: styleDef.fontFamily, style: actualFontStyle };
         style.fontSize = styleDef.fontSize;
 
         if (typeof styleDef.lineHeight === 'number') {
@@ -2648,6 +2847,16 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
                 nodeBindingDetails.push({ nodeId, status: 'wrong_type', nodeType: node.type });
               } else {
                 const textNode = node as TextNode;
+                // Only apply if font family matches the style's font (skip nodes using different fonts)
+                try {
+                  const nodeFontName = textNode.fontName;
+                  if (nodeFontName !== figma.mixed && nodeFontName.family !== styleDef.fontFamily) {
+                    nodeBindingDetails.push({ nodeId, status: 'font_mismatch', nodeFont: nodeFontName.family });
+                    continue;
+                  }
+                } catch {
+                  // Skip if can't read font
+                }
                 // Only apply if not already styled - wrap in try-catch for stale bindings
                 let hasStyleId = false;
                 try {
@@ -2693,6 +2902,7 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
           name: styleDef.name,
           styleId: style.id,
           fontSize: styleDef.fontSize,
+          fontFamily: styleDef.fontFamily,
           isExtracted: (styleDef as any).isExtracted || false,
           fontFamilyBound,
           fontSizeBound,
@@ -2794,7 +3004,7 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
           effectStyle.name = mapped.name;
           effectStyle.description = `Extracted from file (used ${mapped.usageCount}x)`;
 
-          // Create effects array
+          // Create effects array (pass opacity to preserve extracted alpha)
           const figmaEffects: Effect[] = mapped.effects.map(eff => {
             if (eff.type === 'DROP_SHADOW') {
               return createDropShadow(
@@ -2802,7 +3012,8 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
                 eff.offsetX,
                 eff.offsetY,
                 eff.blur,
-                eff.spread
+                eff.spread,
+                eff.opacity
               );
             } else {
               return createInnerShadow(
@@ -2810,7 +3021,8 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
                 eff.offsetX,
                 eff.offsetY,
                 eff.blur,
-                eff.spread
+                eff.spread,
+                eff.opacity
               );
             }
           });
@@ -3083,16 +3295,22 @@ export async function handleCreateDesignSystem(command: FigmaCommand): Promise<C
                 color: gridColor,
               };
             } else {
-              // COLUMNS or ROWS pattern - use STRETCH alignment (most compatible)
-              // Note: MIN/MAX/CENTER alignments have stricter Figma validation requirements
+              // COLUMNS or ROWS pattern
+              // Figma Plugin API: alignment is 'MIN' | 'MAX' | 'CENTER'
+              // 'STRETCH' from boilerplate defs → use 'MIN' with offset 0
+              const alignment = (gridDef.alignment === 'STRETCH' || !gridDef.alignment)
+                ? 'MIN' as const
+                : gridDef.alignment as 'MIN' | 'MAX' | 'CENTER';
               grid = {
                 pattern: gridDef.pattern as 'COLUMNS' | 'ROWS',
-                alignment: 'STRETCH' as const,
+                alignment,
                 gutterSize: gridDef.gutterSize || 20,
                 count: gridDef.count || 12,
+                sectionSize: gridDef.sectionSize || 60,
+                offset: gridDef.offset || 0,
                 visible: gridDef.visible !== false,
                 color: gridColor,
-              };
+              } as LayoutGrid;
             }
 
             layoutGrids.push(grid);

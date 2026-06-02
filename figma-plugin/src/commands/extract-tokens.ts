@@ -45,6 +45,16 @@ export interface ExtractedDesignTokens {
     lineHeight: number[];     // Unique line heights (as multipliers)
     letterSpacing: number[];  // Unique letter spacing values
     fontSizeNodes?: Record<number, string[]>; // Node IDs per font size (for text style binding)
+    fontFamilyMap?: Record<string, string>; // Map each font size to its most-used font family
+    fontCombos?: Array<{  // Every unique family+style+size combo with node IDs
+      fontFamily: string;
+      fontStyle: string;
+      fontSize: number;
+      fontWeight: number;
+      lineHeight: number | null;  // In pixels
+      letterSpacing: number;      // In pixels
+      nodeIds: string[];
+    }>;
     resolvedFonts?: Array<{   // Resolved font names from web search
       cssName: string;
       marketingName?: string;
@@ -81,6 +91,7 @@ export interface ExtractedDesignTokens {
 export interface ExtractedShadow {
   type: 'DROP_SHADOW' | 'INNER_SHADOW';
   color: string;
+  opacity: number;   // Color opacity (0-1), separate from hex
   offsetX: number;
   offsetY: number;
   blur: number;
@@ -213,6 +224,7 @@ function extractShadow(effect: DropShadowEffect | InnerShadowEffect): ExtractedS
   return {
     type: effect.type as 'DROP_SHADOW' | 'INNER_SHADOW',
     color: hex,
+    opacity: alpha,
     offsetX: effect.offset.x,
     offsetY: effect.offset.y,
     blur: effect.radius,
@@ -251,6 +263,7 @@ class TokenExtractor {
   private fontSizes: Set<number> = new Set();
   private fontSizeNodes: Map<number, string[]> = new Map(); // Track nodeIds per font size
   private fontSizeFamilyCount: Map<number, Map<string, number>> = new Map(); // Track font family usage per size
+  private fontComboNodes: Map<string, { fontFamily: string; fontStyle: string; fontSize: number; fontWeight: number; lineHeight: number | null; letterSpacing: number; nodeIds: string[] }> = new Map(); // Track every unique font combo
   private fontWeights: Set<number> = new Set();
   private lineHeights: Set<number> = new Set();
   private letterSpacings: Set<number> = new Set();
@@ -369,6 +382,34 @@ class TokenExtractor {
           // Round to 3 decimal places
           this.letterSpacings.add(Math.round(normalized * 1000) / 1000);
         }
+      }
+
+      // Track unique font combos (family + style + size + weight + lineHeight + letterSpacing)
+      if (fontName !== figma.mixed && fontSize !== figma.mixed && typeof fontSize === 'number'
+          && fontWeight !== figma.mixed && typeof fontWeight === 'number') {
+        const lhPx = lineHeight !== figma.mixed
+          ? (lineHeight.unit === 'PIXELS' ? lineHeight.value
+             : lineHeight.unit === 'PERCENT' ? (fontSize * lineHeight.value / 100)
+             : null)
+          : null;
+        const lsPx = letterSpacing !== figma.mixed
+          ? (letterSpacing.unit === 'PIXELS' ? letterSpacing.value
+             : letterSpacing.unit === 'PERCENT' ? (fontSize * letterSpacing.value / 100)
+             : 0)
+          : 0;
+        const comboKey = `${fontName.family}|${fontName.style}|${Math.round(fontSize)}|${fontWeight}`;
+        if (!this.fontComboNodes.has(comboKey)) {
+          this.fontComboNodes.set(comboKey, {
+            fontFamily: fontName.family,
+            fontStyle: fontName.style,
+            fontSize: Math.round(fontSize),
+            fontWeight,
+            lineHeight: lhPx !== null ? Math.round(lhPx * 10) / 10 : null,
+            letterSpacing: Math.round(lsPx * 100) / 100,
+            nodeIds: [],
+          });
+        }
+        this.fontComboNodes.get(comboKey)!.nodeIds.push(node.id);
       }
     }
 
@@ -643,6 +684,9 @@ class TokenExtractor {
               return [size, topFamily];
             })
         ),
+        // Every unique font combo with node IDs (for per-combo text style creation)
+        fontCombos: Array.from(this.fontComboNodes.values())
+          .sort((a, b) => a.fontFamily.localeCompare(b.fontFamily) || a.fontSize - b.fontSize || a.fontWeight - b.fontWeight),
       },
       numbers: {
         spacing: Array.from(this.spacings).sort((a, b) => a - b),

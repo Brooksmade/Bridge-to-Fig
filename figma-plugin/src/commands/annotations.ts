@@ -1,12 +1,38 @@
 import type { FigmaCommand, CommandResult } from './types';
 import { successResult, errorResult } from './types';
 
+// Reduce an annotation to only the keys Figma accepts on assignment.
+// Figma returns BOTH `label` and `labelMarkdown` when reading a markdown
+// annotation, but re-assigning an annotation that has both fails validation
+// ("Only one of label or labelMarkdown should be given"). It also drops any
+// unrecognized keys (e.g. a legacy `description`) that would otherwise make the
+// whole `annotations = [...]` assignment throw. labelMarkdown wins over label.
+function sanitizeAnnotation(annotation: any): any {
+  var clean: any = {};
+
+  if (annotation.labelMarkdown) {
+    clean.labelMarkdown = annotation.labelMarkdown;
+  } else if (annotation.label) {
+    clean.label = annotation.label;
+  }
+
+  if (annotation.categoryId) {
+    clean.categoryId = annotation.categoryId;
+  }
+
+  if (annotation.properties) {
+    clean.properties = annotation.properties;
+  }
+
+  return clean;
+}
+
 // Add an annotation to a node
 export async function handleAddAnnotation(command: FigmaCommand): Promise<CommandResult> {
   var targetId = command.target;
   var payload = command.payload as {
-    label: string;
-    description?: string;
+    label?: string;
+    labelMarkdown?: string;
     categoryId?: string;
   };
 
@@ -14,8 +40,8 @@ export async function handleAddAnnotation(command: FigmaCommand): Promise<Comman
     return errorResult(command.id, 'Target node ID is required');
   }
 
-  if (!payload || !payload.label) {
-    return errorResult(command.id, 'label is required');
+  if (!payload || (!payload.label && !payload.labelMarkdown)) {
+    return errorResult(command.id, 'label or labelMarkdown is required');
   }
 
   try {
@@ -29,19 +55,24 @@ export async function handleAddAnnotation(command: FigmaCommand): Promise<Comman
       return errorResult(command.id, 'This Figma version does not support annotations on this node type');
     }
 
-    var annotatedNode = node as SceneNode & AnnotationMixin;
-    var existing = annotatedNode.annotations ? [...annotatedNode.annotations] : [];
+    var annotatedNode = node as SceneNode & AnnotationsMixin;
+    var existing = annotatedNode.annotations ? annotatedNode.annotations.map(sanitizeAnnotation) : [];
 
-    var newAnnotation: any = {
-      label: payload.label,
-    };
+    // Only the keys Figma recognizes (label, labelMarkdown, categoryId,
+    // properties) may be set — any unknown key (e.g. `description`) makes Figma
+    // reject the whole assignment. labelMarkdown supersedes a plain label.
+    // NOTE: annotation markdown links render as plain, non-clickable text; for
+    // a clickable link use setDevResources (Dev Mode links) instead.
+    var newAnnotation: any = {};
 
-    if (payload.description) {
-      newAnnotation.description = payload.description;
+    if (payload.labelMarkdown) {
+      newAnnotation.labelMarkdown = payload.labelMarkdown;
+    } else if (payload.label) {
+      newAnnotation.label = payload.label;
     }
 
     if (payload.categoryId) {
-      newAnnotation.annotationCategoryId = payload.categoryId;
+      newAnnotation.categoryId = payload.categoryId;
     }
 
     existing.push(newAnnotation);
@@ -52,6 +83,7 @@ export async function handleAddAnnotation(command: FigmaCommand): Promise<Comman
         nodeId: node.id,
         annotationIndex: existing.length - 1,
         label: payload.label,
+        labelMarkdown: payload.labelMarkdown,
         totalAnnotations: existing.length,
       },
     });
@@ -67,7 +99,7 @@ export async function handleEditAnnotation(command: FigmaCommand): Promise<Comma
   var payload = command.payload as {
     annotationIndex: number;
     label?: string;
-    description?: string;
+    labelMarkdown?: string;
     categoryId?: string;
   };
 
@@ -90,8 +122,8 @@ export async function handleEditAnnotation(command: FigmaCommand): Promise<Comma
       return errorResult(command.id, 'This Figma version does not support annotations on this node type');
     }
 
-    var annotatedNode = node as SceneNode & AnnotationMixin;
-    var annotations = annotatedNode.annotations ? [...annotatedNode.annotations] : [];
+    var annotatedNode = node as SceneNode & AnnotationsMixin;
+    var annotations = annotatedNode.annotations ? annotatedNode.annotations.map(sanitizeAnnotation) : [];
 
     if (payload.annotationIndex < 0 || payload.annotationIndex >= annotations.length) {
       return errorResult(command.id, 'annotationIndex out of range (0-' + (annotations.length - 1) + ')');
@@ -99,17 +131,20 @@ export async function handleEditAnnotation(command: FigmaCommand): Promise<Comma
 
     var annotation = { ...annotations[payload.annotationIndex] } as any;
 
-    if (payload.label !== undefined) {
+    // labelMarkdown and label are mutually exclusive — setting one clears the
+    // other so Figma never receives both. `description` is not a valid key.
+    if (payload.labelMarkdown !== undefined) {
+      annotation.labelMarkdown = payload.labelMarkdown;
+      delete annotation.label;
+    } else if (payload.label !== undefined) {
       annotation.label = payload.label;
-    }
-    if (payload.description !== undefined) {
-      annotation.description = payload.description;
+      delete annotation.labelMarkdown;
     }
     if (payload.categoryId !== undefined) {
-      annotation.annotationCategoryId = payload.categoryId;
+      annotation.categoryId = payload.categoryId;
     }
 
-    annotations[payload.annotationIndex] = annotation;
+    annotations[payload.annotationIndex] = sanitizeAnnotation(annotation);
     annotatedNode.annotations = annotations;
 
     return successResult(command.id, {
@@ -117,6 +152,7 @@ export async function handleEditAnnotation(command: FigmaCommand): Promise<Comma
         nodeId: node.id,
         annotationIndex: payload.annotationIndex,
         label: annotation.label,
+        labelMarkdown: annotation.labelMarkdown,
         success: true,
       },
     });
@@ -152,8 +188,8 @@ export async function handleDeleteAnnotation(command: FigmaCommand): Promise<Com
       return errorResult(command.id, 'This Figma version does not support annotations on this node type');
     }
 
-    var annotatedNode = node as SceneNode & AnnotationMixin;
-    var annotations = annotatedNode.annotations ? [...annotatedNode.annotations] : [];
+    var annotatedNode = node as SceneNode & AnnotationsMixin;
+    var annotations = annotatedNode.annotations ? annotatedNode.annotations.map(sanitizeAnnotation) : [];
 
     if (payload.annotationIndex < 0 || payload.annotationIndex >= annotations.length) {
       return errorResult(command.id, 'annotationIndex out of range (0-' + (annotations.length - 1) + ')');

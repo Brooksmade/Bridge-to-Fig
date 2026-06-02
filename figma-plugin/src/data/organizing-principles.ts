@@ -12,7 +12,8 @@ export type OrganizingPrincipleName =
   | 'two-level'        // Flat: Primitives → Tokens
   | 'material-design'  // Google M3: Reference → System → Component
   | 'tailwind'         // Utility-first: Colors → Semantic
-  | 'spectrum'         // Adobe Spectrum: Global → Alias → Component → System
+  | 'spectrum'         // Adobe Spectrum (S1): Global → Alias → Component → System
+  | 'spectrum-2'       // Adobe Spectrum 2: S2.Color-theme + .Platform scale + Iconography + Typography + Layout + .Color theme
   | 'apple-hig';       // Apple HIG: System Palette → Dynamic Colors → Component Tokens
 
 /**
@@ -231,6 +232,54 @@ export const ORGANIZING_PRINCIPLES: Record<OrganizingPrincipleName, OrganizingPr
       2: 'getSpectrumComponentTemplates',
       3: 'getSpectrumSystemTemplates',
     },
+  },
+  'spectrum-2': {
+    name: 'spectrum-2',
+    displayName: 'Adobe Spectrum 2',
+    description: 'Adobe Spectrum 2 token architecture — six collections split by concern. Source-of-truth color values live in ".Color theme" (Light/Dark/Wireframe modes); all other collections alias into it. Platform sizing is isolated in ".Platform scale" so Desktop/Mobile/Touch swaps don\'t touch color or type. Mirrors the live Spectrum 2 Figma library structure.',
+    bestFor: 'Adobe products, large multi-platform design systems, teams needing Light/Dark/Wireframe color modes and platform-scoped sizing',
+    collections: [
+      {
+        name: 'S2.Color-theme',
+        modes: ['Modeless'],
+        description: 'Hierarchical color primitives (Palette/gray/100, Palette/blue/800, Alias/overlay) — aliases into .Color theme so values follow Light/Dark/Wireframe automatically',
+        minVariableCount: 700,
+      },
+      {
+        name: '.Platform scale',
+        modes: ['Desktop'],
+        description: 'Component-level dimensions (button heights, dialog widths). Add Mobile/Touch modes to swap whole UI scale without touching color or type. Private (hidden from publishing).',
+        minVariableCount: 800,
+      },
+      {
+        name: 'Iconography',
+        modes: ['Modeless'],
+        description: 'Icon size scales — Workflow icon (8 sizes) and UI icon (6 sizes), aliasing into .Platform scale',
+        minVariableCount: 14,
+      },
+      {
+        name: 'Typography',
+        modes: ['Modeless'],
+        description: 'Font families, weights, sizes, and composite text style tokens (Body/Sans serif/Emphasized/Font size)',
+        minVariableCount: 170,
+      },
+      {
+        name: 'Layout',
+        modes: ['Modeless'],
+        description: 'Component-scoped layout tokens (Alert dialog/Maximum width, Avatar group/Size/50) aliasing to .Platform scale',
+        minVariableCount: 300,
+      },
+      {
+        name: '.Color theme',
+        modes: ['Light', 'Dark', 'Wireframe'],
+        description: 'Source-of-truth color values with per-theme hex codes. Edit values here to retheme the whole system. Includes Wireframe mode for low-fidelity work. Private (hidden from publishing).',
+        minVariableCount: 700,
+      },
+    ],
+    // Spectrum 2 uses a flat boilerplate file (boilerplate-spectrum-2.ts) instead of templateGetters,
+    // because its alias graph spans collections and can't be expressed as per-collection templates.
+    // The 'spectrum-2' branch in design-system.ts handles creation directly from the boilerplate.
+    templateGetters: {},
   },
   'apple-hig': {
     name: 'apple-hig',

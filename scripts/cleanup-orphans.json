@@ -1,0 +1,36 @@
+{
+  "_doc": "Finds and removes nodes tagged with a specific run_id. Used to clean up partial/failed creation operations. Pairs with the run_id tagging system in create commands.",
+  "_usage": "Replace {{RUN_ID}} with the run_id from the failed operation.",
+  "_pattern": [
+    "1. Find all nodes with the run_id in their pluginData",
+    "2. List them for user confirmation",
+    "3. Delete confirmed orphans",
+    "4. Report what was cleaned up"
+  ],
+  "commands": [
+    {
+      "_step": "1. Find tagged nodes",
+      "type": "findByPluginData",
+      "payload": {
+        "key": "btf_run_id",
+        "value": "{{RUN_ID}}"
+      }
+    },
+    {
+      "_step": "2. Delete each orphan (after confirmation)",
+      "type": "batchDelete",
+      "payload": {
+        "nodeIds": "{{ORPHAN_NODE_IDS}}"
+      }
+    }
+  ],
+  "_recovery_workflow": {
+    "on_failure": [
+      "1. Note the run_id from the failed operation",
+      "2. Run findByPluginData to find all nodes created in that run",
+      "3. Decide: resume (keep nodes, continue from where we stopped) or cleanup (delete all)",
+      "4. If cleanup: batchDelete all tagged nodes",
+      "5. If resume: use rehydrate-state.json to reconstruct the operation state"
+    ]
+  }
+}

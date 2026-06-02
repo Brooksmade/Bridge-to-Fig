@@ -1,0 +1,31 @@
+{
+  "_doc": "Creates a variable collection with named modes. Foundation step for any design system. Returns collectionId needed for createVariable calls.",
+  "_usage": "Replace {{COLLECTION_NAME}} and {{MODE_NAMES}} before sending.",
+  "type": "createVariableCollection",
+  "payload": {
+    "name": "{{COLLECTION_NAME}}",
+    "modes": "{{MODE_NAMES}}"
+  },
+  "_examples": {
+    "4-level-primitive": {
+      "name": "Primitive [ Level 1 ]",
+      "modes": ["Value"]
+    },
+    "4-level-semantic": {
+      "name": "Semantic [ Level 2 ]",
+      "modes": ["Light", "Dark"]
+    },
+    "4-level-tokens": {
+      "name": "Tokens [ Level 3 ]",
+      "modes": ["Light Mode", "Dark Mode"]
+    },
+    "4-level-theme": {
+      "name": "Theme",
+      "modes": ["Light", "Dark"]
+    }
+  },
+  "_output": {
+    "collectionId": "VariableCollectionId:X:Y — use this for createVariable calls",
+    "modeIds": "Map of mode name → mode ID"
+  }
+}

@@ -5,6 +5,7 @@ import { queue } from '../services/queue.js';
 import { broadcast } from '../services/websocket.js';
 import { extractWebsiteCSS } from '../services/websiteExtractor.js';
 import { extractWebsiteLayout } from '../services/websiteLayoutExtractor.js';
+import { autoBindByRoleV2, type AutoBindByRoleOptions } from '../services/autoBindByRoleService.js';
 import { PROTOCOL_VERSION } from '@bridge-to-fig/shared';
 
 const router: RouterType = Router();
@@ -13,7 +14,7 @@ const router: RouterType = Router();
 router.post('/', async (req: Request, res: Response) => {
   try {
     const { type, target, payload } = req.body as {
-      type?: CommandType | 'extractWebsiteCSS' | 'extractWebsiteLayout';
+      type?: CommandType | 'extractWebsiteCSS' | 'extractWebsiteLayout' | 'autoBindByRoleV2';
       target?: string;
       payload?: CommandPayload & { url?: string };
     };
@@ -101,6 +102,37 @@ router.post('/', async (req: Request, res: Response) => {
         queue.addResult({
           commandId,
           success: result.success,
+          timestamp: Date.now(),
+          data: result,
+        });
+      } catch (error) {
+        queue.addResult({
+          commandId,
+          success: false,
+          timestamp: Date.now(),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      return;
+    }
+
+    // Server-side orchestrated command: autoBindByRoleV2
+    // Drives multiple plugin calls (extractColorData → analyze in Node → applyColorBindings, chunked)
+    // so the plugin thread never has to do the heavy CPU work that crashes it on large files.
+    if (type === 'autoBindByRoleV2') {
+      const commandId = uuidv4();
+      console.log(`[Commands] Starting orchestrated command: autoBindByRoleV2 (${commandId})`);
+      res.status(202).json({
+        success: true,
+        commandId,
+        message: 'autoBindByRoleV2 started. Poll /results/{commandId}?wait=true for results.',
+      });
+
+      try {
+        const result = await autoBindByRoleV2((payload || {}) as AutoBindByRoleOptions);
+        queue.addResult({
+          commandId,
+          success: true,
           timestamp: Date.now(),
           data: result,
         });

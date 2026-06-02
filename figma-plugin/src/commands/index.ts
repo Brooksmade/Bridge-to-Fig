@@ -265,6 +265,7 @@ export {
 // Dev resources and advanced operations
 export {
   handleGetDevResources,
+  handleSetDevResources,
   handleSetDevResourcePreview,
   handleGetSharedPluginData,
   handleSetSharedPluginData,
@@ -368,6 +369,9 @@ import {
   handleBindByExtractedUsage,
   handleAutoBindSpacing,
 } from './variables';
+import { handleExtractColorData } from './extract-color-data';
+import { handleApplyColorBindings } from './apply-color-bindings';
+import { handleAutoBindText } from './auto-bind-text';
 import {
   handleCreatePaintStyle,
   handleCreateTextStyle,
@@ -569,6 +573,7 @@ import {
 } from './query-extended';
 import {
   handleGetDevResources,
+  handleSetDevResources,
   handleSetDevResourcePreview,
   handleGetSharedPluginData,
   handleSetSharedPluginData,
@@ -781,6 +786,15 @@ export async function executeCommand(command: FigmaCommand): Promise<CommandResu
 
       case 'autoBindSpacing':
         return handleAutoBindSpacing(command);
+
+      case 'extractColorData':
+        return handleExtractColorData(command);
+
+      case 'applyColorBindings':
+        return handleApplyColorBindings(command);
+
+      case 'autoBindText':
+        return handleAutoBindText(command);
 
       case 'createBoilerplate':
         return handleCreateBoilerplate(command);
@@ -1107,6 +1121,7 @@ export async function executeCommand(command: FigmaCommand): Promise<CommandResu
         return handleGetRangeStyles(command);
 
       case 'setTextHyperlink':
+      case 'setRangeHyperlink':
         return handleSetTextHyperlink(command);
 
       // Property commands
@@ -1262,6 +1277,9 @@ export async function executeCommand(command: FigmaCommand): Promise<CommandResu
       // Dev resources operations
       case 'getDevResources':
         return handleGetDevResources(command);
+
+      case 'setDevResources':
+        return handleSetDevResources(command);
 
       case 'setDevResourcePreview':
         return handleSetDevResourcePreview(command);

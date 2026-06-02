@@ -191,7 +191,7 @@ curl http://localhost:4001/logs/running
 | `setRangeTextDecoration` | `{nodeId, start, end, decoration: "NONE\|UNDERLINE\|STRIKETHROUGH"}` |
 | `setRangeLetterSpacing` | `{nodeId, start, end, letterSpacing: {value, unit}}` |
 | `setRangeLineHeight` | `{nodeId, start, end, lineHeight: {value, unit}}` |
-| `setRangeHyperlink` | `{nodeId, start, end, url}` |
+| `setRangeHyperlink` / `setTextHyperlink` | `{start, end, url}` (external) or `{start, end, nodeId}` (jump to a node in-file) + `target` = the text node. Aliases. |
 | `insertCharacters` | `{nodeId, position, characters}` |
 | `deleteCharacters` | `{nodeId, start, end}` |
 | `getTextSegments` | `{nodeId}` |
@@ -239,8 +239,8 @@ curl http://localhost:4001/logs/running
 
 | Command | Payload | Notes |
 |---------|---------|-------|
-| `addAnnotation` | `{label, description?, categoryId?}` + `target` | |
-| `editAnnotation` | `{annotationIndex, label?, description?, categoryId?}` + `target` | |
+| `addAnnotation` | `{label?, labelMarkdown?, categoryId?}` + `target` | `label` **or** `labelMarkdown` required (not both). Markdown links are NOT clickable — use `setDevResources` for a clickable link. No `description` field. |
+| `editAnnotation` | `{annotationIndex, label?, labelMarkdown?, categoryId?}` + `target` | |
 | `deleteAnnotation` | `{annotationIndex}` + `target` | |
 | `getAnnotationCategories` | (none) | Returns all annotation categories |
 
@@ -264,17 +264,17 @@ curl http://localhost:4001/logs/running
 
 | Command | Payload |
 |---------|---------|
-| `setDevResources` | `{nodeId, resources: [{name, url}]}` |
-| `getDevResources` | `{nodeId}` |
+| `setDevResources` | `{nodeId, resources: [{name, url}], replace?}` (nodeId or `target`) |
+| `getDevResources` | `target` (node id) |
 | `setPluginData` | `{nodeId, key, value}` |
 | `getPluginData` | `{nodeId, key}` |
 | `setSharedPluginData` | `{nodeId, namespace, key, value}` |
 | `getSharedPluginData` | `{nodeId, namespace, key}` |
 | `setDocumentPluginData` | `{key, value}` |
-| `addAnnotation` | `{nodeId, label, content}` |
-| `getAnnotations` | `{nodeId}` |
 | `setExportSettings` | `{nodeId, settings: [{format, scale, suffix?}]}` |
 | `getCodeSnippets` | `{nodeId, format: "css\|ios\|android"}` |
+
+**Clickable link on a node (e.g. link a frame back to a user-story card):** `setDevResources` adds links that are clickable in Dev Mode — the supported mechanism for a "jump to" / back-link. For an in-file jump use the target node's Figma URL (`...?node-id=4409-25320`) as the `url`. Annotation `labelMarkdown` links render as plain, non-clickable text, so do **not** use annotations for clickable links. `replace: true` clears existing resources first; re-adding the same `url` updates its name (idempotent). Round-trip with `getDevResources`.
 
 ## Critical Gotchas
 

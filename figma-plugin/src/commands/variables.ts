@@ -2640,6 +2640,7 @@ export async function handleAutoBindByRole(command: FigmaCommand): Promise<Comma
     } else if (scope === 'page') {
       nodesToProcess = figma.currentPage.children.filter(n => n.type !== 'SLICE') as SceneNode[];
     } else if (scope === 'file') {
+      await figma.loadAllPagesAsync();
       for (const page of figma.root.children) {
         nodesToProcess.push(...page.children.filter(n => n.type !== 'SLICE') as SceneNode[]);
       }
@@ -2674,7 +2675,14 @@ export async function handleAutoBindByRole(command: FigmaCommand): Promise<Comma
     // Track role distribution for reporting
     const roleDistribution: Record<string, number> = {};
 
+    let _yieldCounter = 0;
     for (const node of allNodes) {
+      // Yield to the event loop every 200 nodes to keep the plugin thread cooperative
+      // (avoids Figma's "plugin not responding" watchdog on large files)
+      if ((++_yieldCounter % 200) === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+
       // Skip instance children unless explicitly included
       if (!includeInstanceChildren && node.parent && node.parent.type === 'INSTANCE') {
         skippedInstanceChildren++;
@@ -3469,7 +3477,13 @@ export async function handleAutoBindSpacing(command: FigmaCommand): Promise<Comm
     let radiusBound = 0;
     let skipped = 0;
 
+    let _yieldCounter = 0;
     for (const node of allNodes) {
+      // Yield every 200 nodes so the plugin thread stays cooperative on large files
+      if ((++_yieldCounter % 200) === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+
       // Bind padding (paddingTop, paddingRight, paddingBottom, paddingLeft)
       if (bindPadding && 'paddingTop' in node) {
         const frameNode = node as FrameNode;

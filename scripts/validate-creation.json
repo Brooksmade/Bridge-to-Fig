@@ -1,0 +1,64 @@
+{
+  "_doc": "Post-creation validation — verifies nodes exist and match expected properties. Run after any creation operation to confirm success. Pairs with cleanup-orphans.json for recovery.",
+  "_usage": "Replace {{NODE_IDS}} and {{EXPECTATIONS}} with your creation results. Send each validation query.",
+  "validations": [
+    {
+      "_step": "1. Verify node exists",
+      "type": "query",
+      "payload": { "queryType": "node" },
+      "target": "{{NODE_ID}}",
+      "_expect": "success: true, node data returned"
+    },
+    {
+      "_step": "2. Verify node properties match",
+      "type": "query",
+      "payload": { "queryType": "node" },
+      "target": "{{NODE_ID}}",
+      "_check": {
+        "name": "{{EXPECTED_NAME}}",
+        "type": "{{EXPECTED_TYPE}}",
+        "childCount": "{{EXPECTED_CHILD_COUNT}}"
+      }
+    },
+    {
+      "_step": "3. Verify variable collection exists",
+      "type": "getVariables",
+      "payload": { "collectionName": "{{COLLECTION_NAME}}", "includeValues": false },
+      "_expect": "Collection returned with expected variable count"
+    },
+    {
+      "_step": "4. Verify variable binding",
+      "type": "inspectFills",
+      "payload": { "nodeId": "{{NODE_ID}}" },
+      "_expect": "boundVariableId matches expected variable"
+    },
+    {
+      "_step": "5. Screenshot for visual verification",
+      "type": "exportNode",
+      "target": "{{NODE_ID}}",
+      "payload": { "format": "PNG", "scale": 1 },
+      "_expect": "Base64 PNG data for visual comparison"
+    }
+  ],
+  "_validation_checklist": {
+    "design_system": [
+      "4 collections exist (Primitive, Semantic, Tokens, Theme)",
+      "Each collection has expected mode count",
+      "Variable counts meet minimums (Primitive: 50+, Semantic: 10+, Tokens: 15+, Theme: 10+)",
+      "Alias chains resolve correctly (Theme → Token → Semantic → Primitive)"
+    ],
+    "component": [
+      "Component exists and has correct type (COMPONENT or COMPONENT_SET)",
+      "All variants present with correct naming (prop=value format)",
+      "Auto-layout configured on all variants",
+      "Variables bound to fills, strokes, text",
+      "Component properties defined and linked to children"
+    ],
+    "layout": [
+      "Auto-layout mode correct (HORIZONTAL/VERTICAL)",
+      "Sizing modes correct (FIXED/AUTO/FILL/HUG)",
+      "Padding and spacing values match spec",
+      "Children in correct order"
+    ]
+  }
+}

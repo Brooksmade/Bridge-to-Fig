@@ -1,0 +1,78 @@
+{
+  "_doc": "Creates a component set with Cartesian product of variant axes. Clones a base node for each variant combination, renames them, and combines into a COMPONENT_SET.",
+  "_usage": "Replace placeholders. Send commands sequentially — each step depends on previous IDs.",
+  "_pattern": [
+    "1. Clone base node for each variant combination",
+    "2. Convert each clone to a component (createComponent with nodeId)",
+    "3. Rename each: 'property1=value1, property2=value2'",
+    "4. Combine all variants into a COMPONENT_SET",
+    "5. Add component properties (boolean, instance-swap, text)"
+  ],
+  "steps": {
+    "1_clone_base": {
+      "_doc": "Clone the source frame once per variant",
+      "type": "clone",
+      "target": "{{BASE_NODE_ID}}",
+      "payload": {}
+    },
+    "2_convert_to_component": {
+      "_doc": "Convert clone to component",
+      "type": "createComponent",
+      "payload": { "nodeId": "{{CLONED_NODE_ID}}" }
+    },
+    "3_rename_variant": {
+      "_doc": "Name must follow 'prop=value, prop=value' format",
+      "type": "modify",
+      "target": "{{COMPONENT_ID}}",
+      "payload": {
+        "properties": { "name": "Size=Medium, State=Default" }
+      }
+    },
+    "4_combine_as_variant_set": {
+      "_doc": "Combine all variant components into a set",
+      "type": "createComponentSet",
+      "payload": {
+        "nodeIds": ["{{VARIANT_ID_1}}", "{{VARIANT_ID_2}}", "{{VARIANT_ID_3}}"]
+      }
+    },
+    "5_add_boolean_property": {
+      "_doc": "Add a boolean toggle (e.g., Show Icon)",
+      "type": "addComponentProperty",
+      "target": "{{COMPONENT_SET_ID}}",
+      "payload": {
+        "name": "Show Icon",
+        "type": "BOOLEAN",
+        "defaultValue": true
+      }
+    },
+    "6_add_instance_swap": {
+      "_doc": "Add instance swap (defaultValue is a node ID, NOT component key)",
+      "type": "addComponentProperty",
+      "target": "{{COMPONENT_SET_ID}}",
+      "payload": {
+        "name": "Icon",
+        "type": "INSTANCE_SWAP",
+        "defaultValue": "{{DEFAULT_ICON_NODE_ID}}"
+      }
+    },
+    "7_link_child_to_property": {
+      "_doc": "Connect a child node's visibility/swap to the property",
+      "type": "setComponentPropertyReferences",
+      "target": "{{CHILD_NODE_ID}}",
+      "payload": {
+        "references": {
+          "visible": "{{BOOLEAN_PROPERTY_KEY}}",
+          "mainComponent": "{{SWAP_PROPERTY_KEY}}"
+        }
+      }
+    }
+  },
+  "_variant_matrix_example": {
+    "axes": {
+      "Size": ["Small", "Medium", "Large"],
+      "State": ["Default", "Hover", "Pressed", "Disabled"]
+    },
+    "total_variants": 12,
+    "naming": "Size=Small, State=Default"
+  }
+}
