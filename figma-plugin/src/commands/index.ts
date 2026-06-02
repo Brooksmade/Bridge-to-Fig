@@ -312,6 +312,7 @@ export {
   handleSetBoundVariableForEffect,
   handleSetBoundVariableForLayoutGrid,
   handleSetNodeBoundVariable,
+  handleGetBoundVariables,
   handleGetVariableById,
   handleGetVariableCollectionById,
   handleSetVariableCodeSyntax,
@@ -596,11 +597,40 @@ import {
   handleSetBoundVariableForEffect,
   handleSetBoundVariableForLayoutGrid,
   handleSetNodeBoundVariable,
+  handleGetBoundVariables,
   handleGetVariableById,
   handleGetVariableCollectionById,
   handleSetVariableCodeSyntax,
   handleSetExplicitVariableMode,
 } from './variable-aliases';
+import {
+  handleResolveVariableValue,
+  handleAddCollectionMode,
+  handleRemoveCollectionMode,
+  handleCloneVariableCollection,
+  handleGetVariableConsumers,
+  handleGetTextSegments,
+  handleSetTextCase,
+  handleInsertCharacters,
+  handleDeleteCharacters,
+  handleFindByName,
+  handleFindByRegex,
+  handleFindWithCriteria,
+  handleGetAbsoluteBounds,
+  handleGetRelativeBounds,
+  handleGetAutoLayoutProperties,
+  handleSwapComponent,
+  handleAddComponentProperty,
+  handleDeleteComponentProperty,
+  handleGetDocumentPluginData,
+  handleSetDocumentPluginData,
+  handleDeletePluginData,
+  handleCreateImageFromBytes,
+  handleGetImageHash,
+  handleSetImageHash,
+  handleExportSelection,
+  handleGetAnnotations,
+} from './missing-commands';
 import {
   handleGetRangeFontWeight,
   handleGetRangeAllFontNames,
@@ -1342,6 +1372,9 @@ export async function executeCommand(command: FigmaCommand): Promise<CommandResu
       case 'setNodeBoundVariable':
         return handleSetNodeBoundVariable(command);
 
+      case 'getBoundVariables':
+        return handleGetBoundVariables(command);
+
       case 'getVariableById':
         return handleGetVariableById(command);
 
@@ -1455,6 +1488,60 @@ export async function executeCommand(command: FigmaCommand): Promise<CommandResu
 
       case 'getVectorPaths':
         return handleGetVectorPaths(command);
+
+      // ---- previously-documented-but-unimplemented commands ----
+      case 'resolveVariableValue':
+        return handleResolveVariableValue(command);
+      case 'addCollectionMode':
+        return handleAddCollectionMode(command);
+      case 'removeCollectionMode':
+        return handleRemoveCollectionMode(command);
+      case 'cloneVariableCollection':
+        return handleCloneVariableCollection(command);
+      case 'getVariableConsumers':
+        return handleGetVariableConsumers(command);
+      case 'getTextSegments':
+        return handleGetTextSegments(command);
+      case 'setTextCase':
+        return handleSetTextCase(command);
+      case 'insertCharacters':
+        return handleInsertCharacters(command);
+      case 'deleteCharacters':
+        return handleDeleteCharacters(command);
+      case 'findByName':
+        return handleFindByName(command);
+      case 'findByRegex':
+        return handleFindByRegex(command);
+      case 'findWithCriteria':
+        return handleFindWithCriteria(command);
+      case 'getAbsoluteBounds':
+        return handleGetAbsoluteBounds(command);
+      case 'getRelativeBounds':
+        return handleGetRelativeBounds(command);
+      case 'getAutoLayoutProperties':
+        return handleGetAutoLayoutProperties(command);
+      case 'swapComponent':
+        return handleSwapComponent(command);
+      case 'addComponentProperty':
+        return handleAddComponentProperty(command);
+      case 'deleteComponentProperty':
+        return handleDeleteComponentProperty(command);
+      case 'getDocumentPluginData':
+        return handleGetDocumentPluginData(command);
+      case 'setDocumentPluginData':
+        return handleSetDocumentPluginData(command);
+      case 'deletePluginData':
+        return handleDeletePluginData(command);
+      case 'createImageFromBytes':
+        return handleCreateImageFromBytes(command);
+      case 'getImageHash':
+        return handleGetImageHash(command);
+      case 'setImageHash':
+        return handleSetImageHash(command);
+      case 'exportSelection':
+        return handleExportSelection(command);
+      case 'getAnnotations':
+        return handleGetAnnotations(command);
 
       default:
         return errorResult(command.id, `Unknown command type: ${commandType}`);

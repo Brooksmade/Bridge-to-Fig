@@ -226,6 +226,82 @@ export async function handleSetNodeBoundVariable(command: FigmaCommand): Promise
   }
 }
 
+// Get all variables bound to a node
+export async function handleGetBoundVariables(command: FigmaCommand): Promise<CommandResult> {
+  var payload = (command.payload || {}) as { nodeId?: string };
+  var nodeId = payload.nodeId || command.target;
+
+  if (!nodeId) {
+    return errorResult(command.id, 'Node ID is required');
+  }
+
+  try {
+    var node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      return errorResult(command.id, 'Node not found: ' + nodeId);
+    }
+
+    var bound = (node as any).boundVariables as Record<string, any> | undefined;
+    var bindings: Array<{ field: string; variableId: string; variableName: string | null }> = [];
+
+    // Cache resolved names so a variable used in multiple fields is only fetched once
+    var nameCache: Record<string, string | null> = {};
+    async function resolveName(id: string): Promise<string | null> {
+      if (Object.prototype.hasOwnProperty.call(nameCache, id)) {
+        return nameCache[id];
+      }
+      try {
+        var variable = await figma.variables.getVariableByIdAsync(id);
+        nameCache[id] = variable ? variable.name : null;
+      } catch (e) {
+        nameCache[id] = null;
+      }
+      return nameCache[id];
+    }
+
+    if (bound) {
+      var fields = Object.keys(bound);
+      for (var i = 0; i < fields.length; i++) {
+        var field = fields[i];
+        var value = bound[field];
+        if (!value) {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          // Array-valued bindings (fills, strokes, effects, layoutGrids, ...)
+          for (var j = 0; j < value.length; j++) {
+            var entry = value[j];
+            if (entry && entry.id) {
+              bindings.push({
+                field: field + '[' + j + ']',
+                variableId: entry.id,
+                variableName: await resolveName(entry.id),
+              });
+            }
+          }
+        } else if (value.id) {
+          // Scalar bindings (cornerRadius, width, opacity, characters, ...)
+          bindings.push({
+            field: field,
+            variableId: value.id,
+            variableName: await resolveName(value.id),
+          });
+        }
+      }
+    }
+
+    return successResult(command.id, {
+      data: {
+        nodeId: node.id,
+        bindings: bindings,
+      },
+    });
+  } catch (err) {
+    var message = err instanceof Error ? err.message : String(err);
+    return errorResult(command.id, 'Failed to get bound variables: ' + message);
+  }
+}
+
 // Get variable by ID
 export async function handleGetVariableById(command: FigmaCommand): Promise<CommandResult> {
   var payload = command.payload as {
