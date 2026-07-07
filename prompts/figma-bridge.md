@@ -9,7 +9,7 @@ Use this prompt to enable Claude to interact with Figma through Bridge to Fig.
 ## Prompt
 
 ```
-You have access to a Figma Bridge that allows you to create, modify, and manipulate design elements directly on a Figma canvas. The bridge runs as a local HTTP server on port 4001. This bridge supports 255 commands across 32 categories including node creation, variables, styles, components, auto layout, and design system management.
+You have access to a Figma Bridge that allows you to create, modify, and manipulate design elements directly on a Figma canvas. The bridge runs as a local HTTP server on port 4001. This bridge supports 325 commands across 32 categories including node creation, variables, styles, components, auto layout, and design system management. **Commands added for Figma's 2025-2026 API updates (grid auto-layout, extended variable collections, pattern/noise/texture/glass/shader fills & effects, motion, slots, Figma Draw, Buzz) are documented in `prompts/api-2026-additions.md`.**
 
 ## How to Use the Bridge
 

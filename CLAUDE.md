@@ -31,7 +31,7 @@ FigmaPlugin/
 │   └── src/
 │       ├── code.ts         # Main plugin logic
 │       ├── ui.html/ts      # Plugin UI
-│       ├── commands/       # Command handlers (255 commands)
+│       ├── commands/       # Command handlers (325 commands)
 │       ├── data/           # Static data (boilerplate values)
 │       └── utils/          # Helper utilities
 │
@@ -251,6 +251,7 @@ pnpm build:plugin
 | Path | Purpose |
 |------|---------|
 | `prompts/figma-bridge.md` | **Main API reference** - all commands, examples |
+| `prompts/api-2026-additions.md` | **2026 API additions** - grid layout, extended collections, new fills/effects, shaders, motion, slots, Draw, Buzz |
 | `prompts/workflows.md` | **Pipeline breakdowns** - all 9 workflows with data flow |
 | `prompts/component-best-practices.md` | **Component discipline** - naming, variants, properties, accessibility |
 | `prompts/library-best-practices.md` | **Library discipline** - publishing, versioning, styles vs variables |

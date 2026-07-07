@@ -2,6 +2,7 @@
 
 import type { FigmaCommand, CommandResult } from './types';
 import { successResult, errorResult } from './types';
+import { buildAdvancedPaint, buildAdvancedEffect } from './advanced-paints';
 
 // Set blend mode
 export async function handleSetBlendMode(command: FigmaCommand): Promise<CommandResult> {
@@ -248,15 +249,9 @@ export async function handleSetMask(command: FigmaCommand): Promise<CommandResul
 // Set effects (shadows, blurs)
 export async function handleSetEffects(command: FigmaCommand): Promise<CommandResult> {
   var payload = command.payload as {
-    effects: Array<{
-      type: 'DROP_SHADOW' | 'INNER_SHADOW' | 'LAYER_BLUR' | 'BACKGROUND_BLUR';
-      color?: string;
-      offsetX?: number;
-      offsetY?: number;
-      radius?: number;
-      spread?: number;
-      visible?: boolean;
-    }>;
+    // `type` is widened so the newer effect types (NOISE, TEXTURE, GLASS) and PROGRESSIVE blur
+    // fall through to buildAdvancedEffect. Legacy shadows/normal blur are handled inline below.
+    effects: Array<any>;
   };
 
   if (!command.target) {
@@ -301,7 +296,10 @@ export async function handleSetEffects(command: FigmaCommand): Promise<CommandRe
         blendMode: 'NORMAL',
       };
       newEffects.push(shadow);
-    } else if (eff.type === 'LAYER_BLUR' || eff.type === 'BACKGROUND_BLUR') {
+    } else if (
+      (eff.type === 'LAYER_BLUR' || eff.type === 'BACKGROUND_BLUR') &&
+      eff.blurType !== 'PROGRESSIVE'
+    ) {
       var blur: BlurEffect = {
         type: eff.type,
         radius: eff.radius || 10,
@@ -309,10 +307,22 @@ export async function handleSetEffects(command: FigmaCommand): Promise<CommandRe
         blurType: 'NORMAL' as const,
       };
       newEffects.push(blur);
+    } else {
+      // Newer effect types: NOISE, TEXTURE, GLASS, and PROGRESSIVE blur
+      var advEffect = buildAdvancedEffect(eff);
+      if (advEffect) newEffects.push(advEffect);
     }
   }
 
-  sceneNode.effects = newEffects;
+  try {
+    sceneNode.effects = newEffects;
+  } catch (e) {
+    var em = e instanceof Error ? e.message : String(e);
+    return errorResult(
+      command.id,
+      'Failed to apply effects — a newer effect type (e.g. NOISE/TEXTURE/GLASS) may not be fully supported by this Figma client version. Update the Figma desktop app. Underlying error: ' + em
+    );
+  }
 
   return successResult(command.id, {
     data: {
@@ -359,15 +369,9 @@ export async function handleSetRotation(command: FigmaCommand): Promise<CommandR
 // Set fills
 export async function handleSetFills(command: FigmaCommand): Promise<CommandResult> {
   var payload = command.payload as {
-    fills: Array<{
-      type: 'SOLID' | 'GRADIENT_LINEAR' | 'GRADIENT_RADIAL' | 'GRADIENT_ANGULAR' | 'GRADIENT_DIAMOND' | 'IMAGE';
-      color?: string;
-      opacity?: number;
-      visible?: boolean;
-      gradientStops?: Array<{ position: number; color: string }>;
-      imageHash?: string;
-      scaleMode?: 'FILL' | 'FIT' | 'CROP' | 'TILE';
-    }>;
+    // `type` is widened to string so the newer fill types (IMAGE, VIDEO, PATTERN) fall through
+    // to buildAdvancedPaint. SOLID/GRADIENT are still handled inline below.
+    fills: Array<any>;
   };
 
   if (!command.target) {
@@ -426,15 +430,42 @@ export async function handleSetFills(command: FigmaCommand): Promise<CommandResu
         visible: f.visible !== false,
       };
       newFills.push(gradientFill);
+    } else {
+      // Newer fill types: IMAGE, VIDEO, PATTERN
+      var advFill = buildAdvancedPaint(f);
+      if (advFill) newFills.push(advFill);
     }
   }
 
-  sceneNode.fills = newFills;
+  // Some fill types — notably PATTERN, which references a source node — are rejected by the
+  // synchronous `fills` setter and must go through setFillsAsync. Try sync first (Figma validates
+  // before mutating, so a throw leaves no partial state), then fall back to async.
+  var usedAsync = false;
+  try {
+    sceneNode.fills = newFills;
+  } catch (syncErr) {
+    if (typeof (sceneNode as any).setFillsAsync === 'function') {
+      try {
+        await (sceneNode as any).setFillsAsync(newFills);
+        usedAsync = true;
+      } catch (asyncErr) {
+        var am = asyncErr instanceof Error ? asyncErr.message : String(asyncErr);
+        return errorResult(
+          command.id,
+          'Failed to apply fills — a fill type may be unsupported by this Figma client version. Update the Figma desktop app. Underlying error: ' + am
+        );
+      }
+    } else {
+      var sm = syncErr instanceof Error ? syncErr.message : String(syncErr);
+      return errorResult(command.id, 'Failed to apply fills: ' + sm);
+    }
+  }
 
   return successResult(command.id, {
     data: {
       nodeId: sceneNode.id,
       fillCount: newFills.length,
+      async: usedAsync,
     },
   });
 }

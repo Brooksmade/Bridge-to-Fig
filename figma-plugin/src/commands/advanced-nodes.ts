@@ -68,6 +68,9 @@ export async function handleCreateSection(command: FigmaCommand): Promise<Comman
     width?: number;
     height?: number;
     fillColor?: string;
+    strokeColor?: string; // section strokes (plugin API v1.126, May 2026)
+    strokeWeight?: number;
+    cornerRadius?: number; // section corner radius (plugin API v1.126, May 2026)
   };
 
   try {
@@ -97,6 +100,25 @@ export async function handleCreateSection(command: FigmaCommand): Promise<Comman
       }];
     }
 
+    // Section strokes / corner radius (guarded — only newer Figma clients support these on sections)
+    if (payload && payload.strokeColor && 'strokes' in section) {
+      var shex = payload.strokeColor.replace('#', '');
+      (section as any).strokes = [{
+        type: 'SOLID',
+        color: {
+          r: parseInt(shex.substring(0, 2), 16) / 255,
+          g: parseInt(shex.substring(2, 4), 16) / 255,
+          b: parseInt(shex.substring(4, 6), 16) / 255,
+        },
+      }];
+      if (payload.strokeWeight !== undefined && 'strokeWeight' in section) {
+        (section as any).strokeWeight = payload.strokeWeight;
+      }
+    }
+    if (payload && payload.cornerRadius !== undefined && 'cornerRadius' in section) {
+      (section as any).cornerRadius = payload.cornerRadius;
+    }
+
     return successResult(command.id, {
       data: {
         id: section.id,
@@ -105,6 +127,7 @@ export async function handleCreateSection(command: FigmaCommand): Promise<Comman
         y: section.y,
         width: section.width,
         height: section.height,
+        cornerRadius: 'cornerRadius' in section ? (section as any).cornerRadius : undefined,
       },
     });
   } catch (err) {

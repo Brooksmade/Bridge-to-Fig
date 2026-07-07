@@ -276,6 +276,35 @@ curl http://localhost:4001/logs/running
 
 **Clickable link on a node (e.g. link a frame back to a user-story card):** `setDevResources` adds links that are clickable in Dev Mode — the supported mechanism for a "jump to" / back-link. For an in-file jump use the target node's Figma URL (`...?node-id=4409-25320`) as the `url`. Annotation `labelMarkdown` links render as plain, non-clickable text, so do **not** use annotations for clickable links. `replace: true` clears existing resources first; re-adding the same `url` updates its name (idempotent). Round-trip with `getDevResources`.
 
+## 2026 API Additions
+
+Full payloads & examples: **`prompts/api-2026-additions.md`**. Every command below capability-guards — if your Figma desktop build is too old it returns a clear "update Figma" message instead of crashing.
+
+| Command | Payload | Notes |
+|---------|---------|-------|
+| `setGridLayout` | `{columnCount, rowCount, gap?, rowGap?, columnGap?, columnSizes?, rowSizes?, autoTracks?, itemsPositioning?}` + `target` | Grid auto-layout (`layoutMode:'GRID'`). Track size: `{type:'FLEX'\|'FIXED'\|'HUG', value?}` |
+| `getGridLayout` | `target` | Read grid config |
+| `setGridChildPosition` | `{row, column, rowSpan?, columnSpan?, horizontalAlign?, verticalAlign?}` + `target` (child) | Place/span a child |
+| `reorderGridTracks` | `{axis:'ROWS'\|'COLUMNS', fromIndices, insertionIndex}` + `target` | Move rows/cols |
+| `extendVariableCollection` | `{collectionId, name}` | Theming: extend a local collection |
+| `extendLibraryCollection` | `{collectionKey, name}` | Extend a published library collection |
+| `setVariableOverride` | `{variableId, extendedModeId, colorHex? \| value? \| aliasId?}` | Override one value per extended mode |
+| `removeVariableOverride` | `{variableId, extendedModeId}` | Revert to inherited value |
+| `getExtendedCollection` | `{collectionId}` | Modes (+parentModeId), overrides, root id |
+| `setFills` (new types) | `fills:[{type:'IMAGE'\|'VIDEO'\|'PATTERN', …}]` + `target` | PATTERN auto-uses `setFillsAsync` |
+| `setEffects` (new types) | `effects:[{type:'NOISE'\|'TEXTURE'\|'GLASS'}, {type:'LAYER_BLUR', blurType:'PROGRESSIVE'}]` + `target` | Noise/texture/glass/progressive |
+| `listShaders` / `importShader` | `{}` / `{id}` | Discover / materialize shaders |
+| `applyShaderFill` / `applyShaderEffect` | `{shaderId, properties?, append?}` + `target` | Apply a shader |
+| `listAnimationStyles` / `getMotionData` | `{}` / `target` | Motion read |
+| `applyAnimationStyle` / `removeAnimationStyle` / `setTimelineDuration` | `{styleId}` / `{appliedStyleId}` / `{timelineId, duration}` + `target` | Motion write |
+| `createSlot` / `resetSlot` | `{name?}` + `target` (component / slot) | Component slots |
+| `createTextPath` | `{startSegment?, startPosition?, characters?, fontSize?}` + `target` (vector) | Text on a path |
+| `transformGroup` / `loadBrushes` / `setVariableWidthStroke` | see full doc | Figma Draw |
+| `setFillsAsync` / `setStrokesAsync` | `{fills\|strokes:[raw Paint]}` + `target` | Async setters (patterns/brushes) |
+| `getBuzzAssetType` / `setBuzzAssetType` / `buzzSmartResize` / `createBuzzFrame` / `getBuzzContent` | see full doc | Figma Buzz (buzz editor only) |
+| `moveNodesToCoord` | `{nodeIds, rowIndex?, columnIndex?}` | Canvas grid move (Buzz/Slides) |
+| `getFocusedNode` / `setFocusedNode` | `{}` / `{nodeId}` or `target` | Dev Mode focus; **falls back to selection** in Design/FigJam. Result carries `source: 'dev-mode-focus'\|'selection'\|'none'` |
+
 ## Critical Gotchas
 
 1. **Colors are 0-1 scale**, not 0-255. `{r: 1, g: 0, b: 0}` = red

@@ -670,6 +670,51 @@ import {
   handleGetGuides,
   handleRemoveGuide,
 } from './guides';
+// --- 2026 API additions ---
+import {
+  handleSetGridLayout,
+  handleGetGridLayout,
+  handleSetGridChildPosition,
+  handleReorderGridTracks,
+} from './grid-layout';
+import {
+  handleExtendVariableCollection,
+  handleExtendLibraryCollection,
+  handleSetVariableOverride,
+  handleRemoveVariableOverride,
+  handleGetExtendedCollection,
+} from './extended-collections';
+import {
+  handleListShaders,
+  handleImportShader,
+  handleApplyShaderFill,
+  handleApplyShaderEffect,
+} from './shaders';
+import {
+  handleListAnimationStyles,
+  handleGetMotionData,
+  handleApplyAnimationStyle,
+  handleRemoveAnimationStyle,
+  handleSetTimelineDuration,
+} from './motion';
+import { handleCreateSlot, handleResetSlot } from './slots';
+import {
+  handleCreateTextPath,
+  handleTransformGroup,
+  handleLoadBrushes,
+  handleSetFillsAsync,
+  handleSetStrokesAsync,
+  handleSetVariableWidthStroke,
+} from './figma-draw';
+import {
+  handleGetBuzzAssetType,
+  handleSetBuzzAssetType,
+  handleBuzzSmartResize,
+  handleCreateBuzzFrame,
+  handleGetBuzzContent,
+  handleMoveNodesToCoord,
+} from './buzz';
+import { handleGetFocusedNode, handleSetFocusedNode } from './dev-mode';
 
 // Main command router
 export async function executeCommand(command: FigmaCommand): Promise<CommandResult> {
@@ -1557,6 +1602,92 @@ export async function executeCommand(command: FigmaCommand): Promise<CommandResu
         return handleRemoveTableColumn(command);
       case 'styleTableColumn':
         return handleStyleTableColumn(command);
+
+      // --- 2026 API additions ---
+
+      // Grid auto-layout
+      case 'setGridLayout':
+        return handleSetGridLayout(command);
+      case 'getGridLayout':
+        return handleGetGridLayout(command);
+      case 'setGridChildPosition':
+        return handleSetGridChildPosition(command);
+      case 'reorderGridTracks':
+        return handleReorderGridTracks(command);
+
+      // Extended variable collections (theming)
+      case 'extendVariableCollection':
+        return handleExtendVariableCollection(command);
+      case 'extendLibraryCollection':
+        return handleExtendLibraryCollection(command);
+      case 'setVariableOverride':
+        return handleSetVariableOverride(command);
+      case 'removeVariableOverride':
+        return handleRemoveVariableOverride(command);
+      case 'getExtendedCollection':
+        return handleGetExtendedCollection(command);
+
+      // Shaders
+      case 'listShaders':
+        return handleListShaders(command);
+      case 'importShader':
+        return handleImportShader(command);
+      case 'applyShaderFill':
+        return handleApplyShaderFill(command);
+      case 'applyShaderEffect':
+        return handleApplyShaderEffect(command);
+
+      // Motion / animation
+      case 'listAnimationStyles':
+        return handleListAnimationStyles(command);
+      case 'getMotionData':
+        return handleGetMotionData(command);
+      case 'applyAnimationStyle':
+        return handleApplyAnimationStyle(command);
+      case 'removeAnimationStyle':
+        return handleRemoveAnimationStyle(command);
+      case 'setTimelineDuration':
+        return handleSetTimelineDuration(command);
+
+      // Slots
+      case 'createSlot':
+        return handleCreateSlot(command);
+      case 'resetSlot':
+        return handleResetSlot(command);
+
+      // Figma Draw
+      case 'createTextPath':
+        return handleCreateTextPath(command);
+      case 'transformGroup':
+        return handleTransformGroup(command);
+      case 'loadBrushes':
+        return handleLoadBrushes(command);
+      case 'setFillsAsync':
+        return handleSetFillsAsync(command);
+      case 'setStrokesAsync':
+        return handleSetStrokesAsync(command);
+      case 'setVariableWidthStroke':
+        return handleSetVariableWidthStroke(command);
+
+      // Buzz asset namespace + canvas moves
+      case 'getBuzzAssetType':
+        return handleGetBuzzAssetType(command);
+      case 'setBuzzAssetType':
+        return handleSetBuzzAssetType(command);
+      case 'buzzSmartResize':
+        return handleBuzzSmartResize(command);
+      case 'createBuzzFrame':
+        return handleCreateBuzzFrame(command);
+      case 'getBuzzContent':
+        return handleGetBuzzContent(command);
+      case 'moveNodesToCoord':
+        return handleMoveNodesToCoord(command);
+
+      // Dev Mode focused node
+      case 'getFocusedNode':
+        return handleGetFocusedNode(command);
+      case 'setFocusedNode':
+        return handleSetFocusedNode(command);
 
       default:
         return errorResult(command.id, `Unknown command type: ${commandType}`);

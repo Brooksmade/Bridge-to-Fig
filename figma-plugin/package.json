@@ -10,7 +10,7 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@figma/plugin-typings": "^1.89.0",
+    "@figma/plugin-typings": "^1.130.0",
     "esbuild": "^0.20.0",
     "typescript": "^5.3.3",
     "vitest": "^4.1.0"

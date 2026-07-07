@@ -233,7 +233,7 @@ See `prompts/performance-analysis.md` for detailed performance optimization guid
 
 | Document | Purpose |
 |----------|---------|
-| `prompts/figma-bridge.md` | Complete API reference (174 commands) |
+| `prompts/figma-bridge.md` | Complete API reference (325 commands; 2026 additions in `prompts/api-2026-additions.md`) |
 | `prompts/figma-variables.md` | Fast variable creation workflow |
 | `prompts/bind-variables.md` | Variable binding workflow (one-shot vs manual) |
 | `prompts/performance-analysis.md` | Performance optimization for large files |

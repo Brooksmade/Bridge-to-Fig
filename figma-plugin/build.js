@@ -66,7 +66,9 @@ const MANIFEST = {
   main: 'code.js',
   ui: 'ui.html',
   documentAccess: 'dynamic-page',
-  editorType: ['figma', 'figjam'],
+  // 'dev' enables Dev Mode (required for figma.currentPage.focusedNode); 'slides' and 'buzz'
+  // make the Slides and Buzz command handlers reachable in those editors.
+  editorType: ['figma', 'figjam', 'dev', 'slides', 'buzz'],
   permissions: ['teamlibrary'],
   enablePrivatePluginApi: true,
   networkAccess: {

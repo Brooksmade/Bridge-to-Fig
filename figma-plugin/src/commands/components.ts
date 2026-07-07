@@ -14,7 +14,7 @@ interface CreateComponentPayload {
   height?: number;
   properties?: Array<{
     name: string;
-    type: 'BOOLEAN' | 'TEXT' | 'INSTANCE_SWAP' | 'VARIANT';
+    type: 'BOOLEAN' | 'TEXT' | 'INSTANCE_SWAP' | 'VARIANT' | 'SLOT';
     defaultValue?: any;
   }>;
 }
@@ -35,7 +35,7 @@ interface EditComponentPropertiesPayload {
   componentId: string;
   add?: Array<{
     name: string;
-    type: 'BOOLEAN' | 'TEXT' | 'INSTANCE_SWAP' | 'VARIANT';
+    type: 'BOOLEAN' | 'TEXT' | 'INSTANCE_SWAP' | 'VARIANT' | 'SLOT';
     defaultValue?: any;
   }>;
   remove?: string[];

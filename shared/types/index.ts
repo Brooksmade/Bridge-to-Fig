@@ -13,7 +13,121 @@ export interface GradientPaint {
   }>;
 }
 
-export type Paint = SolidPaint | GradientPaint;
+// Image / Video fills (2025-2026 API). See prompts/api-2026-additions.md.
+export interface ImagePaint {
+  type: 'IMAGE';
+  imageHash: string | null;
+  scaleMode?: 'FILL' | 'FIT' | 'CROP' | 'TILE';
+  scalingFactor?: number;
+  rotation?: number;
+  opacity?: number;
+  visible?: boolean;
+}
+
+export interface VideoPaint {
+  type: 'VIDEO';
+  videoHash: string | null;
+  scaleMode?: 'FILL' | 'FIT' | 'CROP' | 'TILE';
+  scalingFactor?: number;
+  rotation?: number;
+  opacity?: number;
+  visible?: boolean;
+}
+
+// Pattern fill — tiles a source node (2025-2026 API).
+export interface PatternPaint {
+  type: 'PATTERN';
+  sourceNodeId: string;
+  tileType?: 'RECTANGULAR' | 'HORIZONTAL_HEXAGONAL' | 'VERTICAL_HEXAGONAL';
+  scalingFactor?: number;
+  spacing?: { x: number; y: number } | number;
+  horizontalAlignment?: 'START' | 'CENTER' | 'END';
+  opacity?: number;
+  visible?: boolean;
+}
+
+// Shader fill — applied via the applyShaderFill command (June 2026 API).
+export interface ShaderPaint {
+  type: 'SHADER';
+  id: string;
+  properties?: Record<string, unknown>;
+  opacity?: number;
+  visible?: boolean;
+}
+
+export type Paint = SolidPaint | GradientPaint | ImagePaint | VideoPaint | PatternPaint | ShaderPaint;
+
+// Effect types (2025-2026 API). Shadows/blur plus noise, texture, glass, and shaders.
+export interface ShadowEffect {
+  type: 'DROP_SHADOW' | 'INNER_SHADOW';
+  color?: string; // "#rrggbbaa"
+  offsetX?: number;
+  offsetY?: number;
+  radius?: number;
+  spread?: number;
+  visible?: boolean;
+}
+
+export interface BlurEffect {
+  type: 'LAYER_BLUR' | 'BACKGROUND_BLUR';
+  blurType?: 'NORMAL' | 'PROGRESSIVE';
+  radius?: number;
+  startRadius?: number; // progressive only
+  startOffset?: { x: number; y: number };
+  endOffset?: { x: number; y: number };
+  visible?: boolean;
+}
+
+export interface NoiseEffect {
+  type: 'NOISE';
+  noiseType?: 'MONOTONE' | 'DUOTONE' | 'MULTITONE';
+  color?: string;
+  secondaryColor?: string; // duotone
+  opacity?: number; // multitone
+  noiseSize?: number;
+  density?: number;
+  visible?: boolean;
+}
+
+export interface TextureEffect {
+  type: 'TEXTURE';
+  noiseSize?: number;
+  radius?: number;
+  clipToShape?: boolean;
+  visible?: boolean;
+}
+
+export interface GlassEffect {
+  type: 'GLASS';
+  lightIntensity?: number;
+  lightAngle?: number;
+  refraction?: number;
+  depth?: number;
+  dispersion?: number;
+  radius?: number;
+  visible?: boolean;
+}
+
+export interface ShaderEffect {
+  type: 'SHADER';
+  id: string;
+  properties?: Record<string, unknown>;
+  visible?: boolean;
+}
+
+export type Effect =
+  | ShadowEffect
+  | BlurEffect
+  | NoiseEffect
+  | TextureEffect
+  | GlassEffect
+  | ShaderEffect;
+
+// A single grid track (row or column) sizing spec.
+export interface GridTrackSize {
+  type: 'FLEX' | 'FIXED' | 'HUG';
+  value?: number;
+}
 
 // Node properties that can be applied to any node
 export interface NodeProperties {
@@ -26,6 +140,7 @@ export interface NodeProperties {
   strokes?: Paint[];
   strokeWeight?: number;
   cornerRadius?: number;
+  effects?: Effect[];
   opacity?: number;
   visible?: boolean;
   locked?: boolean;
@@ -37,8 +152,8 @@ export interface NodeProperties {
   textAlignVertical?: 'TOP' | 'CENTER' | 'BOTTOM';
   lineHeight?: { value: number; unit: 'PIXELS' | 'PERCENT' | 'AUTO' };
   letterSpacing?: { value: number; unit: 'PIXELS' | 'PERCENT' };
-  // Layout-specific (Auto Layout)
-  layoutMode?: 'NONE' | 'HORIZONTAL' | 'VERTICAL';
+  // Layout-specific (Auto Layout — GRID added in the 2025-2026 API; use the setGridLayout command)
+  layoutMode?: 'NONE' | 'HORIZONTAL' | 'VERTICAL' | 'GRID';
   primaryAxisAlignItems?: 'MIN' | 'CENTER' | 'MAX' | 'SPACE_BETWEEN';
   counterAxisAlignItems?: 'MIN' | 'CENTER' | 'MAX' | 'BASELINE';
   primaryAxisSizingMode?: 'FIXED' | 'AUTO';
@@ -48,6 +163,15 @@ export interface NodeProperties {
   paddingRight?: number;
   paddingTop?: number;
   paddingBottom?: number;
+  // Grid auto-layout (see setGridLayout / setGridChildPosition commands)
+  gridRowCount?: number;
+  gridColumnCount?: number;
+  gridRowGap?: number;
+  gridColumnGap?: number;
+  gridRowSizes?: GridTrackSize[];
+  gridColumnSizes?: GridTrackSize[];
+  gridAutoTracks?: 'NONE' | 'ROWS';
+  gridItemsPositioning?: 'MANUAL' | 'ROW_AUTO_FLOW';
   // Constraints
   constraints?: {
     horizontal: 'MIN' | 'CENTER' | 'MAX' | 'STRETCH' | 'SCALE';

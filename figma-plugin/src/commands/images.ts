@@ -149,8 +149,21 @@ export async function handleCreateImageFromUrl(command: FigmaCommand): Promise<C
       },
     });
   } catch (err) {
-    var message = err instanceof Error ? err.message : String(err);
-    return errorResult(command.id, 'Failed to create image from URL: ' + message);
+    // Figma throws a plain object here, which stringifies to "[object Object]"; serialize it so the
+    // real reason is visible. The most common cause is the manifest's networkAccess.allowedDomains
+    // not including the image host (only http://localhost:4001 is allowed by default).
+    var message =
+      err instanceof Error
+        ? err.message
+        : typeof err === 'string'
+          ? err
+          : JSON.stringify(err);
+    return errorResult(
+      command.id,
+      'Failed to create image from URL: ' +
+        message +
+        ' — the plugin can only fetch from domains in manifest.json → networkAccess.allowedDomains (default: http://localhost:4001).'
+    );
   }
 }
 

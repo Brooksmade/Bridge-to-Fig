@@ -126,7 +126,8 @@ export async function handleSetBoundVariableForEffect(command: FigmaCommand): Pr
       data: {
         effect: {
           type: newEffect.type,
-          boundVariables: newEffect.boundVariables,
+          // Not all effect types (e.g. ShaderEffect) expose boundVariables in newer typings
+          boundVariables: (newEffect as any).boundVariables,
         },
       },
     });
