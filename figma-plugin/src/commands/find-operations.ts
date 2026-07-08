@@ -144,6 +144,27 @@ export async function handleFindChild(command: FigmaCommand): Promise<CommandRes
   }
 }
 
+// Deep search core: skipInvisibleInstanceChildren=true during the walk (documented 10-100x
+// speedup), and Figma's native findAllWithCriteria when a type filter is present — the JS
+// predicate then only runs on that much smaller candidate set.
+function fastDeepFind(
+  parent: ChildrenMixin,
+  types: string[] | undefined,
+  predicate: (node: SceneNode) => boolean
+): SceneNode[] {
+  var prevSkip = figma.skipInvisibleInstanceChildren;
+  figma.skipInvisibleInstanceChildren = true;
+  try {
+    if (types && types.length > 0 && typeof (parent as any).findAllWithCriteria === 'function') {
+      var candidates = (parent as any).findAllWithCriteria({ types: types }) as SceneNode[];
+      return candidates.filter(predicate);
+    }
+    return parent.findAll(predicate);
+  } finally {
+    figma.skipInvisibleInstanceChildren = prevSkip;
+  }
+}
+
 // Find all descendants matching a criteria (deep search)
 export async function handleFindAll(command: FigmaCommand): Promise<CommandResult> {
   var payload = command.payload as {
@@ -169,8 +190,8 @@ export async function handleFindAll(command: FigmaCommand): Promise<CommandResul
       parent = figma.currentPage;
     }
 
-    var results = parent.findAll((node: SceneNode) => {
-      // Type filter
+    var results = fastDeepFind(parent, payload && payload.types, (node: SceneNode) => {
+      // Type filter (no-op on the criteria path; kept for the predicate path)
       if (payload && payload.types && payload.types.length > 0) {
         if (!payload.types.includes(node.type)) {
           return false;
@@ -231,13 +252,13 @@ export async function handleFindOne(command: FigmaCommand): Promise<CommandResul
       parent = figma.currentPage;
     }
 
-    var result = parent.findOne((node: SceneNode) => {
+    var predicate = (node: SceneNode) => {
       // Exact name match
       if (payload && payload.name) {
         return node.name === payload.name;
       }
 
-      // Type filter
+      // Type filter (no-op on the criteria path; kept for the predicate path)
       if (payload && payload.types && payload.types.length > 0) {
         if (!payload.types.includes(node.type)) {
           return false;
@@ -253,7 +274,23 @@ export async function handleFindOne(command: FigmaCommand): Promise<CommandResul
       }
 
       return true;
-    });
+    };
+
+    var result: SceneNode | null;
+    if (payload && payload.types && payload.types.length > 0) {
+      // Native criteria path, then first match
+      var matches = fastDeepFind(parent, payload.types, predicate);
+      result = matches.length > 0 ? matches[0] : null;
+    } else {
+      // Early-exit walk with the skip-invisible speedup
+      var prevSkip = figma.skipInvisibleInstanceChildren;
+      figma.skipInvisibleInstanceChildren = true;
+      try {
+        result = parent.findOne(predicate);
+      } finally {
+        figma.skipInvisibleInstanceChildren = prevSkip;
+      }
+    }
 
     if (!result) {
       return successResult(command.id, {
@@ -327,7 +364,8 @@ export async function handleFindText(command: FigmaCommand): Promise<CommandResu
 
     var searchText = payload.caseSensitive ? payload.text : payload.text.toLowerCase();
 
-    var results = parent.findAll((node: SceneNode) => {
+    // TEXT-only search rides the native findAllWithCriteria fast path.
+    var results = fastDeepFind(parent, ['TEXT'], (node: SceneNode) => {
       if (node.type !== 'TEXT') {
         return false;
       }

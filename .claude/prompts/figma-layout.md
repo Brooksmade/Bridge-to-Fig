@@ -12,9 +12,12 @@ When creating frames with auto-layout and children via the bridge server, you MU
 
 **Why:** Child layout properties (`layoutSizingHorizontal: "FILL"`, `layoutGrow: 1`, etc.) require the node to already be inside an auto-layout parent. `create` runs before `setAutoLayout`, so these properties silently fail if set during creation.
 
-## Python, Not Bash
+## How to send commands
 
-Always use a **Python script** (written to `.tmp/`) for multi-element Figma creation. Bash with inline JSON breaks on complex payloads.
+- **≤ ~15 nodes:** three `./scripts/fig batch '[...]'` calls (create / layout / child-sizing) — no
+  scripts, no temp files.
+- **Larger builds:** a **Python script** (written to `.tmp/`, deleted after) — bash with inline JSON
+  breaks on complex payloads at that scale.
 
 ### Reusable Helpers
 
@@ -113,13 +116,13 @@ modify(content, layoutSizingHorizontal="FILL", layoutGrow=1)
 - [ ] `modify` each child for FILL/HUG/GROW AFTER both create and setAutoLayout are done
 - [ ] Use `clipsContent: true` on frames that should clip overflow
 - [ ] Set `primaryAxisSizingMode: "FIXED"` and `counterAxisSizingMode: "FIXED"` on root frames with explicit dimensions
-- [ ] Use Python scripts in `.tmp/` — never inline bash JSON for layouts
-- [ ] Delete `.tmp/` scripts after use
-- [ ] **Screenshot the result and compare against reference** — never skip this
+- [ ] `fig batch` for ≤~15 nodes; Python scripts in `.tmp/` (deleted after) for larger builds
+- [ ] **Screenshot the FINISHED layout and compare against reference** — once at the end (or per major screen on multi-screen builds), not after every frame
 
-## Verify: Screenshot and Compare (MANDATORY)
+## Verify: Screenshot and Compare (at the end)
 
-After building any layout, you MUST screenshot the result and compare it against the reference. Never assume it looks right — always verify visually.
+After the build is COMPLETE, screenshot the result and compare it against the reference — once per
+deliverable, not per step. Don't assume it looks right.
 
 1. **Screenshot your work** using the Figma desktop MCP tool:
    ```

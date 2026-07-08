@@ -4,6 +4,7 @@ import type { FigmaCommand, CommandResult } from './types';
 import { successResult, errorResult } from './types';
 import { serializeNode } from '../utils/node-factory';
 import { parseColor } from '../utils/variable-factory';
+import { resolveComponent } from '../utils/component-resolver';
 
 // Payload interfaces
 interface EditInstanceTextPayload {
@@ -400,38 +401,50 @@ export async function handleResetOverrides(command: FigmaCommand): Promise<Comma
 
 // Swap an instance to a different component
 export async function handleSwapInstance(command: FigmaCommand): Promise<CommandResult> {
-  var payload = command.payload as SwapInstancePayload;
+  // Accepts newComponentId (node id, historic behavior — now also handles COMPONENT_SET ids),
+  // newComponentKey (component or set key), or newComponentName, via the shared resolver.
+  var payload = command.payload as SwapInstancePayload & {
+    newComponentKey?: string;
+    newComponentName?: string;
+    variantProperties?: { [prop: string]: string };
+  };
 
-  if (!payload.instanceId || !payload.newComponentId) {
-    return errorResult(command.id, 'Missing instanceId or newComponentId');
+  var instanceId = payload.instanceId || command.target;
+  if (!instanceId) {
+    return errorResult(command.id, 'Missing instanceId');
+  }
+  if (!payload.newComponentId && !payload.newComponentKey && !payload.newComponentName) {
+    return errorResult(
+      command.id,
+      'One of newComponentId, newComponentKey, or newComponentName is required. ' +
+        'Tip: for a bulk swap use the one-shot replaceComponent command instead.'
+    );
   }
 
   try {
-    var instanceNode = await figma.getNodeByIdAsync(payload.instanceId);
+    var instanceNode = await figma.getNodeByIdAsync(instanceId);
 
     if (!instanceNode || instanceNode.type !== 'INSTANCE') {
-      return errorResult(command.id, 'Instance not found: ' + payload.instanceId);
+      return errorResult(command.id, 'Instance not found: ' + instanceId);
     }
 
     var instance = instanceNode as InstanceNode;
-    var componentNode = await figma.getNodeByIdAsync(payload.newComponentId);
+    var resolved = await resolveComponent({
+      nodeId: payload.newComponentId,
+      key: payload.newComponentKey,
+      name: payload.newComponentName,
+      variantProperties: payload.variantProperties,
+    });
+    if ('error' in resolved) return errorResult(command.id, resolved.error);
 
-    if (!componentNode) {
-      return errorResult(command.id, 'Component not found: ' + payload.newComponentId);
-    }
-
-    if (componentNode.type !== 'COMPONENT') {
-      return errorResult(command.id, 'Node is not a component: ' + payload.newComponentId);
-    }
-
-    var component = componentNode as ComponentNode;
-    instance.swapComponent(component);
+    instance.swapComponent(resolved.component);
 
     return successResult(command.id, {
       data: {
         instanceId: instance.id,
-        newComponentId: component.id,
-        newComponentName: component.name,
+        newComponentId: resolved.component.id,
+        newComponentName: resolved.component.name,
+        resolvedVia: resolved.via,
       },
     });
   } catch (error) {

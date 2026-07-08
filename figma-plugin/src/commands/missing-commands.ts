@@ -2,6 +2,7 @@
 // Grouped: variables, text, find/bounds, components, plugin-data, images, export, annotations.
 import type { FigmaCommand, CommandResult } from './types';
 import { successResult, errorResult } from './types';
+import { resolveComponent } from '../utils/component-resolver';
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -264,54 +265,95 @@ async function ensurePagesLoaded(scope?: string): Promise<void> {
   }
 }
 
-function findAllAcross(roots: BaseNode[], predicate: (n: BaseNode) => boolean): BaseNode[] {
-  var results: BaseNode[] = [];
-  for (var i = 0; i < roots.length; i++) {
-    var r: any = roots[i];
-    if (predicate(r)) results.push(r);
-    if (typeof r.findAll === 'function') {
-      var found = r.findAll(predicate);
-      for (var j = 0; j < found.length; j++) results.push(found[j]);
-    }
+// Guardrail: file-wide predicate searches take minutes on large files (documented ~2.5min case).
+// Require an explicit opt-in so agents fail fast toward the scoped alternative instead of stalling.
+function guardFileScope(scope: string | undefined, allowSlow: boolean | undefined): string | null {
+  if (scope === 'file' && !allowSlow) {
+    return (
+      'File-wide search can take minutes on large files. Scope it instead: pass scope:"page" ' +
+      '(default) or scope:"selection", or search inside a container via findAll {nodeId}. ' +
+      'If you really need the whole file, retry with allowSlow:true.'
+    );
   }
-  return results;
+  return null;
 }
 
-// findByName {name, scope}
+// Fast deep search:
+//  - skipInvisibleInstanceChildren=true while searching (documented 10-100x speedup)
+//  - when type filtering is requested, uses Figma's native findAllWithCriteria (C++ path)
+//    and applies the JS predicate only to that much smaller candidate set
+function findAllAcross(
+  roots: BaseNode[],
+  predicate: (n: BaseNode) => boolean,
+  types?: string[]
+): BaseNode[] {
+  var prevSkip = figma.skipInvisibleInstanceChildren;
+  figma.skipInvisibleInstanceChildren = true;
+  try {
+    var results: BaseNode[] = [];
+    for (var i = 0; i < roots.length; i++) {
+      var r: any = roots[i];
+      if (predicate(r)) results.push(r);
+      if (types && types.length > 0 && typeof r.findAllWithCriteria === 'function') {
+        var candidates = r.findAllWithCriteria({ types: types });
+        for (var c = 0; c < candidates.length; c++) {
+          if (predicate(candidates[c])) results.push(candidates[c]);
+        }
+      } else if (typeof r.findAll === 'function') {
+        var found = r.findAll(predicate);
+        for (var j = 0; j < found.length; j++) results.push(found[j]);
+      }
+    }
+    return results;
+  } finally {
+    figma.skipInvisibleInstanceChildren = prevSkip;
+  }
+}
+
+// findByName {name, scope, nodeType?, allowSlow?}
 export async function handleFindByName(command: FigmaCommand): Promise<CommandResult> {
-  var p = (command.payload || {}) as { name?: string; scope?: string };
+  var p = (command.payload || {}) as { name?: string; scope?: string; nodeType?: string; allowSlow?: boolean };
   if (!p.name) return errorResult(command.id, 'name is required');
+  var guard = guardFileScope(p.scope, p.allowSlow);
+  if (guard) return errorResult(command.id, guard);
   try {
     await ensurePagesLoaded(p.scope);
-    var matches = findAllAcross(rootsForScope(p.scope), function (n) { return n.name === p.name; });
+    var types = p.nodeType ? [p.nodeType] : undefined;
+    var matches = findAllAcross(rootsForScope(p.scope), function (n) { return n.name === p.name; }, types);
     return successResult(command.id, { data: { count: matches.length, nodes: matches.map(nodeSummary) } });
   } catch (err) {
     return errorResult(command.id, 'Failed to find by name: ' + String(err));
   }
 }
 
-// findByRegex {pattern, nodeType?}
+// findByRegex {pattern, nodeType?, allowSlow?}
 export async function handleFindByRegex(command: FigmaCommand): Promise<CommandResult> {
-  var p = (command.payload || {}) as { pattern?: string; nodeType?: string; scope?: string };
+  var p = (command.payload || {}) as { pattern?: string; nodeType?: string; scope?: string; allowSlow?: boolean };
   if (!p.pattern) return errorResult(command.id, 'pattern is required');
+  var guard = guardFileScope(p.scope, p.allowSlow);
+  if (guard) return errorResult(command.id, guard);
   try {
     var re = new RegExp(p.pattern);
     await ensurePagesLoaded(p.scope);
+    var types = p.nodeType ? [p.nodeType] : undefined;
     var matches = findAllAcross(rootsForScope(p.scope || 'page'), function (n) {
       if (p.nodeType && n.type !== p.nodeType) return false;
       return re.test(n.name);
-    });
+    }, types);
     return successResult(command.id, { data: { count: matches.length, nodes: matches.map(nodeSummary) } });
   } catch (err) {
     return errorResult(command.id, 'Failed to find by regex: ' + String(err));
   }
 }
 
-// findWithCriteria {types?, hasAutoLayout?, minWidth?}
+// findWithCriteria {types?, hasAutoLayout?, minWidth?, allowSlow?}
 export async function handleFindWithCriteria(command: FigmaCommand): Promise<CommandResult> {
-  var p = (command.payload || {}) as { types?: string[]; hasAutoLayout?: boolean; minWidth?: number; minHeight?: number; scope?: string };
+  var p = (command.payload || {}) as { types?: string[]; hasAutoLayout?: boolean; minWidth?: number; minHeight?: number; scope?: string; allowSlow?: boolean };
+  var guard = guardFileScope(p.scope, p.allowSlow);
+  if (guard) return errorResult(command.id, guard);
   try {
     await ensurePagesLoaded(p.scope);
+    // Type filtering rides the native findAllWithCriteria fast path inside findAllAcross.
     var matches = findAllAcross(rootsForScope(p.scope || 'page'), function (n) {
       var node: any = n;
       if (p.types && p.types.length && p.types.indexOf(node.type) === -1) return false;
@@ -322,7 +364,7 @@ export async function handleFindWithCriteria(command: FigmaCommand): Promise<Com
       if (typeof p.minWidth === 'number' && (!('width' in node) || node.width < p.minWidth)) return false;
       if (typeof p.minHeight === 'number' && (!('height' in node) || node.height < p.minHeight)) return false;
       return true;
-    });
+    }, p.types);
     return successResult(command.id, { data: { count: matches.length, nodes: matches.map(nodeSummary) } });
   } catch (err) {
     return errorResult(command.id, 'Failed to find with criteria: ' + String(err));
@@ -402,18 +444,46 @@ export async function handleGetAutoLayoutProperties(command: FigmaCommand): Prom
 
 // swapComponent {instanceId, newComponentKey}
 export async function handleSwapComponent(command: FigmaCommand): Promise<CommandResult> {
-  var p = (command.payload || {}) as { instanceId?: string; newComponentKey?: string };
+  // Accepts ANY identifier for the replacement: component key, component-SET key (auto-resolves a
+  // variant), node id, or local name — via the shared resolver. Previously a set key just threw.
+  var p = (command.payload || {}) as {
+    instanceId?: string;
+    newComponentKey?: string;
+    newComponentId?: string;
+    newComponentName?: string;
+    variantProperties?: { [prop: string]: string };
+  };
   var id = p.instanceId || command.target;
   if (!id) return errorResult(command.id, 'instanceId is required');
-  if (!p.newComponentKey) return errorResult(command.id, 'newComponentKey is required');
+  if (!p.newComponentKey && !p.newComponentId && !p.newComponentName) {
+    return errorResult(
+      command.id,
+      'One of newComponentKey, newComponentId, or newComponentName is required. ' +
+        'Tip: for a bulk swap use the one-shot replaceComponent command instead.'
+    );
+  }
   try {
     var node: any = await figma.getNodeByIdAsync(id);
     if (!node) return errorResult(command.id, 'Node not found: ' + id);
     if (node.type !== 'INSTANCE') return errorResult(command.id, 'Node is not an INSTANCE');
-    var comp: any = await figma.importComponentByKeyAsync(p.newComponentKey);
-    if (!comp) return errorResult(command.id, 'Component not found for key: ' + p.newComponentKey);
-    node.swapComponent(comp);
-    return successResult(command.id, { data: { instanceId: node.id, newComponentKey: p.newComponentKey, mainComponentId: comp.id } });
+
+    var resolved = await resolveComponent({
+      key: p.newComponentKey,
+      nodeId: p.newComponentId,
+      name: p.newComponentName,
+      variantProperties: p.variantProperties,
+    });
+    if ('error' in resolved) return errorResult(command.id, resolved.error);
+
+    node.swapComponent(resolved.component);
+    return successResult(command.id, {
+      data: {
+        instanceId: node.id,
+        mainComponentId: resolved.component.id,
+        mainComponentName: resolved.component.name,
+        resolvedVia: resolved.via,
+      },
+    });
   } catch (err) {
     return errorResult(command.id, 'Failed to swap component: ' + String(err));
   }

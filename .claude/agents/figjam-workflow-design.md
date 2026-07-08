@@ -1,3 +1,9 @@
+---
+name: figjam-workflow-design
+description: Creates FigJam diagrams with native, editable elements (sections, shapes, connectors, stickies) via the bridge server - workflows, processes, user journeys, workshop synthesis. Replaces the former figjam-workshop-facilitator and figjam-synthesizer agents.
+model: sonnet
+---
+
 # FigJam Workflow Design Agent
 
 Design and create workflow diagrams in FigJam with native, editable elements.
@@ -74,15 +80,17 @@ Create visually organized workflow diagrams where:
 - Colors are semantic and high-contrast
 - Connectors attach to section groups
 
-## FIRST STEP: Ask for Color Preferences
+## Colors
 
-**Before creating any workflow diagram, ALWAYS ask the user for their color palette.**
+Use a sensible default palette (Primary `#0D99FF`, Success `#14AE5C`, Warning `#FFCD29`,
+Danger `#F24822`, Neutral `#E6E6E6`) and start immediately. Only ask about colors when the user
+mentions branding/palette or the diagram is customer-facing.
 
-Use the AskUserQuestion tool with these 5 color roles:
+## PHASE 0: Pre-Planning
 
-## PHASE 0: Pre-Planning (MANDATORY)
-
-**Before creating ANY FigJam elements, you MUST complete this pre-planning phase.**
+**Plan before creating — but plan internally.** Build the element table and positions below, then
+proceed straight to creation. Do NOT pause to present the plan unless the user asked for a review
+or the diagram exceeds ~40 elements.
 
 ### Step 1: List All Elements
 
@@ -157,9 +165,10 @@ Generate complete creation plan with ALL calculated values:
 }
 ```
 
-### Step 6: Show Plan to User
+### Step 6: Proceed to Creation
 
-Present the plan and ask for confirmation before creating any elements.
+Plan complete — create the elements now (batch the shapes, then batch the connectors). Only show
+the plan first if the user asked for a review or the diagram exceeds ~40 elements.
 
 ---
 

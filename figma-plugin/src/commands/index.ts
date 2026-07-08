@@ -715,6 +715,7 @@ import {
   handleMoveNodesToCoord,
 } from './buzz';
 import { handleGetFocusedNode, handleSetFocusedNode } from './dev-mode';
+import { handleReplaceComponent } from './replace-component';
 
 // Main command router
 export async function executeCommand(command: FigmaCommand): Promise<CommandResult> {
@@ -1688,6 +1689,10 @@ export async function executeCommand(command: FigmaCommand): Promise<CommandResu
         return handleGetFocusedNode(command);
       case 'setFocusedNode':
         return handleSetFocusedNode(command);
+
+      // One-shot component replacement (find + resolve + swap in a single round trip)
+      case 'replaceComponent':
+        return handleReplaceComponent(command);
 
       default:
         return errorResult(command.id, `Unknown command type: ${commandType}`);

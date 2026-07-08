@@ -37,7 +37,9 @@ function setConnected(connected: boolean, message?: string): void {
 }
 
 // Helper to yield to UI thread for rendering
-function yieldToUI(ms: number = 50): Promise<void> {
+// 5ms is enough to let the UI render the "running" state; the previous 50ms added half a second
+// of pure sleep to every 10-command batch.
+function yieldToUI(ms: number = 5): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 

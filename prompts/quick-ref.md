@@ -1,6 +1,8 @@
 # Bridge to Fig — Quick Reference
 
-Server: `http://localhost:4001` | Full docs: `prompts/bridge-to-fig/figma-bridge.md`
+Server: `http://localhost:4001` | **Common tasks: `prompts/task-recipes.md` (read that first)** | Full manual: `prompts/figma-bridge.md`
+
+**Fast calling:** `./scripts/fig <type> [target] --payload '<json>'` — sends, waits, prints result in one call. `./scripts/fig batch '[...]'` runs N commands in one HTTP call. Raw HTTP: `POST /commands?wait=true` returns the result inline (single command or array body).
 
 ## Send/Receive
 
@@ -64,6 +66,8 @@ curl http://localhost:4001/logs/running
 ```
 
 **3-STEP RULE:** `create` → `setAutoLayout` → `modify` (for FILL/HUG/GROW sizing). Never set layoutSizingHorizontal/layoutGrow during create.
+
+**Accepted aliases** (all equivalent): `direction`/`mode` · `spacing`/`itemSpacing` · `primaryAxisSizing`/`primaryAxisSizingMode` · `counterAxisSizing`/`counterAxisSizingMode` · `"HUG"` accepted for `"AUTO"`.
 
 ## Query Operations
 
@@ -164,7 +168,9 @@ curl http://localhost:4001/logs/running
 | `getComponentPropertyDefinitions` | `{nodeId}` |
 | `setComponentPropertyReferences` | `{nodeId, references: {visible: "key", mainComponent: "key"}}` |
 | `deleteComponentProperty` | `{nodeId, propertyName}` |
-| `swapComponent` | `{instanceId, newComponentKey}` |
+| `replaceComponent` | `{from:{key\|nodeId\|name}, to:{key\|nodeId\|name, variantProperties?}, scope?, dryRun?}` — **bulk swap in ONE call** (see task-recipes.md §1) |
+| `swapComponent` | `{instanceId, newComponentKey\|newComponentId\|newComponentName, variantProperties?}` — set keys auto-resolve |
+| `swapInstance` | same as swapComponent (alias with newComponentId-first history) |
 | `importComponentByKey` | `{key, x, y}` |
 
 ## Media Operations

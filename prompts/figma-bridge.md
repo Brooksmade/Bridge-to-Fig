@@ -183,9 +183,7 @@ curl "http://localhost:4001/results/{commandId}?wait=true"
 ```json
 {
   "type": "batchCreate",
-  "payload": {
-    "nodes": [/* array of create payloads */]
-  }
+  "payload": [/* DIRECT array of create payloads — NOT wrapped in {"nodes": [...]} */]
 }
 ```
 
@@ -1556,19 +1554,45 @@ Get styles available from team libraries:
 }
 ```
 
-### swapComponent
+### swapComponent / swapInstance
 
-Swap an instance with a different component:
+Swap ONE instance to a different component. Both commands accept ANY identifier for the
+replacement — a component key, a component-SET key (auto-resolves a variant; pass
+`variantProperties` to pick one), a node ID, or a local component name:
 
 ```json
 {
   "type": "swapComponent",
   "payload": {
     "instanceId": "123:456",
-    "newComponentKey": "newComponentKey789"
+    "newComponentKey": "keyOrSetKey",            // OR "newComponentId": "12:34" OR "newComponentName": "Button/Primary"
+    "variantProperties": {"Style": "Accent"}     // optional, when the target is a set
   }
 }
 ```
+
+`swapInstance` is equivalent (payload: `instanceId` + `newComponentId`/`newComponentKey`/`newComponentName`).
+
+**Key facts:** local (unpublished) components are addressed by node ID or name — they have no
+importable key. Library components are addressed by key (component or set) and are auto-imported.
+
+**Swapping MANY instances? Use `replaceComponent` instead — one call does find + resolve + swap:**
+
+```json
+{
+  "type": "replaceComponent",
+  "payload": {
+    "from": {"name": "Button/Old"},
+    "to": {"key": "LIBRARY_KEY", "variantProperties": {"Size": "M"}},
+    "scope": "page",
+    "dryRun": false
+  }
+}
+```
+
+`from`/`to` each take `{key | nodeId | name, variantProperties?}`. `scope`: `"file"` (default) |
+`"page"` | `"selection"` | `{"nodeId": "..."}`. `dryRun: true` previews the swap list. Overrides
+are preserved.
 
 ---
 

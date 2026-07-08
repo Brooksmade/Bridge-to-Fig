@@ -1,0 +1,140 @@
+#!/usr/bin/env node
+/**
+ * fig — one-call CLI for the Bridge to Fig server.
+ *
+ * Sends a command (or batch), waits for the result inline, prints JSON.
+ * Replaces the hand-composed `curl POST /commands` + `curl GET /results/{id}` dance
+ * (and the "write a Python script to a temp file" ceremony) with a single bash call.
+ *
+ * Usage:
+ *   fig ping
+ *   fig <type> [target] [key=value ...]        # payload built from key=value pairs
+ *   fig <type> [target] --payload '<json>'     # explicit payload
+ *   fig '<json-object>'                        # raw {type, target?, payload?} command
+ *   fig batch '<json-array>'                   # array of commands, one HTTP call
+ *
+ * key=value coercion: true/false/null → literal; numeric → number; starts with { [ " → JSON;
+ * dots nest (properties.width=100 → {properties:{width:100}}).
+ *
+ * Options:
+ *   --timeout <ms>   result wait (default 30000 single / 120000 batch, max 300000)
+ *   --no-wait        just queue; print commandId(s) without waiting
+ *   --url <base>     server base (default http://localhost:4001, env FIG_URL)
+ *   --quiet          print only the data field (or error) instead of the full result
+ *
+ * Exit codes: 0 success · 1 command failed · 2 transport/usage error
+ *
+ * Examples:
+ *   fig query --payload '{"queryType":"selection"}'
+ *   fig replaceComponent --payload '{"from":{"name":"Button/Old"},"to":{"name":"Button/New"},"scope":"page"}'
+ *   fig modify 12:34 properties.opacity=0.5
+ *   fig batch '[{"type":"createVariable","payload":{...}},{"type":"createVariable","payload":{...}}]'
+ */
+
+'use strict';
+
+const BASE = process.env.FIG_URL || 'http://localhost:4001';
+
+function usageExit(msg) {
+  if (msg) console.error('fig: ' + msg);
+  console.error("usage: fig <type|'{json}'|batch '[json]'> [target] [key=value ...] [--payload '<json>'] [--timeout ms] [--no-wait] [--quiet]");
+  process.exit(2);
+}
+
+function coerce(v) {
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  if (v === 'null') return null;
+  if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+  if (/^[\[{"]/.test(v)) {
+    try { return JSON.parse(v); } catch { return v; }
+  }
+  return v;
+}
+
+function setPath(obj, path, value) {
+  const parts = path.split('.');
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (typeof cur[parts[i]] !== 'object' || cur[parts[i]] === null) cur[parts[i]] = {};
+    cur = cur[parts[i]];
+  }
+  cur[parts[parts.length - 1]] = value;
+}
+
+async function main() {
+  const argv = process.argv.slice(2);
+  if (argv.length === 0) usageExit();
+
+  let url = BASE, timeout = null, wait = true, quiet = false, payloadJson = null;
+  const positional = [];
+  const kvs = [];
+
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--url') url = argv[++i];
+    else if (a === '--timeout') timeout = parseInt(argv[++i], 10);
+    else if (a === '--no-wait') wait = false;
+    else if (a === '--quiet') quiet = true;
+    else if (a === '--payload') payloadJson = argv[++i];
+    else if (a.startsWith('--')) usageExit('unknown option ' + a);
+    else if (a.includes('=') && !a.startsWith('{') && !a.startsWith('[')) kvs.push(a);
+    else positional.push(a);
+  }
+
+  let body;      // what we POST
+  let isBatch = false;
+
+  if (positional[0] === 'batch') {
+    if (!positional[1]) usageExit('batch requires a JSON array argument');
+    try { body = JSON.parse(positional[1]); } catch (e) { usageExit('invalid batch JSON: ' + e.message); }
+    if (!Array.isArray(body)) usageExit('batch argument must be a JSON array');
+    isBatch = true;
+  } else if (positional[0] && positional[0].trim().startsWith('{')) {
+    try { body = JSON.parse(positional[0]); } catch (e) { usageExit('invalid command JSON: ' + e.message); }
+  } else {
+    const type = positional[0];
+    if (!type) usageExit('missing command type');
+    const target = positional[1];
+    let payload = {};
+    if (payloadJson) {
+      try { payload = JSON.parse(payloadJson); } catch (e) { usageExit('invalid --payload JSON: ' + e.message); }
+    }
+    for (const kv of kvs) {
+      const eq = kv.indexOf('=');
+      setPath(payload, kv.slice(0, eq), coerce(kv.slice(eq + 1)));
+    }
+    body = { type, payload };
+    if (target) body.target = target;
+  }
+
+  const t = timeout || (isBatch ? 120000 : 30000);
+  const qs = wait ? `?wait=true&timeout=${t}` : '';
+
+  let res, json;
+  try {
+    res = await fetch(`${url}/commands${qs}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(t + 10000),
+    });
+    json = await res.json();
+  } catch (e) {
+    console.error('fig: cannot reach bridge server at ' + url + ' — is it running (pnpm dev) and the plugin open in Figma? (' + e.message + ')');
+    process.exit(2);
+  }
+
+  const failed = isBatch
+    ? json.success !== true
+    : (wait ? json.success !== true : false);
+
+  if (quiet && wait && !isBatch) {
+    console.log(JSON.stringify(json.success ? (json.data ?? json) : { error: json.error }, null, 2));
+  } else {
+    console.log(JSON.stringify(json, null, 2));
+  }
+  process.exit(failed ? 1 : 0);
+}
+
+main();

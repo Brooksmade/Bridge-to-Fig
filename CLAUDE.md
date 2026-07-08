@@ -40,23 +40,39 @@ FigmaPlugin/
 │       └── index.ts        # FigmaCommand, CommandPayload, etc.
 │
 ├── prompts/                # User-facing documentation
-│   ├── figma-bridge.md     # Main API reference (READ THIS FIRST)
+│   ├── task-recipes.md     # START HERE — minimal call sequences for common tasks
+│   ├── quick-ref.md        # Command dictionary
+│   ├── figma-bridge.md     # Exhaustive manual (edge cases only)
 │   ├── figma-variables.md  # Variable creation workflow
-│   ├── bind-variables.md   # Variable binding workflow
-│   ├── website-design-system.md # Website extraction workflow
-│   └── figma-documentation.md   # Doc frame creation
+│   └── ...
+│
+├── scripts/
+│   ├── fig                 # CLI: one bash call = send + wait + result
+│   └── install-agents.sh   # Sync agents/commands/prompts/fig to ~/.claude
 │
 └── .claude/
-    └── agents/             # 30 AI agent definitions
-        ├── figma-variables.md    # Design system creation
-        ├── figma-binding.md      # Variable binding
-        ├── website-design-system-extractor.md # Website extraction
-        └── ... (27 more agents)
+    └── agents/             # 14 AI agent definitions (consolidated fleet)
+        ├── figma-quick-ops.md    # DEFAULT for simple edits (haiku)
+        ├── design-system.md      # Design system creation
+        ├── component-builder.md  # Componentization
+        └── ... (11 more)
+```
+
+## Which doc to read (in this order)
+
+1. **`prompts/task-recipes.md`** — READ THIS FIRST for any common task (swap/replace components, bind variables, find nodes, build layouts, restyle). Minimal exact call sequences + the `fig` CLI. ~140 lines.
+2. **`prompts/quick-ref.md`** — command dictionary (~320 lines) when a recipe doesn't cover the command you need.
+3. **`prompts/figma-bridge.md`** — the exhaustive manual (~3,000 lines). Only for edge cases and unusual options. Do NOT read it end-to-end.
+
+**Prefer `scripts/fig` over raw curl** — one bash call sends, waits, and prints the result:
+```bash
+./scripts/fig replaceComponent --payload '{"from":{"name":"Button/Old"},"to":{"name":"Button/New"},"scope":"page"}'
+./scripts/fig batch '[{...},{...}]'   # N commands, one HTTP call
 ```
 
 ## How to Use figma-bridge.md
 
-The `prompts/figma-bridge.md` file is the **primary reference** for all Figma Bridge operations. Use it to:
+The `prompts/figma-bridge.md` file is the **exhaustive reference** for all Figma Bridge operations. Use it to:
 
 ### 1. Send Commands to Figma
 
@@ -131,22 +147,28 @@ curl -X POST http://localhost:4001/commands \
 | **Query** | query, getFrames, getVariables, getNodeColors |
 | **Server-Side** | extractWebsiteCSS, extractWebsiteLayout (Puppeteer headless browser) |
 
-## Available Agents (31)
+## Available Agents (14)
 
-Agents are AI instructions for complex multi-step workflows. Key agents:
+The fleet was consolidated from 32 → 14 (originals in `agents-archive/`). Every agent declares
+`model:` in its frontmatter — mechanical work runs on cheap/fast models. **Route simple bounded
+edits to `figma-quick-ops`.**
 
-| Agent | Purpose |
-|-------|---------|
-| `figma-variables` | Creates 4-level design systems from Figma frames |
-| `figma-binding` | Binds variables to frame elements |
-| `website-design-system-extractor` | Extracts CSS from websites, creates Figma variables |
-| `design-system-orchestrator` | Full pipeline: extract → create → bind → document → validate |
-| `engineering-handoff` | Generates dev specs, CSS, token maps |
-| `figjam-workflow-design` | Creates FigJam diagrams for workflows, processes, and user journeys |
-| `website-to-figma` | Captures a website into Figma via MCP, optionally creates design system variables |
-| `code-connect-mapper` | Maintains bidirectional Figma ↔ code component mappings |
-
-Full list in `prompts/figma-bridge.md` → Related Agents section.
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `figma-quick-ops` | haiku | **Default for simple edits** — swap/replace components, rename, restyle, batch ops, moves, exports |
+| `design-system` | inherit | Variable systems: 4-level hierarchies, organizing principles, extraction, validation |
+| `figma-binding` | sonnet | Binds variables to frame elements (exact matching) |
+| `component-builder` | inherit | Componentization, variant sets, properties, replace-with-instances |
+| `design-qa` | sonnet | Unified QA: accessibility, components, consistency, naming, structure (pass `dimensions`) |
+| `style-specialist` | sonnet | Text/paint/effect styles, typography scales, modern effects (glass/noise/shaders) |
+| `layout-builder` | sonnet | Auto-layout screens, grids, constraints |
+| `website-extractor` | sonnet | Website CSS → design tokens → Figma system; website capture |
+| `design-to-dev` | inherit | Orchestrates: audit → system → components → QA → handoff |
+| `engineering-handoff` | sonnet | Dev specs, CSS/Tailwind, token maps, asset exports |
+| `figjam-workflow-design` | sonnet | FigJam diagrams (workflows, journeys, synthesis) |
+| `prototype-architect` | sonnet | Interactive prototypes, flows, transitions |
+| `figma-documentation` | sonnet | Visual doc frames for variable collections |
+| `code-connect-mapper` | sonnet | Figma ↔ code component mappings |
 
 ## Why This Tool
 
@@ -250,8 +272,11 @@ pnpm build:plugin
 
 | Path | Purpose |
 |------|---------|
-| `prompts/figma-bridge.md` | **Main API reference** - all commands, examples |
+| `prompts/task-recipes.md` | **START HERE** - minimal call sequences for common tasks + fig CLI |
+| `prompts/quick-ref.md` | **Command dictionary** - every command, one line each |
+| `prompts/figma-bridge.md` | **Exhaustive manual** - edge cases only, don't read end-to-end |
 | `prompts/api-2026-additions.md` | **2026 API additions** - grid layout, extended collections, new fills/effects, shaders, motion, slots, Draw, Buzz |
+| `scripts/fig` | **CLI** - one bash call = send + wait + result JSON (also `fig batch`) |
 | `prompts/workflows.md` | **Pipeline breakdowns** - all 9 workflows with data flow |
 | `prompts/component-best-practices.md` | **Component discipline** - naming, variants, properties, accessibility |
 | `prompts/library-best-practices.md` | **Library discipline** - publishing, versioning, styles vs variables |
@@ -260,7 +285,7 @@ pnpm build:plugin
 | `prompts/gotchas.md` | **Gotchas reference** - every known pitfall with WRONG/CORRECT examples |
 | `prompts/code-connect.md` | **Code Connect** - Figma ↔ code component mapping system |
 | `scripts/` | **Reusable script templates** - JSON payload templates for common operations |
-| `.claude/agents/*.md` | AI agent definitions (32 agents) |
+| `.claude/agents/*.md` | AI agent definitions (14 agents; retired originals in `agents-archive/`) |
 | `.figma/code-connect.json` | Component mapping file (Figma ↔ code) |
 | `bridge-server/src/services/websiteExtractor.ts` | Puppeteer extraction logic |
 | `figma-plugin/src/commands/` | Command implementations |
@@ -341,10 +366,10 @@ Press `Ctrl+C` to stop the bridge server. It will:
 - **Building layouts** — MUST follow the 3-step rule: `create` → `setAutoLayout` → `modify` (for FILL/HUG/GROW). Child layout properties silently fail if set during creation. Always use Python scripts, not bash. Full pattern and helpers: **`.claude/prompts/figma-layout.md`**
 
 - **FigJam diagrams** - ALWAYS use bridge server commands (`createSection`, `createShapeWithText`, `createConnector` via `localhost:4001`). NEVER use MCP tools like `generate_diagram` for FigJam — they create separate files instead of drawing in the user's open board. Only use MCP Figma tools for FigJam if the user explicitly requests it.
-- **Always query first** - Get node IDs before modifying
+- **Modify by node ID directly** - query first ONLY when you don't already have the ID
 - **Use Inter font** - Pre-loaded; others may cause errors
-- **Batch operations** - Use `batchCreate`/`batchModify` for multiple items
-- **Check results** - Poll `/results/{id}?wait=true` for confirmation
+- **Batch everything repetitive** - `fig batch`, `batchCreate`, `batchModify`, `batchDelete`, `batchEditVariable` — never loop single commands
+- **Use POST /commands?wait=true (or `scripts/fig`)** - the response IS the result; no separate poll needed
 - **4-level variables** - Always use Primitive → Semantic → Tokens → Theme hierarchy
 - **Long commands** - Use `timeout=300000` for file-scope operations
 - **Plugin connection** - The plugin uses **long polling** by default, NOT WebSocket. `wsClients: 0` in `/health` does NOT mean disconnected. Send a `ping` command to verify connectivity.

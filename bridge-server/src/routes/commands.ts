@@ -11,8 +11,68 @@ import { PROTOCOL_VERSION } from '@bridge-to-fig/shared';
 const router: RouterType = Router();
 
 // POST /commands - Queue a new command (called by Claude Code)
+//
+// Also supports:
+//   - BATCH: POST an ARRAY of {type, target?, payload?} — all are queued at once (the plugin
+//     receives them in one long-poll delivery and executes sequentially). Returns {commandIds:[…]}.
+//   - INLINE WAIT: ?wait=true — the response includes the result(s) directly, collapsing the
+//     POST + GET /results round-trip pair into a single HTTP call.
+//     Optional ?timeout=ms (default 30000 single / 120000 batch, capped at 300000).
 router.post('/', async (req: Request, res: Response) => {
   try {
+    // --- Batch form: array of commands ---
+    if (Array.isArray(req.body)) {
+      const items = req.body as Array<{ type?: string; target?: string; payload?: CommandPayload }>;
+      if (items.length === 0) {
+        res.status(400).json({ error: 'Batch array is empty' });
+        return;
+      }
+      const invalid = items.findIndex(c => !c || !c.type);
+      if (invalid >= 0) {
+        res.status(400).json({ error: `Batch item ${invalid} is missing "type"` });
+        return;
+      }
+      const serverSide = items.findIndex(c =>
+        ['extractWebsiteCSS', 'extractWebsiteLayout', 'autoBindByRoleV2'].includes(c.type as string)
+      );
+      if (serverSide >= 0) {
+        res.status(400).json({
+          error: `Batch item ${serverSide} (${items[serverSide].type}) is a server-side command — send it individually`,
+        });
+        return;
+      }
+
+      const commands: FigmaCommand[] = items.map(c => ({
+        id: uuidv4(),
+        type: c.type as CommandType,
+        target: c.target,
+        payload: c.payload || ({} as CommandPayload),
+        timestamp: Date.now(),
+      }));
+      for (const cmd of commands) queue.addCommand(cmd);
+      console.log(`[Commands] Batch queued: ${commands.length} command(s)`);
+
+      if (req.query.wait === 'true') {
+        const timeout = Math.min(parseInt(req.query.timeout as string) || 120000, 300000);
+        const results = await Promise.all(commands.map(c => queue.waitForResult(c.id, timeout)));
+        res.status(200).json({
+          success: results.every(r => r?.success === true),
+          count: commands.length,
+          results: results.map((r, i) =>
+            r ?? { commandId: commands[i].id, success: false, error: 'Timeout waiting for result', timestamp: Date.now() }
+          ),
+        });
+        return;
+      }
+
+      res.status(201).json({
+        success: true,
+        commandIds: commands.map(c => c.id),
+        message: `${commands.length} commands queued`,
+      });
+      return;
+    }
+
     const { type, target, payload } = req.body as {
       type?: CommandType | 'extractWebsiteCSS' | 'extractWebsiteLayout' | 'autoBindByRoleV2';
       target?: string;
@@ -165,6 +225,23 @@ router.post('/', async (req: Request, res: Response) => {
       message: `Command queued: ${type}`,
       timestamp: Date.now(),
     });
+
+    // Inline wait: return the result in this same response (?wait=true)
+    if (req.query.wait === 'true') {
+      const timeout = Math.min(parseInt(req.query.timeout as string) || 30000, 300000);
+      const result = await queue.waitForResult(command.id, timeout);
+      if (result) {
+        res.status(200).json(result);
+      } else {
+        res.status(408).json({
+          commandId: command.id,
+          success: false,
+          error: 'Timeout waiting for result',
+          timestamp: Date.now(),
+        });
+      }
+      return;
+    }
 
     res.status(201).json({
       success: true,
