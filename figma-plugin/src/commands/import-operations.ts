@@ -101,7 +101,7 @@ export async function handleImportVariableByKey(command: FigmaCommand): Promise<
   }
 
   try {
-    var variable = await (figma as any).importVariableByKeyAsync(payload.key);
+    var variable = await figma.variables.importVariableByKeyAsync(payload.key);
 
     return successResult(command.id, {
       data: {
@@ -120,6 +120,18 @@ export async function handleImportVariableByKey(command: FigmaCommand): Promise<
 
 // Get available library variable collections
 export async function handleGetLibraryVariableCollections(command: FigmaCommand): Promise<CommandResult> {
+  // getAvailableLibraryVariableCollectionsAsync can hang for minutes on large enterprise library
+  // indexes (observed wedging the plugin thread on this team). Require explicit opt-in and prefer
+  // the Figma MCP search_design_system index for variable keys instead.
+  var p = (command.payload || {}) as { allowSlow?: boolean };
+  if (!p.allowSlow) {
+    return errorResult(
+      command.id,
+      'getLibraryVariableCollections can hang for minutes on large team libraries. ' +
+        'Prefer the Figma MCP search_design_system (includeVariables:true) to find variable keys, ' +
+        'then importVariableByKey. To force this call anyway, retry with allowSlow:true.'
+    );
+  }
   try {
     var collections = await figma.teamLibrary.getAvailableLibraryVariableCollectionsAsync();
 

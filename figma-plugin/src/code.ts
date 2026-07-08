@@ -174,13 +174,19 @@ async function longPollLoop(): Promise<void> {
       // Wait a bit before retrying on error
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Re-check version on reconnect attempt
-      const health = await checkHealth();
-      if (health.ok && !health.compatible) {
-        sendVersionBanner(health);
-        setConnected(false, 'Incompatible server version');
-        log('Protocol mismatch after reconnect — stopping', 'error');
-        shouldStop = true;
+      // Re-check version on reconnect attempt. MUST be guarded: if the server is still down,
+      // checkHealth() throws inside this catch block, escapes the while loop, and the poll loop
+      // dies silently — the plugin then never reconnects until manually reopened.
+      try {
+        const health = await checkHealth();
+        if (health.ok && !health.compatible) {
+          sendVersionBanner(health);
+          setConnected(false, 'Incompatible server version');
+          log('Protocol mismatch after reconnect — stopping', 'error');
+          shouldStop = true;
+        }
+      } catch (healthError) {
+        // Server still down — keep looping; the next longPollCommands attempt will retry.
       }
     }
   }

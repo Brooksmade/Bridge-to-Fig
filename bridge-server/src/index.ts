@@ -1,3 +1,12 @@
+
+// Crash guards: log instead of dying (tsx watch restarts lose in-flight state; a logged error keeps
+// long jobs alive). Genuine fatal states will still surface via the logs.
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL-caught] uncaughtException:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL-caught] unhandledRejection:', reason);
+});
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';

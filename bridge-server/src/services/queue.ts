@@ -78,6 +78,16 @@ export const queue = {
   // Store a command result
   addResult(result: CommandResult): void {
     commandResults.set(result.commandId, result);
+    // OOM guard: cap stored results (huge extract/inventory payloads can exhaust memory).
+    // Waiters get results via callbacks immediately, so evicting oldest is safe.
+    if (commandResults.size > 500) {
+      const excess = commandResults.size - 500;
+      let i = 0;
+      for (const key of commandResults.keys()) {
+        if (i++ >= excess) break;
+        commandResults.delete(key);
+      }
+    }
     console.log(`[Queue] Result added for command: ${result.commandId} (success: ${result.success})`);
 
     // Notify all callbacks
