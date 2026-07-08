@@ -242,6 +242,10 @@ export const queue = {
       };
     } else if (message.startsWith('Completed in ') || message.startsWith('Error:')) {
       currentRunningCommand = null;
+    } else if (message === 'Bridge to Fig plugin started') {
+      // A fresh plugin instance means nothing is executing — clear a tracker left stale by a
+      // restart mid-command (otherwise /logs/running reports a phantom wedge forever).
+      currentRunningCommand = null;
     }
   },
 

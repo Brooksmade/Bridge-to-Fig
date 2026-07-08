@@ -135,7 +135,31 @@ Giant nodes (>4096px) fail — export a child or use scale 0.5. Verify at checkp
   or the library file. `replaceComponent`/`swapInstance` accept either kind and auto-import;
   component-SET keys are auto-resolved to a variant (pass `variantProperties` to choose).
 
-## 10. FigJam quick diagram
+## 10. Migrate a page's components to a library (bulk)
+
+Proven at 4,578 instances / 108 masters in ~5.5 min. Three phases, resumable:
+
+```bash
+# 1. INVENTORY — one call returns every master in use (id, name, key, remote?, counts, parent set)
+./scripts/fig getInstanceMasters --payload '{"nodeId":"<pageId>","topLevelOnly":true}'
+
+# 2. MAP — for each LOCAL master's set name, find the library key via Figma MCP
+#    search_design_system (filter includeLibraryKeys to the target library). Match by exact name.
+#    Hold back: dot-prefixed privates (.Foo — published only inside containers), unpublished icons.
+
+# 3. EXECUTE — one variant-faithful replaceComponent per local master, scoped to the page:
+#    {"from":{"nodeId":"<masterId>"},
+#     "to":{"key":"<libSetKey>","variantProperties":{...parsed from master variant name...}},
+#     "scope":{"nodeId":"<pageId>"}}
+#    Batch ~5 per call; save results after each batch (resume = skip done); check /logs/running between.
+```
+
+- If `to` resolution fails with "No variant matches", the error lists available variants — usually the
+  local set has an extra dimension (e.g. `Variant=01`); drop that key and retry.
+- Never resolve masters per-instance (`getMainComponent` loops) — that's thousands of round trips;
+  `getInstanceMasters` is one.
+
+## 11. FigJam quick diagram
 
 Use bridge commands (`createSection`, `createShapeWithText`, `createConnector`) — never MCP
 `generate_diagram` (draws into the wrong file). Batch the shapes, then batch the connectors
@@ -153,5 +177,19 @@ Use bridge commands (`createSection`, `createShapeWithText`, `createConnector`) 
 | Per-node curl loops | ~1s each + your reasoning time | `fig batch` — one call |
 | Re-reading figma-bridge.md (2,900 lines) | your whole context | this file + quick-ref.md |
 
-**If a command times out:** check `curl localhost:4001/logs/running` — the plugin is single-threaded,
-so a long op blocks everything; wait for it rather than re-sending.
+## Timeout protocol (a timeout means the command may STILL be running)
+
+The plugin is single-threaded: one long command blocks everything behind it, and a synchronous
+tree-walk cannot be aborted. When `fig` exits 3 / prints ⏳ TIMEOUT:
+
+1. **STOP. Do not send more commands** — they queue behind the wedge (and will be auto-expired).
+2. `curl localhost:4001/logs/running` — see what's executing and for how long.
+3. Still busy → wait and re-check. The queued commands you already sent carry a TTL and will be
+   skipped as "expired" if the sender's wait passed — resend only what you still need.
+4. Wedged > 2 minutes → ask the user to **close and reopen the plugin** (the only way to abort a
+   stuck synchronous call), then resend.
+5. Never retry blind, and never "verify" a timeout by sending the same command again.
+
+**Reading deep structure on big files:** prefer Figma MCP `get_metadata` (reads via the desktop app,
+doesn't touch the plugin thread) or `query describe`. `query deep`/`children` serialization is
+budget-capped (~1,500 nodes) and returns `truncated: true` with guidance instead of walking forever.

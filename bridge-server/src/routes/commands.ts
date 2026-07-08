@@ -42,12 +42,15 @@ router.post('/', async (req: Request, res: Response) => {
         return;
       }
 
+      const batchWait = Math.min(parseInt(req.query.timeout as string) || 120000, 300000);
       const commands: FigmaCommand[] = items.map(c => ({
         id: uuidv4(),
         type: c.type as CommandType,
         target: c.target,
         payload: c.payload || ({} as CommandPayload),
         timestamp: Date.now(),
+        // Expire once the sender's wait (plus grace) has passed — prevents stale bursts.
+        expiresAt: Date.now() + batchWait + 30000,
       }));
       for (const cmd of commands) queue.addCommand(cmd);
       console.log(`[Commands] Batch queued: ${commands.length} command(s)`);
@@ -55,9 +58,12 @@ router.post('/', async (req: Request, res: Response) => {
       if (req.query.wait === 'true') {
         const timeout = Math.min(parseInt(req.query.timeout as string) || 120000, 300000);
         const results = await Promise.all(commands.map(c => queue.waitForResult(c.id, timeout)));
+        const anyTimeout = results.some(r => !r);
         res.status(200).json({
           success: results.every(r => r?.success === true),
           count: commands.length,
+          // When something timed out, say what the plugin is busy with so callers stop stacking.
+          ...(anyTimeout ? { busy: queue.getRunningCommand() } : {}),
           results: results.map((r, i) =>
             r ?? { commandId: commands[i].id, success: false, error: 'Timeout waiting for result', timestamp: Date.now() }
           ),
@@ -208,12 +214,15 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Create command with generated ID
+    const singleWait = Math.min(parseInt(req.query.timeout as string) || 120000, 300000);
     const command: FigmaCommand = {
       id: uuidv4(),
       type,
       target,
       payload: payload || ({} as CommandPayload),
       timestamp: Date.now(),
+      // Expire once the sender's wait (plus grace) has passed — prevents stale bursts.
+      expiresAt: Date.now() + singleWait + 30000,
     };
 
     queue.addCommand(command);
@@ -233,20 +242,26 @@ router.post('/', async (req: Request, res: Response) => {
       if (result) {
         res.status(200).json(result);
       } else {
+        // Include what the plugin is busy with so callers stop stacking commands behind a wedge.
         res.status(408).json({
           commandId: command.id,
           success: false,
           error: 'Timeout waiting for result',
+          busy: queue.getRunningCommand(),
+          pendingCommands: queue.getStats().pendingCommands,
           timestamp: Date.now(),
         });
       }
       return;
     }
 
+    const runningNow = queue.getRunningCommand();
     res.status(201).json({
       success: true,
       commandId: command.id,
       message: 'Command queued successfully',
+      // Warn when queuing behind something that's already been running a while.
+      ...(runningNow && runningNow.elapsedMs > 3000 ? { busy: runningNow } : {}),
     });
   } catch (error) {
     console.error('[Commands] Error queuing command:', error);

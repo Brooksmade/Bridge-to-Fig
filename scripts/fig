@@ -134,7 +134,23 @@ async function main() {
   } else {
     console.log(JSON.stringify(json, null, 2));
   }
-  process.exit(failed ? 1 : 0);
+
+  // Timeout = the command may STILL BE EXECUTING (single-threaded plugin). Make that loud so
+  // callers stop stacking commands behind a wedge. Exit 3 distinguishes timeout from failure.
+  const timedOut =
+    (json.error && String(json.error).includes('Timeout waiting')) ||
+    (isBatch && Array.isArray(json.results) && json.results.some(r => r && String(r.error || '').includes('Timeout waiting')));
+  if (timedOut) {
+    const b = json.busy;
+    console.error('⏳ TIMEOUT — the plugin may still be executing' + (b ? ` "${b.commandType}" (${Math.round(b.elapsedMs / 1000)}s so far)` : '') + '.');
+    console.error('   DO NOT send more commands. Check: curl ' + url + '/logs/running');
+    console.error('   Busy → wait for it to finish. Wedged >2 min → close and reopen the Figma plugin.');
+    process.exitCode = 3;
+    return;
+  }
+
+  // process.exit() would truncate stdout >64KB before it flushes — set the code and exit naturally.
+  process.exitCode = failed ? 1 : 0;
 }
 
 main();

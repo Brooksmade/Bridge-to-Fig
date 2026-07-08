@@ -6,6 +6,9 @@ export interface FigmaCommand {
   target?: string;
   payload: any;
   timestamp: number;
+  /** Epoch ms after which the plugin must NOT start this command (the sender's wait already gave
+   *  up). Prevents stale bursts when a queue drains after a long-running command or reconnect. */
+  expiresAt?: number;
 }
 
 export interface CommandResult {

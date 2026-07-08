@@ -247,6 +247,9 @@ export interface FigmaCommand {
   target?: string; // Node ID for modify/delete/query
   payload: CommandPayload;
   timestamp: number;
+  /** Epoch ms after which the plugin must NOT start this command (sender's wait already gave up).
+   *  Prevents stale bursts when the queue drains after a long-running command or reconnect. */
+  expiresAt?: number;
 }
 
 // Result of command execution

@@ -63,6 +63,25 @@ function formatDuration(ms: number): string {
 
 // Process a single command
 async function processCommand(command: FigmaCommand): Promise<void> {
+  // TTL: if the sender's wait already gave up (queued behind a long-running command / reconnect
+  // backlog), don't execute a stale command — report it expired instead.
+  if (command.expiresAt && Date.now() > command.expiresAt) {
+    log(`Skipped expired: ${command.type} (${command.id.slice(0, 8)}...)`, 'error');
+    try {
+      await submitResult({
+        commandId: command.id,
+        success: false,
+        error:
+          'Command expired before execution — it was queued behind a long-running command. ' +
+          'Resend it if still wanted (check /logs/running first).',
+        timestamp: Date.now(),
+      });
+    } catch (e) {
+      // best effort
+    }
+    return;
+  }
+
   const startTime = Date.now();
   log(`Executing: ${command.type} (${command.id.slice(0, 8)}...)`);
   sendToUI({ type: 'command', commandType: command.type, commandId: command.id });

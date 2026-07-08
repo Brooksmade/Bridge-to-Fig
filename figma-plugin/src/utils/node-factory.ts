@@ -456,8 +456,29 @@ export function serializeNode(node: SceneNode, includeChildren = false): object 
   return base;
 }
 
+// Node budget for deep serialization. Without a cap, `query deep`/`children` on a node full of
+// nested instances can walk tens of thousands of nodes and block the single-threaded plugin for
+// minutes (the documented 15-minute case). When the budget is exhausted the walk stops and the
+// result carries `truncated: true` — callers should narrow the target or lower the depth.
+export var DEEP_SERIALIZE_NODE_BUDGET = 1500;
+
+interface SerializeBudget {
+  remaining: number;
+  truncated: boolean;
+}
+
 // Recursively serialize node with full structure details
-export function serializeNodeDeep(node: SceneNode, maxDepth: number = 3, currentDepth: number = 0): object {
+export function serializeNodeDeep(
+  node: SceneNode,
+  maxDepth: number = 3,
+  currentDepth: number = 0,
+  budget?: SerializeBudget
+): object {
+  // Root call: create the budget and attach the truncation flag to the root result.
+  var isRoot = !budget;
+  var b: SerializeBudget = budget || { remaining: DEEP_SERIALIZE_NODE_BUDGET, truncated: false };
+  b.remaining--;
+
   var result: any = {
     id: node.id,
     name: node.name,
@@ -487,15 +508,33 @@ export function serializeNodeDeep(node: SceneNode, maxDepth: number = 3, current
     }
   }
 
-  // Recursively add children
+  // Recursively add children (stop when the budget is spent)
   if (currentDepth < maxDepth && 'children' in node) {
-    var parent = node as FrameNode;
-    result.children = [];
-    for (var i = 0; i < parent.children.length; i++) {
-      result.children.push(serializeNodeDeep(parent.children[i], maxDepth, currentDepth + 1));
+    if (b.remaining <= 0) {
+      b.truncated = true;
+      result.childCount = (node as FrameNode).children.length;
+      result.truncated = true;
+    } else {
+      var parent = node as FrameNode;
+      result.children = [];
+      for (var i = 0; i < parent.children.length; i++) {
+        if (b.remaining <= 0) {
+          b.truncated = true;
+          result.truncatedAfter = i;
+          break;
+        }
+        result.children.push(serializeNodeDeep(parent.children[i], maxDepth, currentDepth + 1, b));
+      }
     }
   } else if ('children' in node) {
     result.childCount = (node as FrameNode).children.length;
+  }
+
+  if (isRoot && b.truncated) {
+    result.truncated = true;
+    result.truncationNote =
+      'Node budget (' + DEEP_SERIALIZE_NODE_BUDGET + ') exhausted — this subtree is very large. ' +
+      'Narrow the target node, lower the depth, or use queryType:"describe" for an overview.';
   }
 
   return result;

@@ -716,6 +716,7 @@ import {
 } from './buzz';
 import { handleGetFocusedNode, handleSetFocusedNode } from './dev-mode';
 import { handleReplaceComponent } from './replace-component';
+import { handleGetInstanceMasters } from './instance-masters';
 
 // Main command router
 export async function executeCommand(command: FigmaCommand): Promise<CommandResult> {
@@ -1693,6 +1694,10 @@ export async function executeCommand(command: FigmaCommand): Promise<CommandResu
       // One-shot component replacement (find + resolve + swap in a single round trip)
       case 'replaceComponent':
         return handleReplaceComponent(command);
+
+      // Bulk master inventory (one round trip instead of per-instance getMainComponent loops)
+      case 'getInstanceMasters':
+        return handleGetInstanceMasters(command);
 
       default:
         return errorResult(command.id, `Unknown command type: ${commandType}`);
