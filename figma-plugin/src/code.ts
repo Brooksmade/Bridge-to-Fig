@@ -61,8 +61,9 @@ function formatDuration(ms: number): string {
   return `${minutes}m`;
 }
 
-// Process a single command
-async function processCommand(command: FigmaCommand): Promise<void> {
+// Process a single command. quiet=true suppresses per-command logs/UI messages — a 3,000-command
+// burst otherwise floods the plugin UI iframe with ~12k HTTP posts and can crash the plugin.
+async function processCommand(command: FigmaCommand, quiet: boolean = false): Promise<void> {
   // TTL: if the sender's wait already gave up (queued behind a long-running command / reconnect
   // backlog), don't execute a stale command — report it expired instead.
   if (command.expiresAt && Date.now() > command.expiresAt) {
@@ -83,8 +84,10 @@ async function processCommand(command: FigmaCommand): Promise<void> {
   }
 
   const startTime = Date.now();
-  log(`Executing: ${command.type} (${command.id.slice(0, 8)}...)`);
-  sendToUI({ type: 'command', commandType: command.type, commandId: command.id });
+  if (!quiet) {
+    log(`Executing: ${command.type} (${command.id.slice(0, 8)}...)`);
+    sendToUI({ type: 'command', commandType: command.type, commandId: command.id });
+  }
 
   // Yield to allow UI to render the "running" state
   await yieldToUI();
@@ -95,18 +98,20 @@ async function processCommand(command: FigmaCommand): Promise<void> {
 
     if (result.success) {
       commandsExecuted++;
-      log(`Completed in ${formatDuration(duration)}`, 'success');
+      if (!quiet) log(`Completed in ${formatDuration(duration)}`, 'success');
     } else {
       errorsCount++;
-      log(`Error: ${result.error}`, 'error');
+      log(`Error: ${result.error}`, 'error'); // errors always logged
     }
 
-    sendToUI({
-      type: 'result',
-      success: result.success,
-      commandId: command.id,
-      error: result.error,
-    });
+    if (!quiet) {
+      sendToUI({
+        type: 'result',
+        success: result.success,
+        commandId: command.id,
+        error: result.error,
+      });
+    }
 
     // Submit result to bridge server
     try {
@@ -162,11 +167,15 @@ async function longPollLoop(): Promise<void> {
         setConnected(true, 'Connected to bridge server');
       }
 
-      // Execute each command sequentially
-      for (const command of commands) {
+      // Execute each command sequentially. Large deliveries run in quiet mode (every 100th
+      // command still logs, all errors log) so the UI/log flood can't crash the plugin.
+      const quietBatch = commands.length > 20;
+      if (quietBatch) log(`Batch: executing ${commands.length} commands (quiet mode)`);
+      for (let ci = 0; ci < commands.length; ci++) {
         if (shouldStop) break;
-        await processCommand(command);
+        await processCommand(commands[ci], quietBatch && ci % 100 !== 0);
       }
+      if (quietBatch) log(`Batch done: ${commands.length} commands`, 'success');
     } catch (error) {
       if (isConnected) {
         setConnected(false, 'Connection lost - retrying...');
