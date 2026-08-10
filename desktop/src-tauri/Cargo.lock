@@ -339,7 +339,7 @@ dependencies = [
 
 [[package]]
 name = "bridge-to-fig"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "dirs 5.0.1",
  "include_dir",
