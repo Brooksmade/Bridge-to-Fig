@@ -31,7 +31,7 @@ FigmaPlugin/
 │   └── src/
 │       ├── code.ts         # Main plugin logic
 │       ├── ui.html/ts      # Plugin UI
-│       ├── commands/       # Command handlers (325 commands)
+│       ├── commands/       # Command handlers (329 commands)
 │       ├── data/           # Static data (boilerplate values)
 │       └── utils/          # Helper utilities
 │
@@ -60,7 +60,7 @@ FigmaPlugin/
 
 ## Which doc to read (in this order)
 
-1. **`prompts/task-recipes.md`** — READ THIS FIRST for any common task (swap/replace components, bind variables, find nodes, build layouts, restyle). Minimal exact call sequences + the `fig` CLI. ~140 lines.
+1. **`prompts/task-recipes.md`** — READ THIS FIRST for any common task (swap/replace components, bind variables, find nodes, build layouts, restyle). Minimal exact call sequences + the `fig` CLI. ~195 lines.
 2. **`prompts/quick-ref.md`** — command dictionary (~320 lines) when a recipe doesn't cover the command you need.
 3. **`prompts/figma-bridge.md`** — the exhaustive manual (~3,000 lines). Only for edge cases and unusual options. Do NOT read it end-to-end.
 
@@ -180,18 +180,19 @@ Bridge to Fig is not a collection of individual Figma operations. It is a set of
 |----------|-------|-------------|-------------|
 | Design System from File | Extract → Detect → Create → Bind → Validate | 8-12 hours | 5 min |
 | Design System from Website | Extract CSS → Classify → Scale → Create/Update | 2-3 days | 15 min |
-| Website-to-Figma Capture | MCP Capture → (Optional) Extract CSS → Design System | 1-2 weeks | 5 min |
 | Variable Binding | Load → Map → Match → Bind → Report | 551+ manual clicks | 5 min |
 | Component Library | Create → Layout → Name → QA → Handoff | 2-3 weeks | 2-3 hours |
 | FigJam Diagrams | Plan → Measure → Position → Create → Connect | 1-2 hours | 15 min |
 | Engineering Handoff | Analyze → Specs → Code → Assets → Docs | 1-2 days/component | 15 min |
+| Typography System | Audit Fonts → Load → Create Styles → Bind → Apply Ranges | Character-level ranges are not feasible by hand | minutes |
+| Accessibility Audit | Extract Colors → Contrast → Touch Targets → Text → Report | 2-4 hours | 10 min |
 | Full Design-to-Dev | Audit → System → Components → A11y → Handoff | 3-4 weeks | 1-2 hours |
 
 ### What Makes It Different from MCP Figma Tools
 
 MCP tools expose individual operations (create a variable, resize a node). This bridge provides:
 
-- **One-command design systems** — `createDesignSystem` builds 4-level hierarchy with 130+ variables in one call
+- **One-command design systems** — `createDesignSystem` builds 4-level hierarchy with 130+ variables in one call, 200+ with `includeBoilerplate`
 - **Automatic binding during creation** — `extractDesignTokens` tracks which nodes use which values; `createDesignSystem` binds them automatically
 - **Website CSS extraction** — Headless browser gets computed styles from live websites (works on any site regardless of CSS methodology)
 - **Color classification** — Automatic primary/secondary/tertiary detection by saturation × frequency (no manual picking)
@@ -200,7 +201,7 @@ MCP tools expose individual operations (create a variable, resize a node). This 
 - **8 organizing principles** — 4-level, 3-level, 2-level, Material Design 3, Tailwind, Adobe Spectrum (S1), **Adobe Spectrum 2** (full 2,919-variable mirror with .Color theme Light/Dark/Wireframe modes), Apple HIG
 - **27 text range operations** — Character-level formatting (bold one word, color another)
 - **FigJam native diagrams** — Sections, shapes, connectors with text measurement
-- **31 agent workflows** — Pre-built multi-step pipelines
+- **14 agent workflows** — Pre-built multi-step pipelines
 - **Design system validation** — Checks structure, modes, naming, alias chains
 
 Full pipeline breakdowns with data flow notation: **`prompts/workflows.md`**
@@ -273,7 +274,7 @@ pnpm build:plugin
 | Path | Purpose |
 |------|---------|
 | `prompts/task-recipes.md` | **START HERE** - minimal call sequences for common tasks + fig CLI |
-| `prompts/quick-ref.md` | **Command dictionary** - every command, one line each |
+| `prompts/quick-ref.md` | **Command dictionary** - the widest coverage of any doc (177 of 329 commands), one line each |
 | `prompts/figma-bridge.md` | **Exhaustive manual** - edge cases only, don't read end-to-end |
 | `prompts/api-2026-additions.md` | **2026 API additions** - grid layout, extended collections, new fills/effects, shaders, motion, slots, Draw, Buzz |
 | `scripts/fig` | **CLI** - one bash call = send + wait + result JSON (also `fig batch`) |
@@ -291,7 +292,10 @@ pnpm build:plugin
 | `bridge-server/src/services/websiteExtractor.ts` | Puppeteer extraction logic |
 | `figma-plugin/src/commands/` | Command implementations |
 | `figma-plugin/src/commands/state-recovery.ts` | State recovery: run_id tagging, orphan cleanup, validation |
-| `figma-plugin/src/data/boilerplate.ts` | Default design token values |
+| `figma-plugin/src/data/boilerplate-tokens.ts` | Default design token values (typography, spacing, shadows, borders, opacity, z-index, transitions, screens) |
+| `figma-plugin/src/data/design-system-templates.ts` | Variable templates per collection level, for every organizing principle |
+| `figma-plugin/src/data/organizing-principles.ts` | The 8 organizing principles — collections, modes, and which templates each uses |
+| `figma-plugin/src/data/boilerplate-{material,tailwind,spectrum,spectrum-2,apple-hig}.ts` | Per-principle token sets |
 
 ## Architecture
 

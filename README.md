@@ -4,7 +4,7 @@ A real-time bridge that enables AI agents to create, modify, and manipulate desi
 
 **Current Version:** 1.0.0 | **Commands:** 329 | **Workflows:** 11 slash commands | **Agents:** 14 | **Last Updated:** August 2026
 
-**[View Pipeline & Agent Workflows (FigJam)](https://www.figma.com/board/FlZ6wXhS4pwOaUJIDnGaRS/Bridge-to-Fig---Pipeline---Agent-Workflows?node-id=0-1&t=sc5z843n81FYYugn-1)** — Visual diagrams of all 9 core pipelines and 31 agent workflows
+**[View Pipeline & Agent Workflows (FigJam)](https://www.figma.com/board/FlZ6wXhS4pwOaUJIDnGaRS/Bridge-to-Fig---Pipeline---Agent-Workflows?node-id=0-1&t=sc5z843n81FYYugn-1)** — Visual diagrams of all 9 core pipelines and 14 agent workflows
 
 ## Overview
 
@@ -88,13 +88,13 @@ This makes `FIGMA_API_TOKEN` available to all Claude Code sessions across every 
 
 | Capability | Bridge to Fig | MCP Tools |
 |------------|--------------|-----------|
-| One-command design system | `createDesignSystem` creates 4-level hierarchy with 130+ variables | Must call individual CRUD operations 130+ times |
+| One-command design system | `createDesignSystem` creates 4-level hierarchy with 130+ variables, 200+ with `includeBoilerplate` | Must call individual CRUD operations 130+ times |
 | Automatic binding | `extractDesignTokens` tracks node→value maps, `createDesignSystem` binds during creation | No node tracking, no automatic binding |
 | Website extraction | Headless browser extracts computed CSS from live websites | Not available |
 | Color classification | Automatic primary/secondary/tertiary detection by saturation × frequency | Manual classification |
 | Color scale generation | 50-950 scales generated from any base color | Manual scale creation |
 | Conditional boilerplate | Only fills gaps — extracted values take priority over defaults | No boilerplate system |
-| Design System Organizing principles | 5 configurable hierarchy patterns (4-level, 3-level, Material, Tailwind) | Single flat structure |
+| Design System Organizing principles | 8 configurable hierarchy patterns (4-level, 3-level, 2-level, Material Design 3, Tailwind, Adobe Spectrum, Adobe Spectrum 2, Apple HIG) | Single flat structure |
 | Text range operations | 27 commands for character-level formatting | Single `set_text` (full replacement) |
 | FigJam diagrams | Sections, shapes, connectors with text measurement and position calculation | Not available |
 | 14 agent workflows | Pre-built multi-step pipelines with data flow between steps | Individual tool calls only |
@@ -174,7 +174,12 @@ curl "http://localhost:4001/results/{commandId}?wait=true"
 curl "http://localhost:4001/results/{commandId}"
 ```
 
-## Command Reference (329 Commands)
+## Command Reference
+
+The plugin implements 329 commands. The tables below cover 134 of them, grouped by category. No
+single document lists all 329; [`prompts/quick-ref.md`](prompts/quick-ref.md) has the widest
+coverage (177, one line each with payload shape), and
+[`prompts/figma-bridge.md`](prompts/figma-bridge.md) goes deepest on the 144 it documents.
 
 ### Node Creation (13 commands)
 
@@ -284,6 +289,8 @@ curl "http://localhost:4001/results/{commandId}"
 | `resetOverrides` | Reset instance overrides |
 | `swapInstance` | Swap instance to different component |
 | `detachInstance` | Detach instance from component |
+| `replaceComponent` | Swap every instance of one component for another in one call (accepts key, set key, node ID, or name; supports `dryRun`) |
+| `getInstanceMasters` | Resolve the main component for many instances in one call |
 
 ### Auto Layout & Constraints (7 commands)
 
