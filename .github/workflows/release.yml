@@ -67,6 +67,73 @@ jobs:
           if-no-files-found: error
 
   # ─────────────────────────────────────────────────────────
+  # Stage 1b: Package the Figma plugin (independent of the desktop build)
+  # ─────────────────────────────────────────────────────────
+  build-plugin:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Sets BRIDGE_RELEASE=1, which is the only thing that strips the version
+      # suffix from the plugin name. See docs/community-build.md.
+      - name: Build the plugin with release naming
+        run: pnpm build:plugin:release
+
+      # A plain `build:plugin` would ship a manifest named "Bridge to Fig v… (dev)",
+      # and enablePrivatePluginApi in a public build is a Community rejection.
+      - name: Verify the manifest is a release build
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST=figma-plugin/dist/manifest.json
+          NAME=$(jq -r '.name' "$MANIFEST")
+          ID=$(jq -r '.id' "$MANIFEST")
+          PRIVATE_API=$(jq -r 'has("enablePrivatePluginApi")' "$MANIFEST")
+
+          if [ "$NAME" != "Bridge to Fig" ]; then
+            echo "manifest name is \"$NAME\", expected \"Bridge to Fig\" — did BRIDGE_RELEASE get lost?"
+            exit 1
+          fi
+          if ! [[ "$ID" =~ ^[0-9]+$ ]]; then
+            echo "manifest id is \"$ID\", expected the numeric Figma-issued id"
+            exit 1
+          fi
+          if [ "$PRIVATE_API" != "false" ]; then
+            echo "enablePrivatePluginApi must not be set in a public build"
+            exit 1
+          fi
+          echo "manifest ok: $NAME ($ID)"
+
+      # Only these four files matter to Figma — ui.js is inlined into ui.html at
+      # build time and would just confuse anyone opening the archive.
+      - name: Package the plugin
+        run: |
+          cd figma-plugin/dist
+          zip -X ../../Bridge-to-Fig-Figma-Plugin.zip manifest.json code.js ui.html icon.svg
+          cd ../..
+          unzip -l Bridge-to-Fig-Figma-Plugin.zip
+
+      - name: Upload plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: figma-plugin
+          path: Bridge-to-Fig-Figma-Plugin.zip
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────
   # Stage 2: Build Tauri app per platform
   # ─────────────────────────────────────────────────────────
   build-tauri:
@@ -110,6 +177,12 @@ jobs:
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
+
+      # figma-plugin/dist is a build artifact and is gitignored, so it does not exist on a fresh
+      # checkout. Build it before Tauri compiles: the desktop app embeds the directory, so an
+      # installer built without this step ships with no plugin inside it.
+      - name: Build the Figma plugin for embedding
+        run: pnpm build:plugin:release
 
       - name: Download sidecar artifact
         uses: actions/download-artifact@v4
@@ -176,12 +249,78 @@ jobs:
           releaseBody: |
             See the [documentation](https://github.com/Brooksmade/Bridge-to-Fig#readme) for details.
 
+            **Two downloads, and you need both.** The desktop app runs the bridge server on your machine; the plugin runs inside Figma and talks to it.
+
+            - `Bridge-to-Fig-Windows.exe` / `Bridge-to-Fig-macOS.dmg` — the desktop app
+            - `Bridge-to-Fig-Figma-Plugin.zip` — the Figma plugin. Unzip it, then in Figma go to **Plugins → Development → Import plugin from manifest** and pick the `manifest.json` inside.
+
             > **Windows users:** You may see a SmartScreen warning — click "More info" then "Run anyway". The app is open-source and safe to install.
           releaseDraft: true
           prerelease: false
 
   # ─────────────────────────────────────────────────────────
-  # Stage 3: Rename release assets to user-friendly names
+  # Stage 3: Attach the Figma plugin bundle to the release
+  #
+  # The release is created by tauri-action in stage 2, so this has to wait for
+  # it even though the plugin itself builds independently.
+  # ─────────────────────────────────────────────────────────
+  attach-plugin:
+    needs: [build-plugin, build-tauri]
+    if: ${{ !cancelled() && needs.build-plugin.result == 'success' && needs.build-tauri.result != 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download plugin artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: figma-plugin
+
+      - name: Upload the plugin to the release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+          API="https://api.github.com/repos/${REPO}"
+          ASSET="Bridge-to-Fig-Figma-Plugin.zip"
+
+          # Draft releases aren't on /releases/tags/ — query all releases and filter
+          RELEASE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
+            "${API}/releases" | jq -c ".[] | select(.tag_name == \"${TAG}\")" | head -1)
+
+          if [ -z "${RELEASE}" ]; then
+            # A manual workflow_dispatch on a branch has no release to attach to.
+            # On a tag push there must be one, so treat that as a failure.
+            if [ "${{ github.ref_type }}" = "tag" ]; then
+              echo "No release found for tag ${TAG}"
+              exit 1
+            fi
+            echo "No release for ${TAG} (not a tag build) — skipping"
+            exit 0
+          fi
+
+          RELEASE_ID=$(echo "${RELEASE}" | jq -r '.id')
+          echo "Found release ID: ${RELEASE_ID} for tag ${TAG}"
+
+          # Re-runs would otherwise 422 on the duplicate name
+          EXISTING=$(echo "${RELEASE}" | jq -r --arg n "${ASSET}" '.assets[] | select(.name == $n) | .id')
+          if [ -n "${EXISTING}" ]; then
+            echo "Removing previous ${ASSET} (asset ${EXISTING})"
+            curl -sf -X DELETE -H "Authorization: token ${GITHUB_TOKEN}" \
+              "${API}/releases/assets/${EXISTING}" > /dev/null
+          fi
+
+          echo "Uploading ${ASSET} ($(wc -c < "${ASSET}") bytes)"
+          curl -sf -X POST \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Content-Type: application/zip" \
+            --data-binary "@${ASSET}" \
+            "https://uploads.github.com/repos/${REPO}/releases/${RELEASE_ID}/assets?name=${ASSET}" \
+            | jq -r '"Uploaded: " + .name + " (" + (.size|tostring) + " bytes)"'
+
+  # ─────────────────────────────────────────────────────────
+  # Stage 4: Rename release assets to user-friendly names
   # ─────────────────────────────────────────────────────────
   rename-assets:
     needs: build-tauri

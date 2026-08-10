@@ -72,6 +72,12 @@ pnpm build:plugin:release
 That sets `BRIDGE_RELEASE=1`, which is the only thing suppressing the version suffix. A plain
 `pnpm build:plugin` produces a dev-named plugin and must not be submitted.
 
+The `build-plugin` job in [`.github/workflows/release.yml`](../.github/workflows/release.yml) runs
+the same command on every tag, checks the resulting manifest (release name, numeric id, no
+`enablePrivatePluginApi`), and publishes `Bridge-to-Fig-Figma-Plugin.zip` on the release next to
+the desktop installers. The archive holds only `manifest.json`, `code.js`, `ui.html`, and
+`icon.svg` — `ui.js` is inlined into `ui.html` at build time and is not shipped.
+
 ## Download links in the plugin UI
 
 The download button in [`figma-plugin/src/ui.ts`](../figma-plugin/src/ui.ts) points at
