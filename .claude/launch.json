@@ -5,7 +5,8 @@
       "name": "Bridge Server (dev)",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@bridge-to-fig/server", "dev"],
-      "port": 4001
+      "port": 4001,
+      "autoPort": false
     },
     {
       "name": "Figma Plugin (watch)",

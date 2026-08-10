@@ -1,6 +1,29 @@
 import type { FigmaCommand, CommandResult } from './types';
 import { successResult, errorResult } from './types';
 
+// Figma's manifest restricts this plugin to http://localhost:4001, so remote images are fetched
+// through the bridge server's /proxy endpoint rather than directly. Widening `allowedDomains` to
+// "*" would work too, but it puts a "can access any URL" warning on the Community listing.
+// See publish/PUBLISHING.md.
+var BRIDGE_URL = 'http://localhost:4001';
+
+async function fetchRemoteBytes(url: string): Promise<Uint8Array> {
+  var response = await fetch(BRIDGE_URL + '/proxy?url=' + encodeURIComponent(url));
+
+  if (!response.ok) {
+    var detail = '';
+    try {
+      var body = (await response.json()) as { error?: string };
+      if (body && body.error) detail = ': ' + body.error;
+    } catch {
+      /* non-JSON error body — the status code is enough */
+    }
+    throw new Error('Failed to fetch image (' + response.status + ')' + detail);
+  }
+
+  return new Uint8Array(await response.arrayBuffer());
+}
+
 // Create an image from base64 data
 export async function handleCreateImage(command: FigmaCommand): Promise<CommandResult> {
   var payload = command.payload as {
@@ -100,14 +123,8 @@ export async function handleCreateImageFromUrl(command: FigmaCommand): Promise<C
   }
 
   try {
-    // Fetch the image
-    var response = await fetch(payload.url);
-    if (!response.ok) {
-      return errorResult(command.id, 'Failed to fetch image: ' + response.status);
-    }
-
-    var arrayBuffer = await response.arrayBuffer();
-    var bytes = new Uint8Array(arrayBuffer);
+    // Fetch the image through the bridge server (see fetchRemoteBytes)
+    var bytes = await fetchRemoteBytes(payload.url);
 
     // Create the image
     var image = figma.createImage(bytes);
@@ -246,12 +263,8 @@ export async function handleReplaceImage(command: FigmaCommand): Promise<Command
     var bytes: Uint8Array;
 
     if (payload.url) {
-      var response = await fetch(payload.url);
-      if (!response.ok) {
-        return errorResult(command.id, 'Failed to fetch image: ' + response.status);
-      }
-      var arrayBuffer = await response.arrayBuffer();
-      bytes = new Uint8Array(arrayBuffer);
+      // Fetched through the bridge server (see fetchRemoteBytes)
+      bytes = await fetchRemoteBytes(payload.url);
     } else {
       if (typeof figma.base64Decode === 'function') {
         var decoded = figma.base64Decode(payload.data!);

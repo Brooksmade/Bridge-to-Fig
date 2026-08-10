@@ -179,20 +179,26 @@ const detectedOS = detectOS();
 const osLabels: Record<OSType, string> = {
   'windows':   'Download for Windows',
   'mac-arm':   'Download for macOS',
-  'mac-intel': 'Download for macOS (Intel)',
-  'linux':     'Download for Linux',
-  'unknown':   'Download',
+  'mac-intel': 'Download for macOS',
+  'linux':     'View releases',
+  'unknown':   'View releases',
 };
 downloadBtnEl.textContent = osLabels[detectedOS];
 
-// Direct download URLs — no API call needed, works in Figma's sandbox
+// Direct download URLs — no API call needed, works in Figma's sandbox.
+// These filenames MUST match the rename map in .github/workflows/release.yml (the "rename-assets"
+// job). A mismatch is a silent 404 on the one button new users press first.
+const RELEASES_PAGE = 'https://github.com/Brooksmade/Bridge-to-Fig/releases/latest';
 const DOWNLOAD_BASE = 'https://github.com/Brooksmade/Bridge-to-Fig/releases/latest/download';
 const downloadUrls: Record<OSType, string> = {
   'windows':   `${DOWNLOAD_BASE}/Bridge-to-Fig-Windows.exe`,
-  'mac-arm':   `${DOWNLOAD_BASE}/Bridge-to-Fig-macOS-ARM64.dmg`,
-  'mac-intel': `${DOWNLOAD_BASE}/Bridge-to-Fig-macOS-Intel.dmg`,
-  'linux':     `${DOWNLOAD_BASE}/Bridge-to-Fig-Linux.deb`,
-  'unknown':   'https://github.com/Brooksmade/Bridge-to-Fig/releases',
+  'mac-arm':   `${DOWNLOAD_BASE}/Bridge-to-Fig-macOS.dmg`,
+  // The macOS build is an aarch64 .dmg. Intel Macs get sent to the releases page rather than
+  // handed a binary that will not launch.
+  'mac-intel': RELEASES_PAGE,
+  // No Linux artifact is produced yet — send people to the releases page instead of a dead link.
+  'linux':     RELEASES_PAGE,
+  'unknown':   RELEASES_PAGE,
 };
 
 downloadBtnEl.addEventListener('click', () => {

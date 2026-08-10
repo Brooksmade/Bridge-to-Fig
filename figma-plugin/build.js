@@ -70,22 +70,26 @@ const MANIFEST = {
   // make the Slides and Buzz command handlers reachable in those editors.
   editorType: ['figma', 'figjam', 'dev', 'slides', 'buzz'],
   permissions: ['teamlibrary'],
-  enablePrivatePluginApi: true,
+  // NOTE: `enablePrivatePluginApi` is deliberately absent. It is only valid for plugins published
+  // privately inside a Figma organization, and the Community rejects public plugins that set it.
+  // See publish/PUBLISHING.md for the three commands that were downgraded as a result.
   networkAccess: {
     allowedDomains: ['http://localhost:4001'],
-    reasoning: 'Required to communicate with the local Bridge to Fig server for real-time design manipulation',
+    reasoning:
+      'Bridge to Fig talks to a companion app running locally on your own machine at localhost:4001. Nothing is sent to a remote server, and no data leaves your computer.',
   },
 };
 
 function writeManifest() {
-  // Inject APP_VERSION from version.ts into the displayed plugin name.
+  // The published name must NOT carry a version — Community shows the manifest name verbatim and a
+  // hardcoded version goes stale on the next release. Local dev builds append it for convenience.
   const versionSrc = fs.readFileSync('src/version.ts', 'utf-8');
   const match = versionSrc.match(/APP_VERSION\s*=\s*'([^']+)'/);
   const version = match ? match[1] : null;
 
   const manifest = { ...MANIFEST };
-  if (version) {
-    manifest.name = `Bridge to Fig v${version}`;
+  if (version && process.env.BRIDGE_RELEASE !== '1') {
+    manifest.name = `Bridge to Fig v${version} (dev)`;
   }
   fs.writeFileSync('dist/manifest.json', JSON.stringify(manifest, null, 2));
   fs.copyFileSync('src/icon.svg', 'dist/icon.svg');

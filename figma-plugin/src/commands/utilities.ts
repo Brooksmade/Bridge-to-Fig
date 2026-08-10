@@ -55,12 +55,22 @@ export async function handleTriggerUndo(command: FigmaCommand): Promise<CommandR
   });
 }
 
-// Save to version history
+// Save to version history.
+// `figma.saveVersionHistoryAsync` is a private-plugin API. The Community build cannot set
+// `enablePrivatePluginApi`, so the call is unavailable there — fail with a clear message instead of
+// a confusing runtime TypeError. See publish/PUBLISHING.md.
 export async function handleSaveVersion(command: FigmaCommand): Promise<CommandResult> {
   var payload = command.payload as {
     title?: string;
     description?: string;
   };
+
+  if (typeof (figma as { saveVersionHistoryAsync?: unknown }).saveVersionHistoryAsync !== 'function') {
+    return errorResult(
+      command.id,
+      'saveVersion is unavailable in the published plugin. Figma restricts version-history writes to plugins published privately inside an organization. Save a version manually, or run Bridge to Fig as a local development plugin.'
+    );
+  }
 
   try {
     await figma.saveVersionHistoryAsync(
@@ -129,11 +139,18 @@ export async function handleGetActiveUsers(command: FigmaCommand): Promise<Comma
   });
 }
 
-// Get file info
+// Get file info.
+// `figma.fileKey` is a private-plugin API and is undefined in the published Community build, by
+// design — Figma treats the file key as sensitive. `fileKeyAvailable` lets callers tell "no key"
+// apart from "key is null", so an agent can ask the user to paste the file link instead of
+// silently assuming it is in the wrong file.
 export async function handleGetFileInfo(command: FigmaCommand): Promise<CommandResult> {
+  var fileKey = (figma as { fileKey?: string }).fileKey ?? null;
+
   return successResult(command.id, {
     data: {
-      fileKey: figma.fileKey ?? null,
+      fileKey: fileKey,
+      fileKeyAvailable: fileKey !== null,
       editorType: figma.editorType,
       apiVersion: figma.apiVersion,
       pluginId: figma.pluginId,
@@ -167,8 +184,17 @@ export async function handleOpenExternal(command: FigmaCommand): Promise<Command
   }
 }
 
-// Get/Set file thumbnail
+// Get/Set file thumbnail.
+// Both thumbnail APIs are private-plugin APIs, unavailable in the published Community build.
+// See publish/PUBLISHING.md.
+var THUMBNAIL_UNAVAILABLE =
+  'File thumbnail commands are unavailable in the published plugin. Figma restricts them to plugins published privately inside an organization. Set the thumbnail manually (right-click a frame › Set as thumbnail), or run Bridge to Fig as a local development plugin.';
+
 export async function handleGetFileThumbnail(command: FigmaCommand): Promise<CommandResult> {
+  if (typeof (figma as { getFileThumbnailNodeAsync?: unknown }).getFileThumbnailNodeAsync !== 'function') {
+    return errorResult(command.id, THUMBNAIL_UNAVAILABLE);
+  }
+
   try {
     var thumbnailNode = await figma.getFileThumbnailNodeAsync();
 
@@ -196,6 +222,10 @@ export async function handleGetFileThumbnail(command: FigmaCommand): Promise<Com
 }
 
 export async function handleSetFileThumbnail(command: FigmaCommand): Promise<CommandResult> {
+  if (typeof (figma as { setFileThumbnailNodeAsync?: unknown }).setFileThumbnailNodeAsync !== 'function') {
+    return errorResult(command.id, THUMBNAIL_UNAVAILABLE);
+  }
+
   if (!command.target) {
     return errorResult(command.id, 'Target node ID is required');
   }

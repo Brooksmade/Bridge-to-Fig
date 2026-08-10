@@ -1,6 +1,6 @@
 {
   "name": "bridge-to-fig",
-  "version": "1.3.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Real-time bridge between AI agents and Figma. Workspace root.",
   "scripts": {
@@ -8,7 +8,8 @@
     "predev": "bash scripts/check-prereqs.sh && pnpm --filter @bridge-to-fig/shared build",
     "dev": "pnpm --filter @bridge-to-fig/server dev",
     "build": "bash scripts/check-prereqs.sh && pnpm -r build",
-    "build:plugin": "pnpm --filter @bridge-to-fig/shared build && pnpm --filter @bridge-to-fig/plugin build"
+    "build:plugin": "pnpm --filter @bridge-to-fig/shared build && pnpm --filter @bridge-to-fig/plugin build",
+    "build:plugin:release": "BRIDGE_RELEASE=1 pnpm --filter @bridge-to-fig/shared build && BRIDGE_RELEASE=1 pnpm --filter @bridge-to-fig/plugin build"
   },
   "engines": {
     "node": ">=18"

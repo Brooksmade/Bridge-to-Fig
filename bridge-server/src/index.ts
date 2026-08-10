@@ -13,6 +13,7 @@ import { createServer } from 'http';
 import commandsRouter from './routes/commands.js';
 import resultsRouter from './routes/results.js';
 import logsRouter from './routes/logs.js';
+import proxyRouter from './routes/proxy.js';
 import { setupWebSocket, getConnectedClients } from './services/websocket.js';
 import { queue } from './services/queue.js';
 import { startUpdateChecker, getLatestRelease, stopUpdateChecker } from './services/updateChecker.js';
@@ -37,6 +38,7 @@ app.use((req, _res, next) => {
 app.use('/commands', commandsRouter);
 app.use('/results', resultsRouter);
 app.use('/logs', logsRouter);
+app.use('/proxy', proxyRouter);
 
 // Health check endpoint
 app.get('/health', (_req, res) => {
