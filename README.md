@@ -57,20 +57,23 @@ To build all packages for production: `pnpm build`.
 
 ### 4. Install the Figma Plugin
 
-If you are not working on the plugin itself, download `Bridge-to-Fig-Figma-Plugin.zip` from the
-[latest release](https://github.com/Brooksmade/Bridge-to-Fig/releases/latest) and unzip it — every
-release ships the built plugin alongside the desktop app.
+There are three ways to get the plugin files. Pick one:
 
-To build it from source instead (needed once, and after any plugin code change):
+- **Already installed the desktop app?** You have them. The app writes the plugin to
+  `~/.bridge-to-fig/figma-plugin` on every launch, and its dashboard has a **Show folder** button
+  that opens it. This path also keeps the plugin current — an app update refreshes those files.
+- **Otherwise**, download `Bridge-to-Fig-Figma-Plugin.zip` from the
+  [latest release](https://github.com/Brooksmade/Bridge-to-Fig/releases/latest) and unzip it.
+- **Working on the plugin itself?** Build it, once and after every plugin code change:
 
-```bash
-pnpm build:plugin
-```
+  ```bash
+  pnpm build:plugin
+  ```
 
 Then in Figma:
 
 1. Go to **Plugins → Development → Import plugin from manifest**
-2. Select the `manifest.json` — from the unzipped download, or at `figma-plugin/dist/manifest.json` if you built it
+2. Select the `manifest.json` — in `~/.bridge-to-fig/figma-plugin`, in the unzipped download, or at `figma-plugin/dist/manifest.json` if you built it
 3. Open the plugin from **Plugins → Development → Bridge to Fig**
 
 The plugin UI will show a green "Connected" status when successfully connected to the bridge server.
