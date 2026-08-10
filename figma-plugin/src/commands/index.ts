@@ -717,6 +717,8 @@ import {
 import { handleGetFocusedNode, handleSetFocusedNode } from './dev-mode';
 import { handleReplaceComponent } from './replace-component';
 import { handleGetInstanceMasters } from './instance-masters';
+import { handleGetBoundVariableUsage } from './variable-usage';
+import { handleRebindVariablesById } from './rebind-by-id';
 
 // Main command router
 export async function executeCommand(command: FigmaCommand): Promise<CommandResult> {
@@ -1698,6 +1700,14 @@ export async function executeCommand(command: FigmaCommand): Promise<CommandResu
       // Bulk master inventory (one round trip instead of per-instance getMainComponent loops)
       case 'getInstanceMasters':
         return handleGetInstanceMasters(command);
+
+      // Bulk variable-binding inventory (one round trip)
+      case 'getBoundVariableUsage':
+        return handleGetBoundVariableUsage(command);
+
+      // Bulk variable migration: rebind all consumers of mapped variables in one walk
+      case 'rebindVariablesById':
+        return handleRebindVariablesById(command);
 
       default:
         return errorResult(command.id, `Unknown command type: ${commandType}`);
