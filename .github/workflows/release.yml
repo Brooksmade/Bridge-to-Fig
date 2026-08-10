@@ -266,7 +266,11 @@ jobs:
   # ─────────────────────────────────────────────────────────
   attach-plugin:
     needs: [build-plugin, build-tauri]
-    if: ${{ !cancelled() && needs.build-plugin.result == 'success' && needs.build-tauri.result != 'failure' }}
+    # Deliberately does NOT require build-tauri to succeed. build-tauri is a matrix, so one platform
+    # failing marks the whole need 'failure' even though the other already created the release and
+    # uploaded its installers. The plugin is platform-independent and should land on that release
+    # regardless. It still waits on build-tauri, because that is what creates the release.
+    if: ${{ !cancelled() && needs.build-plugin.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download plugin artifact
@@ -323,8 +327,13 @@ jobs:
   # Stage 4: Rename release assets to user-friendly names
   # ─────────────────────────────────────────────────────────
   rename-assets:
-    needs: build-tauri
-    if: ${{ !cancelled() && needs.build-tauri.result != 'failure' }}
+    # Runs after attach-plugin so a single pass sees every asset, including the plugin zip.
+    needs: [build-tauri, attach-plugin]
+    # Same reasoning as attach-plugin: one platform failing must not leave the platform that
+    # succeeded with raw Tauri filenames. The rename map is what produces the stable
+    # /releases/latest/download/ names the plugin's download button links to, so skipping it
+    # silently 404s that button. Assets that are not present are simply not renamed.
+    if: ${{ !cancelled() && needs.build-tauri.result != 'skipped' }}
     runs-on: ubuntu-latest
     steps:
       - name: Rename release assets
