@@ -4,7 +4,7 @@ import { successResult, errorResult } from './types';
 // Figma's manifest restricts this plugin to http://localhost:4001, so remote images are fetched
 // through the bridge server's /proxy endpoint rather than directly. Widening `allowedDomains` to
 // "*" would work too, but it puts a "can access any URL" warning on the Community listing.
-// See publish/PUBLISHING.md.
+// See docs/community-build.md.
 var BRIDGE_URL = 'http://localhost:4001';
 
 async function fetchRemoteBytes(url: string): Promise<Uint8Array> {

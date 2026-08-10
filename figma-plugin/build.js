@@ -72,7 +72,7 @@ const MANIFEST = {
   permissions: ['teamlibrary'],
   // NOTE: `enablePrivatePluginApi` is deliberately absent. It is only valid for plugins published
   // privately inside a Figma organization, and the Community rejects public plugins that set it.
-  // See publish/PUBLISHING.md for the three commands that were downgraded as a result.
+  // See docs/community-build.md for the three commands that were downgraded as a result.
   networkAccess: {
     allowedDomains: ['http://localhost:4001'],
     reasoning:

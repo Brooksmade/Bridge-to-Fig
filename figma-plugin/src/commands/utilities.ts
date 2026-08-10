@@ -58,7 +58,7 @@ export async function handleTriggerUndo(command: FigmaCommand): Promise<CommandR
 // Save to version history.
 // `figma.saveVersionHistoryAsync` is a private-plugin API. The Community build cannot set
 // `enablePrivatePluginApi`, so the call is unavailable there — fail with a clear message instead of
-// a confusing runtime TypeError. See publish/PUBLISHING.md.
+// a confusing runtime TypeError. See docs/community-build.md.
 export async function handleSaveVersion(command: FigmaCommand): Promise<CommandResult> {
   var payload = command.payload as {
     title?: string;
@@ -186,7 +186,7 @@ export async function handleOpenExternal(command: FigmaCommand): Promise<Command
 
 // Get/Set file thumbnail.
 // Both thumbnail APIs are private-plugin APIs, unavailable in the published Community build.
-// See publish/PUBLISHING.md.
+// See docs/community-build.md.
 var THUMBNAIL_UNAVAILABLE =
   'File thumbnail commands are unavailable in the published plugin. Figma restricts them to plugins published privately inside an organization. Set the thumbnail manually (right-click a frame › Set as thumbnail), or run Bridge to Fig as a local development plugin.';
 

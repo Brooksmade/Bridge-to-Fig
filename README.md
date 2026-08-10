@@ -2,7 +2,7 @@
 
 A real-time bridge that enables AI agents to create, modify, and manipulate design elements directly on Figma canvases through natural language commands.
 
-**Current Version:** 1.3.0 | **Commands:** 136+ | **Workflows:** 9 slash commands | **Agents:** 31 | **Last Updated:** February 2026
+**Current Version:** 1.0.0 | **Commands:** 329 | **Workflows:** 11 slash commands | **Agents:** 14 | **Last Updated:** August 2026
 
 **[View Pipeline & Agent Workflows (FigJam)](https://www.figma.com/board/FlZ6wXhS4pwOaUJIDnGaRS/Bridge-to-Fig---Pipeline---Agent-Workflows?node-id=0-1&t=sc5z843n81FYYugn-1)** — Visual diagrams of all 9 core pipelines and 31 agent workflows
 
@@ -97,9 +97,9 @@ This makes `FIGMA_API_TOKEN` available to all Claude Code sessions across every 
 | Design System Organizing principles | 5 configurable hierarchy patterns (4-level, 3-level, Material, Tailwind) | Single flat structure |
 | Text range operations | 27 commands for character-level formatting | Single `set_text` (full replacement) |
 | FigJam diagrams | Sections, shapes, connectors with text measurement and position calculation | Not available |
-| 30 agent workflows | Pre-built multi-step pipelines with data flow between steps | Individual tool calls only |
+| 14 agent workflows | Pre-built multi-step pipelines with data flow between steps | Individual tool calls only |
 | Design system validation | Checks structure, modes, naming, alias chains | Not available |
-| 9 slash commands | One-command workflows: `/design-system`, `/accessibility-audit`, `/figjam-workflow`, etc. | Not available |
+| 11 slash commands | One-command workflows: `/design-system-figma-file`, `/accessibility-audit`, `/figjam-workflow`, etc. | Not available |
 
 ## Workflow Slash Commands
 
@@ -174,7 +174,7 @@ curl "http://localhost:4001/results/{commandId}?wait=true"
 curl "http://localhost:4001/results/{commandId}"
 ```
 
-## Command Reference (136+ Commands)
+## Command Reference (329 Commands)
 
 ### Node Creation (13 commands)
 

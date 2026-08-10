@@ -179,7 +179,8 @@ const detectedOS = detectOS();
 const osLabels: Record<OSType, string> = {
   'windows':   'Download for Windows',
   'mac-arm':   'Download for macOS',
-  'mac-intel': 'Download for macOS',
+  // No artifact ships for these — the label must not promise a download the URL cannot deliver.
+  'mac-intel': 'View releases',
   'linux':     'View releases',
   'unknown':   'View releases',
 };

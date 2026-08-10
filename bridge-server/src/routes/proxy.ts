@@ -5,7 +5,7 @@ const router: RouterType = Router();
 // Figma's manifest only allows the plugin to reach http://localhost:4001, and widening
 // `allowedDomains` to "*" would put a "can access any URL" warning on the Community listing. So
 // remote image fetches are proxied here instead: the plugin asks the local server, the server makes
-// the outbound request. See publish/PUBLISHING.md.
+// the outbound request. See docs/community-build.md.
 
 const MAX_BYTES = 25 * 1024 * 1024;
 const TIMEOUT_MS = 30_000;

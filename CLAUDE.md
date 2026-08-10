@@ -284,6 +284,7 @@ pnpm build:plugin
 | `prompts/website-design-system.md` | Website extraction workflow |
 | `prompts/gotchas.md` | **Gotchas reference** - every known pitfall with WRONG/CORRECT examples |
 | `prompts/code-connect.md` | **Code Connect** - Figma ↔ code component mapping system |
+| `docs/community-build.md` | **Community build** - how the published plugin differs from a dev build (no private API, proxied image fetches, release build command) |
 | `scripts/` | **Reusable script templates** - JSON payload templates for common operations |
 | `.claude/agents/*.md` | AI agent definitions (14 agents; retired originals in `agents-archive/`) |
 | `.figma/code-connect.json` | Component mapping file (Figma ↔ code) |
