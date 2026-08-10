@@ -61,7 +61,9 @@ async function buildUI() {
 // of accidentally importing an unbuilt source manifest into Figma.
 const MANIFEST = {
   name: 'Bridge to Fig',
-  id: 'bridge-to-fig',
+  // Issued by Figma when the plugin was registered. It is the identity Figma matches on, so
+  // changing it makes this a different plugin — installs and published versions do not follow.
+  id: '1668702796032787499',
   api: '1.0.0',
   main: 'code.js',
   ui: 'ui.html',
