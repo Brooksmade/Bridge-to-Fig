@@ -36,6 +36,7 @@ function showDashboard() {
   document.getElementById('setup-wizard').style.display = 'none';
   document.getElementById('dashboard').style.display = '';
   refreshClaudeStatus();
+  refreshFigmaPluginStatus();
 }
 
 function goToScreen(id) {
@@ -234,6 +235,10 @@ const claudeDot = document.getElementById('claude-dot');
 const claudeText = document.getElementById('claude-text');
 const claudeDetail = document.getElementById('claude-detail');
 const btnReinstall = document.getElementById('btn-reinstall-claude');
+const pluginInstallDot = document.getElementById('plugin-install-dot');
+const pluginInstallText = document.getElementById('plugin-install-text');
+const pluginInstallDetail = document.getElementById('plugin-install-detail');
+const btnRevealPlugin = document.getElementById('btn-reveal-plugin');
 
 // Update server status indicators
 function setServerStatus(status) {
@@ -453,6 +458,67 @@ async function refreshClaudeStatus() {
     claudeText.textContent = 'Error';
     claudeDetail.textContent = String(err);
   }
+}
+
+// ── Figma plugin status (dashboard card) ──
+
+// The plugin ships inside this app and is extracted to ~/.bridge-to-fig/figma-plugin on launch.
+// The user still has to import it into Figma once, by path — Figma has no API for that — so this
+// card's whole job is handing them that path.
+// Whether the plugin files are already on disk. The button does two different jobs depending on
+// this, so the click handler reads it rather than guessing from the label.
+let figmaPluginExtracted = false;
+
+async function refreshFigmaPluginStatus() {
+  if (!window.__TAURI__) return;
+  try {
+    const info = await window.__TAURI__.core.invoke('get_figma_plugin_info');
+    figmaPluginExtracted = Boolean(info.installed);
+
+    if (info.installed) {
+      pluginInstallDot.className = 'status-dot connected';
+      pluginInstallText.textContent = 'Ready to import';
+      pluginInstallDetail.textContent = info.manifestPath;
+      btnRevealPlugin.textContent = 'Show folder';
+      btnRevealPlugin.disabled = false;
+    } else if (info.bundled) {
+      pluginInstallDot.className = 'status-dot waiting';
+      pluginInstallText.textContent = 'Not extracted';
+      pluginInstallDetail.textContent = 'Click Install to write the plugin files to disk';
+      btnRevealPlugin.textContent = 'Install';
+      btnRevealPlugin.disabled = false;
+    } else {
+      pluginInstallDot.className = 'status-dot';
+      pluginInstallText.textContent = 'Not bundled';
+      pluginInstallDetail.textContent = 'This build shipped without the plugin files';
+      btnRevealPlugin.disabled = true;
+    }
+  } catch (err) {
+    figmaPluginExtracted = false;
+    pluginInstallDot.className = 'status-dot';
+    pluginInstallText.textContent = 'Error';
+    pluginInstallDetail.textContent = String(err);
+  }
+}
+
+if (btnRevealPlugin) {
+  btnRevealPlugin.addEventListener('click', async () => {
+    if (!window.__TAURI__) return;
+    try {
+      // Two states, two jobs: write the files when they are missing, open the folder when they
+      // are already there. Opening Finder on a button labelled "Install" would be a surprise.
+      if (figmaPluginExtracted) {
+        await window.__TAURI__.core.invoke('reveal_figma_plugin');
+      } else {
+        await window.__TAURI__.core.invoke('install_figma_plugin');
+      }
+      await refreshFigmaPluginStatus();
+    } catch (err) {
+      pluginInstallDot.className = 'status-dot';
+      pluginInstallText.textContent = 'Error';
+      pluginInstallDetail.textContent = String(err);
+    }
+  });
 }
 
 // ── Global function for tray menu ──

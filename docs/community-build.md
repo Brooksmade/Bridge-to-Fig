@@ -78,6 +78,30 @@ the same command on every tag, checks the resulting manifest (release name, nume
 the desktop installers. The archive holds only `manifest.json`, `code.js`, `ui.html`, and
 `icon.svg` — `ui.js` is inlined into `ui.html` at build time and is not shipped.
 
+## The desktop app ships the plugin
+
+Until the Community listing is live, users get the plugin from the installer rather than from a
+clone. `desktop/src-tauri/src/lib.rs` embeds `figma-plugin/dist` with `include_dir!` and extracts
+it to `~/.bridge-to-fig/figma-plugin` on every launch. Refreshing on each launch is what makes an
+app update also update the plugin: Figma re-reads the imported path each time the plugin runs, so
+the user never re-imports.
+
+Two consequences to keep in mind when touching the build:
+
+- **`include_dir!` is compile-time and hard-errors on a missing directory.** `figma-plugin/dist` is
+  gitignored, so `desktop/src-tauri/build.rs` creates it if absent. That keeps a plugin-less
+  `cargo build` compiling; the app detects the empty case at runtime and the dashboard reports
+  "Not bundled".
+- **A release build must run `pnpm build:plugin:release` before Tauri compiles**, or the installer
+  ships with an empty plugin folder. The `build-tauri` job does this in its "Build the Figma plugin
+  for embedding" step. Do not reorder it after the Tauri build.
+
+The dashboard's **Figma plugin** card shows the extracted path and reveals the folder in Finder or
+Explorer, because Figma has no API for installing a plugin and the manual import needs that path.
+Backed by the `get_figma_plugin_info`, `install_figma_plugin`, and `reveal_figma_plugin` commands;
+`reveal_figma_plugin` needs the `shell:allow-open` permission already present in
+`capabilities/default.json`.
+
 ## Download links in the plugin UI
 
 The download button in [`figma-plugin/src/ui.ts`](../figma-plugin/src/ui.ts) points at

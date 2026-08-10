@@ -27,6 +27,17 @@ static COMMANDS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../.claude/
 static CLAUDE_PROMPTS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../.claude/prompts");
 static ROOT_PROMPTS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../prompts");
 
+// ── Embedded Figma plugin ─────────────────────────────────────────────────
+
+// The built plugin ships inside the installer so users never have to clone the repo or run a
+// build to get it. It is extracted to ~/.bridge-to-fig/figma-plugin on launch, and the user
+// points Figma's "Import plugin from manifest" at the manifest.json in there.
+//
+// build.rs creates this directory if it is missing, so a `cargo build` that runs before
+// `pnpm build:plugin` still compiles. A RELEASE build must run `pnpm build:plugin:release`
+// first or the app ships with no plugin. See .github/workflows/release.yml.
+static FIGMA_PLUGIN: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../figma-plugin/dist");
+
 // ── Short CLAUDE.md template (replaces full 357-line embed) ───────────────
 
 const CLAUDE_MD_SHORT_TEMPLATE: &str = r#"# Bridge to Fig
@@ -208,6 +219,81 @@ fn extract_dir_to(dir: &Dir, base: &Path) -> Result<(), String> {
         extract_dir_to(subdir, base)?;
     }
     Ok(())
+}
+
+// ── Figma plugin extraction ───────────────────────────────────────────────
+
+/// Where the bundled Figma plugin is written on disk.
+fn figma_plugin_dir() -> Result<PathBuf, String> {
+    Ok(get_home_dir()?.join(".bridge-to-fig").join("figma-plugin"))
+}
+
+/// Write the bundled plugin to disk, overwriting whatever is there.
+///
+/// Overwriting is deliberate: Figma imports a plugin by path and re-reads those files every time
+/// it runs, so refreshing them in place is how a user gets the new plugin after an app update
+/// without re-importing anything.
+fn extract_figma_plugin() -> Result<PathBuf, String> {
+    if count_embedded_files(&FIGMA_PLUGIN) == 0 {
+        return Err(
+            "This build shipped without the Figma plugin files. Build the plugin with `pnpm build:plugin` and rebuild the app."
+                .to_string(),
+        );
+    }
+
+    let dir = figma_plugin_dir()?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Create {}: {}", dir.display(), e))?;
+    extract_dir_to(&FIGMA_PLUGIN, &dir)?;
+
+    let manifest = dir.join("manifest.json");
+    if !manifest.exists() {
+        return Err(format!(
+            "Extracted the plugin to {} but manifest.json is missing",
+            dir.display()
+        ));
+    }
+
+    Ok(dir)
+}
+
+/// Report where the plugin is and whether it is ready to import.
+#[tauri::command]
+fn get_figma_plugin_info() -> Result<serde_json::Value, String> {
+    let dir = figma_plugin_dir()?;
+    let manifest = dir.join("manifest.json");
+
+    Ok(serde_json::json!({
+        "dir": dir.to_string_lossy(),
+        "manifestPath": manifest.to_string_lossy(),
+        "installed": manifest.exists(),
+        "bundled": count_embedded_files(&FIGMA_PLUGIN) > 0,
+    }))
+}
+
+/// Re-extract the plugin on demand, for the dashboard's Reinstall button.
+#[tauri::command]
+fn install_figma_plugin() -> Result<serde_json::Value, String> {
+    let dir = extract_figma_plugin()?;
+    Ok(serde_json::json!({
+        "dir": dir.to_string_lossy(),
+        "manifestPath": dir.join("manifest.json").to_string_lossy(),
+        "installed": true,
+    }))
+}
+
+/// Open the plugin folder in Finder / Explorer so the user can point Figma's file picker at it.
+#[tauri::command]
+fn reveal_figma_plugin(app: tauri::AppHandle) -> Result<String, String> {
+    let dir = figma_plugin_dir()?;
+    if !dir.exists() {
+        extract_figma_plugin()?;
+    }
+
+    let path = dir.to_string_lossy().to_string();
+    app.shell()
+        .open(path.as_str(), None)
+        .map_err(|e| format!("Could not open {}: {}", path, e))?;
+    Ok(path)
 }
 
 /// Count files recursively in an embedded directory
@@ -601,9 +687,21 @@ pub fn run() {
             install_claude_files,
             pick_folder,
             respawn_bridge_server,
+            get_figma_plugin_info,
+            install_figma_plugin,
+            reveal_figma_plugin,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
+
+            // === Refresh the bundled Figma plugin on every launch ===
+            // Cheap (a handful of small files) and it means an app update also updates the
+            // plugin, with no re-import in Figma. Never fatal: the app is still useful if this
+            // fails, and the dashboard surfaces the state.
+            match extract_figma_plugin() {
+                Ok(dir) => println!("[Plugin] Figma plugin ready at {}", dir.display()),
+                Err(e) => eprintln!("[Plugin] Could not extract the Figma plugin: {}", e),
+            }
 
             // === Auto-start: enable by default on first run ===
             // Uses LaunchAgent on macOS (plist in ~/Library/LaunchAgents/)
