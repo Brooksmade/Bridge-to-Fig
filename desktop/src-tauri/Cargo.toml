@@ -1,6 +1,6 @@
 [package]
 name = "bridge-to-fig"
-version = "1.0.1"
+version = "1.0.2"
 description = "Desktop companion app for Bridge to Fig"
 authors = ["Brooksmade"]
 license = "MIT"
