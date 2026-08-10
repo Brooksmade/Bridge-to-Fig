@@ -290,6 +290,10 @@ fn reveal_figma_plugin(app: tauri::AppHandle) -> Result<String, String> {
     }
 
     let path = dir.to_string_lossy().to_string();
+    // `Shell::open` is deprecated in favour of tauri-plugin-opener. It still works, and switching
+    // means a new dependency, a new plugin init, and an `opener:allow-open-path` permission — so
+    // it is worth doing as its own change rather than folded in here. This is the only call site.
+    #[allow(deprecated)]
     app.shell()
         .open(path.as_str(), None)
         .map_err(|e| format!("Could not open {}: {}", path, e))?;
