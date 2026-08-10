@@ -1,0 +1,146 @@
+name: CI
+
+# The release workflow only runs on a tag, so before this existed a break in the plugin
+# packaging or in the desktop app's Rust surfaced for the first time mid-release. These jobs
+# run the same steps on every push.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # ─────────────────────────────────────────────────────────
+  # TypeScript packages and the Figma plugin bundle
+  # ─────────────────────────────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all packages
+        run: pnpm build
+
+      # Same command and same checks the release workflow runs, so a manifest regression is
+      # caught here rather than on a tag.
+      - name: Build the plugin with release naming
+        run: pnpm build:plugin:release
+
+      - name: Verify the manifest is a release build
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST=figma-plugin/dist/manifest.json
+          NAME=$(jq -r '.name' "$MANIFEST")
+          ID=$(jq -r '.id' "$MANIFEST")
+          PRIVATE_API=$(jq -r 'has("enablePrivatePluginApi")' "$MANIFEST")
+
+          if [ "$NAME" != "Bridge to Fig" ]; then
+            echo "manifest name is \"$NAME\", expected \"Bridge to Fig\" — did BRIDGE_RELEASE get lost?"
+            exit 1
+          fi
+          if ! [[ "$ID" =~ ^[0-9]+$ ]]; then
+            echo "manifest id is \"$ID\", expected the numeric Figma-issued id"
+            exit 1
+          fi
+          if [ "$PRIVATE_API" != "false" ]; then
+            echo "enablePrivatePluginApi must not be set in a public build"
+            exit 1
+          fi
+          echo "manifest ok: $NAME ($ID)"
+
+      # Proves the archive Figma is asked to import actually contains what the manifest points at.
+      - name: Package and inspect the plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd figma-plugin/dist
+          zip -qX ../../Bridge-to-Fig-Figma-Plugin.zip manifest.json code.js ui.html icon.svg
+          cd ../..
+          unzip -l Bridge-to-Fig-Figma-Plugin.zip
+
+          rm -rf /tmp/plugin-check
+          unzip -q Bridge-to-Fig-Figma-Plugin.zip -d /tmp/plugin-check
+          for f in $(jq -r '.main, .ui' /tmp/plugin-check/manifest.json); do
+            if [ ! -f "/tmp/plugin-check/$f" ]; then
+              echo "manifest points at $f but the archive does not contain it"
+              exit 1
+            fi
+          done
+          echo "archive ok"
+
+  # ─────────────────────────────────────────────────────────
+  # Desktop app: does the Rust still compile?
+  #
+  # A cheap Linux `cargo check`. The release builds macOS and Windows, but a type error or a
+  # bad include_dir! path fails everywhere, which is what this is here to catch.
+  # ─────────────────────────────────────────────────────────
+  desktop:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # include_dir! embeds figma-plugin/dist at compile time. build.rs creates the directory when
+      # it is missing so the build still works, but then nothing is embedded — building the plugin
+      # first is what makes this check meaningful.
+      - name: Build the Figma plugin for embedding
+        run: pnpm build:plugin
+
+      # tauri.conf.json declares a sidecar in externalBin, and the build fails if no binary matches
+      # the host triple. A stub is enough for a check that never runs or bundles it.
+      - name: Stub the sidecar binary
+        run: |
+          mkdir -p desktop/src-tauri/binaries
+          touch desktop/src-tauri/binaries/bridge-server-x86_64-unknown-linux-gnu
+          chmod +x desktop/src-tauri/binaries/bridge-server-x86_64-unknown-linux-gnu
+
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            libssl-dev \
+            patchelf \
+            build-essential
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: Check the desktop app
+        working-directory: desktop/src-tauri
+        run: cargo check --locked --all-targets
