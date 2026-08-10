@@ -9,10 +9,13 @@
     "dev": "pnpm --filter @bridge-to-fig/server dev",
     "build": "bash scripts/check-prereqs.sh && pnpm -r build",
     "build:plugin": "pnpm --filter @bridge-to-fig/shared build && pnpm --filter @bridge-to-fig/plugin build",
-    "build:plugin:release": "BRIDGE_RELEASE=1 pnpm --filter @bridge-to-fig/shared build && BRIDGE_RELEASE=1 pnpm --filter @bridge-to-fig/plugin build"
+    "build:plugin:release": "cross-env BRIDGE_RELEASE=1 pnpm --filter @bridge-to-fig/shared build && cross-env BRIDGE_RELEASE=1 pnpm --filter @bridge-to-fig/plugin build"
   },
   "engines": {
     "node": ">=18"
   },
-  "packageManager": "pnpm@10.33.2"
+  "packageManager": "pnpm@10.33.2",
+  "devDependencies": {
+    "cross-env": "^10.1.0"
+  }
 }
