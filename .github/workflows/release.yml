@@ -227,6 +227,32 @@ jobs:
             -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
 
+      # Notarization takes either an Apple ID plus an app-specific password, or an App Store
+      # Connect API key. Prefer the API key: app-specific passwords are silently revoked whenever
+      # the Apple ID password changes, which is invisible until a release fails with a 401.
+      # Set APPLE_API_KEY_P8 (base64 of the .p8), APPLE_API_KEY_ID, and APPLE_API_ISSUER to use it.
+      - name: Prepare notarization credentials
+        if: runner.os == 'macOS'
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${APPLE_API_KEY_P8}" ]; then
+            KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
+            printf '%s' "${APPLE_API_KEY_P8}" | base64 --decode > "$KEY_PATH"
+            # A .p8 that decoded correctly always starts with a PEM header. Checking here turns a
+            # bad paste into a clear message instead of a generic notarization failure 6 minutes in.
+            if ! head -n1 "$KEY_PATH" | grep -q "BEGIN PRIVATE KEY"; then
+              echo "APPLE_API_KEY_P8 did not decode to a PEM private key — re-copy the base64 of the .p8"
+              exit 1
+            fi
+            echo "APPLE_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+            echo "Notarizing with an App Store Connect API key"
+          else
+            echo "No APPLE_API_KEY_P8 set — falling back to Apple ID + app-specific password"
+          fi
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -237,9 +263,14 @@ jobs:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # API key path is exported by the step above when APPLE_API_KEY_P8 is set.
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
+          # Blanked when an API key is configured, so only one auth path is ever live — having both
+          # set leaves which one Tauri picks up to chance.
+          APPLE_ID: ${{ secrets.APPLE_API_KEY_P8 != '' && '' || secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_API_KEY_P8 != '' && '' || secrets.APPLE_PASSWORD }}
         with:
           projectPath: desktop
           tauriScript: pnpm tauri
