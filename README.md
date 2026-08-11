@@ -2,7 +2,7 @@
 
 A real-time bridge that enables AI agents to create, modify, and manipulate design elements directly on Figma canvases through natural language commands.
 
-**Current Version:** 1.0.3 | **Commands:** 329 | **Workflows:** 11 slash commands | **Agents:** 14 | **Last Updated:** August 2026
+**Current Version:** 1.0.4 | **Commands:** 329 | **Workflows:** 11 slash commands | **Agents:** 14 | **Last Updated:** August 2026
 
 **[View Pipeline & Agent Workflows (FigJam)](https://www.figma.com/board/FlZ6wXhS4pwOaUJIDnGaRS/Bridge-to-Fig---Pipeline---Agent-Workflows?node-id=0-1&t=sc5z843n81FYYugn-1)** — Visual diagrams of all 9 core pipelines and 14 agent workflows
 

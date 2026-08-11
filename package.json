@@ -1,6 +1,6 @@
 {
   "name": "bridge-to-fig",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "Real-time bridge between AI agents and Figma. Workspace root.",
   "scripts": {
