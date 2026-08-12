@@ -286,6 +286,7 @@ pnpm build:plugin
 | `prompts/gotchas.md` | **Gotchas reference** - every known pitfall with WRONG/CORRECT examples |
 | `prompts/code-connect.md` | **Code Connect** - Figma ↔ code component mapping system |
 | `docs/community-build.md` | **Community build** - how the published plugin differs from a dev build (no private API, proxied image fetches, release build command) |
+| `docs/macos-signing.md` | **macOS signing & notarization** - every `APPLE_*` secret, how to create/rotate them, verification commands, error-by-error troubleshooting |
 | `scripts/` | **Reusable script templates** - JSON payload templates for common operations |
 | `.claude/agents/*.md` | AI agent definitions (14 agents; retired originals in `agents-archive/`) |
 | `.figma/code-connect.json` | Component mapping file (Figma ↔ code) |
@@ -391,29 +392,26 @@ Rules:
 - If you create scripts, payloads, or state files during a session, put them in `.tmp/`
 - Delete temp files as soon as they're no longer needed, don't wait for session end
 
-## macOS Distribution — BLOCKER
+## macOS Distribution
 
-The macOS DMG is **not code-signed or notarized**. Non-technical users CANNOT install it — Gatekeeper blocks unsigned apps with no user-friendly bypass. The `xattr -cr` Terminal workaround is not acceptable for end users.
+The Apple Developer account, the Developer ID certificate, and the signing half of the release
+pipeline are all in place — the macOS build signs the app successfully. **Notarization** is the
+part that has been failing, which matters because Gatekeeper blocks an un-notarized download and
+the only way past it is `xattr -cr` in Terminal, which is not something an end user will do.
 
-**To fix this:** An Apple Developer account ($99/year) is required. Once obtained, add these GitHub repo secrets and the Tauri build action will handle signing + notarization automatically:
-- `APPLE_CERTIFICATE` — base64-encoded .p12 Developer ID Application certificate
-- `APPLE_CERTIFICATE_PASSWORD` — .p12 password
-- `APPLE_SIGNING_IDENTITY` — e.g., `Developer ID Application: Name (TEAMID)`
-- `APPLE_ID` — Apple ID email
-- `APPLE_PASSWORD` — app-specific password from appleid.apple.com
-- `APPLE_TEAM_ID` — 10-character team ID
+Signing and notarization fail independently. A build that signs and then dies means the
+certificate is fine and the credentials are not — do not re-export certificates in that case.
 
-Then add these env vars to the `Build Tauri app` step in `.github/workflows/release.yml` (macOS jobs only):
-```yaml
-APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-APPLE_ID: ${{ secrets.APPLE_ID }}
-APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-```
+Full setup, verification commands, and an error-by-error troubleshooting table:
+**`docs/macos-signing.md`**. Read it before touching any `APPLE_*` secret.
 
-**Until this is resolved, macOS builds are not distributable to non-technical users.**
+Two things that cost several releases and are worth knowing up front:
+
+- `APPLE_CERTIFICATE_PASSWORD` (unlocks the `.p12`) and `APPLE_PASSWORD` (authenticates to Apple)
+  are unrelated despite the names. Swapping them breaks signing without fixing notarization.
+- Prefer an App Store Connect API key (`APPLE_API_KEY_P8`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`)
+  over an app-specific password. Apple silently revokes app-specific passwords whenever the account
+  password changes, and the first sign of it is a failed release.
 
 ## Memory Integration
 
